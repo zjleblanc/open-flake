@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { usePageHeader } from "../components/PageHeaderContext";
 
 export function UsersPage() {
   const { hasPermission } = useAuth();
@@ -38,10 +39,22 @@ export function UsersPage() {
     },
   });
 
+  const headerBreadcrumbs = useMemo(() => [{ label: "Users & Groups" }], []);
+  const headerActions = useMemo(
+    () =>
+      canWriteUsers && (canReadUsers || canReadGroups) ? (
+        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? "Cancel" : "New User"}
+        </button>
+      ) : undefined,
+    [canWriteUsers, canReadUsers, canReadGroups, showCreate]
+  );
+
+  usePageHeader({ breadcrumbs: headerBreadcrumbs, actions: headerActions });
+
   if (!canReadUsers && !canReadGroups) {
     return (
       <div>
-        <h1>Users & Groups</h1>
         <p className="text-muted">You do not have permission to view users or groups.</p>
       </div>
     );
@@ -49,15 +62,6 @@ export function UsersPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Users & Groups</h1>
-        {canWriteUsers && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? "Cancel" : "New User"}
-          </button>
-        )}
-      </div>
-
       {showCreate && canWriteUsers && (
         <div className="card" style={{ marginBottom: "1.5rem" }}>
           <h2 className="section-title">Create User</h2>

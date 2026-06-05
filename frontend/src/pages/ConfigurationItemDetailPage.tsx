@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api, getRecordPermissions } from "../api/client";
-import { DetailPageHeader } from "../components/DetailPageHeader";
 import { DetailSection } from "../components/DetailSection";
+import { usePageHeader } from "../components/PageHeaderContext";
 import { PlusCircleIcon, PropertiesIcon, SystemIcon } from "../components/DetailIcons";
 import {
   DetailFieldGroup,
@@ -222,18 +222,37 @@ export function ConfigurationItemDetailPage() {
   ];
   const showEditableDivider = readOnlyFields.length > 0 && editableCiFields.length > 0;
 
-  if (isLoading || !data) {
-    return (
-      <div className="detail-page">
-        <DetailPageHeader
-          breadcrumbs={[
-            { label: "Configuration Items", to: "/configuration-items" },
-            { label: "Loading…" },
-          ]}
-          title="Loading…"
+  const headerBreadcrumbs = useMemo(
+    () => [
+      { label: "Configuration Items", to: "/configuration-items" },
+      { label: isLoading || !data ? "Loading…" : itemTitle },
+    ],
+    [isLoading, data, itemTitle]
+  );
+  const headerBadge = useMemo(
+    () =>
+      !isLoading && data && statusLabel ? (
+        <span className="badge badge-closed">{statusLabel}</span>
+      ) : undefined,
+    [isLoading, data, statusLabel]
+  );
+  const headerActions = useMemo(
+    () =>
+      !isLoading && data && permissions?.read && sysId ? (
+        <RecordSharePopover
+          resource={resource}
+          sysId={sysId}
+          record={data}
+          canWrite={!!permissions?.write}
         />
-      </div>
-    );
+      ) : undefined,
+    [isLoading, data, permissions?.read, permissions?.write, sysId, resource]
+  );
+
+  usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
+
+  if (isLoading || !data) {
+    return <p>Loading...</p>;
   }
 
   const handleSave = () => {
@@ -274,26 +293,7 @@ export function ConfigurationItemDetailPage() {
         />
       )}
 
-      <div className="detail-page">
-        <DetailPageHeader
-          breadcrumbs={[
-            { label: "Configuration Items", to: "/configuration-items" },
-            { label: itemTitle },
-          ]}
-          title={itemTitle}
-          badge={statusLabel ? <span className="badge badge-closed">{statusLabel}</span> : undefined}
-          actions={
-            permissions?.read && sysId ? (
-              <RecordSharePopover
-                resource={resource}
-                sysId={sysId}
-                record={data}
-                canWrite={!!permissions?.write}
-              />
-            ) : undefined
-          }
-        />
-
+      <div>
       <DetailSection
         title="Properties"
         icon={<PropertiesIcon />}

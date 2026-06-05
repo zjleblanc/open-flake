@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, STATE_LABELS, stateBadge } from "../api/client";
+import { usePageHeader } from "../components/PageHeaderContext";
 import "../components/Layout.css";
 
 interface RecordListProps {
@@ -31,19 +32,23 @@ export function RecordListPage({ resource, title, basePath, createFields }: Reco
     },
   });
 
+  const headerBreadcrumbs = useMemo(() => [{ label: title }], [title]);
+  const headerActions = useMemo(
+    () =>
+      createFields ? (
+        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? "Cancel" : "Create"}
+        </button>
+      ) : undefined,
+    [createFields, showCreate]
+  );
+
+  usePageHeader({ breadcrumbs: headerBreadcrumbs, actions: headerActions });
+
   if (isLoading) return <p>Loading...</p>;
 
   return (
     <div>
-      <div className="page-header">
-        <h1>{title}</h1>
-        {createFields && (
-          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? "Cancel" : "Create"}
-          </button>
-        )}
-      </div>
-
       {showCreate && createFields && (
         <div className="card" style={{ marginBottom: "1.5rem" }}>
           <h2 className="section-title">New {title.slice(0, -1)}</h2>

@@ -11,6 +11,8 @@
       "envFile": "${workspaceFolder}/backend/.env",
       "console": "integratedTerminal",
       "justMyCode": true,
+      "killBehavior": "forceful",
+      "postDebugTask": "Stop Backend Server",
       "env": {
         "PYDEVD_DISABLE_FILE_VALIDATION": "1"
       }
@@ -26,6 +28,8 @@
       "console": "integratedTerminal",
       "justMyCode": true,
       "subProcess": true,
+      "killBehavior": "forceful",
+      "postDebugTask": "Stop Backend Server",
       "env": {
         "PYDEVD_DISABLE_FILE_VALIDATION": "1"
       }
@@ -53,6 +57,7 @@
       "cwd": "${workspaceFolder}/frontend",
       "console": "integratedTerminal",
       "preLaunchTask": "Start Backend Server",
+      "postDebugTask": "Stop Backend Server",
       "serverReadyAction": {
         "pattern": "Local:\\s+(https?://\\S+)",
         "uriFormat": "%s",

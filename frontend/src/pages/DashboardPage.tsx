@@ -1,8 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { usePageHeader } from "../components/PageHeaderContext";
 import "../components/Layout.css";
 
+const DASHBOARD_BREADCRUMBS = [{ label: "Dashboard" }];
+
 export function DashboardPage() {
+  usePageHeader({ breadcrumbs: DASHBOARD_BREADCRUMBS });
+
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: api.dashboard,
@@ -12,9 +17,6 @@ export function DashboardPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Dashboard</h1>
-      </div>
       <div className="stats-grid">
         <div className="stat-card">
           <h3>Open Incidents</h3>

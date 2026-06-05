@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api, getRecordPermissions, STATE_LABELS, stateBadge } from "../api/client";
-import { DetailPageHeader } from "../components/DetailPageHeader";
 import { DetailSection } from "../components/DetailSection";
+import { usePageHeader } from "../components/PageHeaderContext";
 import { OverviewIcon } from "../components/DetailIcons";
 import {
   DetailFieldGroup,
@@ -99,45 +99,43 @@ export function RecordDetailPage({
   const lockedFields = fields.filter((field) => !canWrite || field.readOnly);
   const showEditableDivider = lockedFields.length > 0 && editableFields.length > 0;
 
-  if (isLoading || !data) {
-    return (
-      <div className="detail-page">
-        <DetailPageHeader
-          breadcrumbs={[
-            { label: title, to: listPath },
-            { label: "Loading…" },
-          ]}
-          title="Loading…"
+  const headerBreadcrumbs = useMemo(
+    () => [
+      { label: title, to: listPath },
+      { label: isLoading || !data ? "Loading…" : recordTitle },
+    ],
+    [title, listPath, isLoading, data, recordTitle]
+  );
+  const headerBadge = useMemo(
+    () =>
+      !isLoading && data ? (
+        <span className={`badge ${stateBadge(data.state || "1")}`}>
+          {STATE_LABELS[data.state] || data.state || "—"}
+        </span>
+      ) : undefined,
+    [isLoading, data]
+  );
+  const headerActions = useMemo(
+    () =>
+      !isLoading && data && permissions?.read && sysId ? (
+        <RecordSharePopover
+          resource={resource}
+          sysId={sysId}
+          record={data}
+          canWrite={canWrite}
         />
-      </div>
-    );
+      ) : undefined,
+    [isLoading, data, permissions?.read, sysId, resource, canWrite]
+  );
+
+  usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
+
+  if (isLoading || !data) {
+    return <p>Loading...</p>;
   }
 
   return (
-    <div className="detail-page">
-      <DetailPageHeader
-        breadcrumbs={[
-          { label: title, to: listPath },
-          { label: recordTitle },
-        ]}
-        title={recordTitle}
-        badge={
-          <span className={`badge ${stateBadge(data.state || "1")}`}>
-            {STATE_LABELS[data.state] || data.state || "—"}
-          </span>
-        }
-        actions={
-          permissions?.read && sysId ? (
-            <RecordSharePopover
-              resource={resource}
-              sysId={sysId}
-              record={data}
-              canWrite={canWrite}
-            />
-          ) : undefined
-        }
-      />
-
+    <div>
       <DetailSection title={sectionTitle} icon={<OverviewIcon />} accent="accent">
         <div className="detail-field-groups">
           {lockedFields.length > 0 && (

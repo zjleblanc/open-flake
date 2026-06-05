@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Sticky navbar, login redirect, and debug teardown
+
+### Added
+
+- Sticky glass top navbar with breadcrumbs, status badges, page actions, and a top-right user profile menu (sign out in dropdown).
+- `PageHeaderContext`, `TopNavbar`, and `usePageHeader` so pages register navbar breadcrumbs, badges, and actions without per-page headers.
+- `scripts/stop-backend.sh` and a VS Code Stop Backend Server post-debug task to tear down uvicorn after launch sessions end.
+
+### Changed
+
+- Replaced per-page `<h1>` headers and `DetailPageHeader` with the centralized sticky navbar; sidebar sign-out footer removed.
+- Navbar sits inside the scrolling content area so page content blurs through the translucent backdrop while scrolling.
+- Record and CI status badges render after breadcrumbs; share and create actions stay on the right.
+- VS Code backend launch configs use `killBehavior: forceful` and `postDebugTask` for reliable process cleanup.
+- Updated OpenFlake logo assets; removed unused `logo.svg`.
+
+### Fixed
+
+- Drop `WWW-Authenticate: Basic` on 401 responses so the SPA redirects to `/login` instead of opening the native browser auth dialog.
+- `usePageHeader` infinite update loops from effect cleanup and unstable breadcrumb references.
+
 ## 2026-06-05 — Record-level RBAC and inline detail editing
 
 ### Added

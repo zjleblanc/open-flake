@@ -81,7 +81,6 @@ async def authenticate_request(
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Authentication required",
-        headers={"WWW-Authenticate": "Basic"},
     )
 
 

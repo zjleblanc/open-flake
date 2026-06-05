@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import openFlakeSm from "../assets/images/open_flake_sm.png";
 import {
@@ -9,9 +9,10 @@ import {
   IncidentIcon,
   ProblemIcon,
   SettingsIcon,
-  SignOutIcon,
   UsersIcon,
 } from "./NavIcons";
+import { PageHeaderProvider } from "./PageHeaderContext";
+import { TopNavbar } from "./TopNavbar";
 import "./Layout.css";
 
 const NAV: { to: string; label: string; icon: ReactNode; permission?: string }[] = [
@@ -25,46 +26,41 @@ const NAV: { to: string; label: string; icon: ReactNode; permission?: string }[]
 ];
 
 export function Layout() {
-  const navigate = useNavigate();
-  const { hasPermission, logout: authLogout } = useAuth();
-
-  function logout() {
-    authLogout();
-    navigate("/login");
-  }
+  const { hasPermission } = useAuth();
 
   const visibleNav = NAV.filter((item) => !item.permission || hasPermission(item.permission));
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img src={openFlakeSm} alt="OpenFlake" width={32} height={32} />
-          <span className="brand-text">OpenFlake</span>
+    <PageHeaderProvider>
+      <div className="layout">
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <img src={openFlakeSm} alt="OpenFlake" width={32} height={32} />
+            <span className="brand-text">OpenFlake</span>
+          </div>
+          <nav className="sidebar-nav">
+            {visibleNav.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+              >
+                <span className="nav-link-icon">{item.icon}</span>
+                <span className="nav-link-label">{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+        </aside>
+        <div className="main-column">
+          <main className="content">
+            <TopNavbar />
+            <div className="content-body">
+              <Outlet />
+            </div>
+          </main>
         </div>
-        <nav className="sidebar-nav">
-          {visibleNav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
-            >
-              <span className="nav-link-icon">{item.icon}</span>
-              <span className="nav-link-label">{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <button className="btn-secondary logout-btn" onClick={logout}>
-            <SignOutIcon size={16} />
-            Sign out
-          </button>
-        </div>
-      </aside>
-      <main className="content">
-        <Outlet />
-      </main>
-    </div>
+      </div>
+    </PageHeaderProvider>
   );
 }

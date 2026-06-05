@@ -48,6 +48,22 @@
       "runOptions": {
         "instanceLimit": 1
       }
+    },
+    {
+      "label": "Stop Backend Server",
+      "type": "process",
+      "command": "/bin/bash",
+      "args": ["${workspaceFolder}/scripts/stop-backend.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "close": true
+      }
     }
   ]
 }

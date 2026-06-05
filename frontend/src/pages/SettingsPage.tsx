@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { usePageHeader } from "../components/PageHeaderContext";
+
+const SETTINGS_BREADCRUMBS = [{ label: "Settings" }];
 
 export function SettingsPage() {
+  usePageHeader({ breadcrumbs: SETTINGS_BREADCRUMBS });
   const [apiKeyName, setApiKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [oauthForm, setOauthForm] = useState({ name: "", client_id: "", client_secret: "" });
@@ -30,10 +34,6 @@ export function SettingsPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Settings</h1>
-      </div>
-
       <div className="card" style={{ marginBottom: "1.5rem" }}>
         <h2 className="section-title">API Keys</h2>
         <p className="text-body" style={{ marginBottom: "1rem" }}>
