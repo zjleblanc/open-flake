@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { getToken } from "./api/client";
+import { ConfigurationItemDetailPage } from "./pages/ConfigurationItemDetailPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RecordDetailPage } from "./pages/RecordDetailPage";
@@ -119,20 +120,7 @@ export function App() {
             />
           }
         />
-        <Route
-          path="configuration-items/:sysId"
-          element={
-            <RecordDetailPage
-              resource="configuration-items"
-              title="Configuration Items"
-              listPath="/configuration-items"
-              editableFields={[
-                { key: "name", label: "Name" },
-                { key: "short_description", label: "Short Description" },
-              ]}
-            />
-          }
-        />
+        <Route path="configuration-items/:sysId" element={<ConfigurationItemDetailPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

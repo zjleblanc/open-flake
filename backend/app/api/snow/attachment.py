@@ -2,14 +2,14 @@ import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
 from app.config import get_settings
 from app.db import get_db
-from app.domain.table_service import create_record, delete_record, get_record_by_sys_id
 from app.models import SysAttachment
 from app.utils.ids import new_sys_id
 
@@ -21,6 +21,51 @@ def _ensure_attach_dir() -> Path:
     path = Path(settings.attachments_path)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _attachment_to_dict(record: SysAttachment) -> dict:
+    return {
+        "sys_id": record.sys_id,
+        "file_name": record.file_name,
+        "table_name": record.table_name,
+        "table_sys_id": record.table_sys_id,
+        "size_bytes": str(record.size_bytes),
+        "content_type": record.content_type,
+        "download_link": f"{settings.base_url}/api/now/attachment/{record.sys_id}/file",
+        "sys_created_on": record.sys_created_on.isoformat() if record.sys_created_on else "",
+        "sys_updated_on": record.sys_updated_on.isoformat() if record.sys_updated_on else "",
+        "sys_created_by": record.sys_created_by or "",
+        "sys_updated_by": record.sys_updated_by or "",
+    }
+
+
+@router.get("")
+async def list_attachments(
+    response: Response,
+    table_name: str | None = Query(default=None),
+    table_sys_id: str | None = Query(default=None),
+    sysparm_limit: int = Query(default=10000),
+    sysparm_offset: int = Query(default=0),
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    filters: list = []
+    if table_name:
+        filters.append(SysAttachment.table_name == table_name)
+    if table_sys_id:
+        filters.append(SysAttachment.table_sys_id == table_sys_id)
+
+    query = select(SysAttachment)
+    count_query = select(func.count()).select_from(SysAttachment)
+    for condition in filters:
+        query = query.where(condition)
+        count_query = count_query.where(condition)
+
+    total = (await db.execute(count_query)).scalar() or 0
+    result = await db.execute(query.limit(sysparm_limit).offset(sysparm_offset))
+    records = result.scalars().all()
+    response.headers["x-total-count"] = str(total)
+    return {"result": [_attachment_to_dict(record) for record in records]}
 
 
 @router.post("/file", status_code=status.HTTP_201_CREATED)
@@ -55,14 +100,7 @@ async def upload_attachment(
     await db.flush()
 
     return {
-        "result": {
-            "sys_id": sys_id,
-            "file_name": record.file_name,
-            "table_name": table_name,
-            "table_sys_id": table_sys_id,
-            "size_bytes": str(record.size_bytes),
-            "content_type": record.content_type,
-        }
+        "result": _attachment_to_dict(record)
     }
 
 
@@ -75,16 +113,7 @@ async def get_attachment_meta(
     record = await db.get(SysAttachment, sys_id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
-    return {
-        "result": {
-            "sys_id": record.sys_id,
-            "file_name": record.file_name,
-            "table_name": record.table_name,
-            "table_sys_id": record.table_sys_id,
-            "size_bytes": str(record.size_bytes),
-            "content_type": record.content_type,
-        }
-    }
+    return {"result": _attachment_to_dict(record)}
 
 
 @router.get("/{sys_id}/file")

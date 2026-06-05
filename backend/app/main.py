@@ -3,6 +3,7 @@ import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.health import router as health_router
@@ -13,6 +14,7 @@ from app.api.snow.oauth import router as oauth_router
 from app.api.snow.table import router as table_router
 from app.api.v1.router import router as v1_router
 from app.config import get_settings
+from app.domain.errors import InvalidFieldNameError
 from app.startup import lifespan
 
 settings = get_settings()
@@ -53,6 +55,10 @@ def create_app() -> FastAPI:
     app.include_router(cmdb_router)
     app.include_router(catalog_router)
     app.include_router(v1_router)
+
+    @app.exception_handler(InvalidFieldNameError)
+    async def invalid_field_name_handler(_request: Request, exc: InvalidFieldNameError):
+        return JSONResponse(status_code=422, content={"detail": str(exc)})
 
     return app
 

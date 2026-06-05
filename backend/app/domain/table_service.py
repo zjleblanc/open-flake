@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.domain.errors import validate_other_field_keys
 from app.domain.registry import NUMBER_PREFIXES, REFERENCE_FIELDS, TABLE_MODELS
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence
@@ -79,12 +80,16 @@ def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
     for key, value in payload.items():
         if isinstance(value, dict) and "value" in value:
             value = value["value"]
+        if key == "other" and isinstance(value, dict):
+            other.update(value)
+            continue
         if key in known_cols and key != "other":
             result[key] = value
         elif key not in known_cols:
             other[key] = value
 
     if other:
+        validate_other_field_keys(other)
         result["other"] = other
 
     for field in refs:

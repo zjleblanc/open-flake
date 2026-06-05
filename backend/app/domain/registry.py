@@ -46,6 +46,15 @@ NUMBER_PREFIXES: dict[str, str] = {
     "sc_task": "SCTASK",
 }
 
+def resolve_table_name(table: str) -> tuple[str, str | None] | None:
+    """Map a ServiceNow table name to an internal table and optional CMDB class filter."""
+    if table in TABLE_MODELS:
+        return table, None
+    if table.startswith("cmdb_ci_") and table not in {"cmdb_rel_ci", "cmdb_rel_type"}:
+        return "cmdb_ci", table
+    return None
+
+
 REFERENCE_FIELDS: dict[str, set[str]] = {
     "incident": {"caller_id", "assigned_to", "assignment_group"},
     "problem": {"assigned_to", "assignment_group", "duplicate_of"},

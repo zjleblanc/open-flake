@@ -267,6 +267,64 @@ tr:hover td {
   margin-top: 0.5rem;
 }
 
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--of-radius);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.alert-success {
+  background: #183301;
+  color: #afdc8f;
+  border: 1px solid var(--of-success);
+}
+
+.alert-error {
+  background: #3d1515;
+  color: #f5a8a8;
+  border: 1px solid var(--of-danger);
+}
+
+.toast-banner {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 1000;
+  max-width: min(22rem, calc(100vw - 2.5rem));
+  padding: 0.875rem 1.25rem;
+  border-radius: var(--of-radius);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 35%);
+  animation: toast-banner-in 0.2s ease-out;
+}
+
+.toast-banner-success {
+  background: #183301;
+  color: #afdc8f;
+  border: 1px solid var(--of-success);
+}
+
+.toast-banner-error {
+  background: #3d1515;
+  color: #f5a8a8;
+  border: 1px solid var(--of-danger);
+}
+
+@keyframes toast-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .empty-state {
   text-align: center;
   color: var(--of-text-muted);

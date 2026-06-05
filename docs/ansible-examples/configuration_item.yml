@@ -2,26 +2,33 @@
 - name: OpenFlake configuration item smoke test
   hosts: localhost
   gather_facts: false
+
   vars:
     openflake_host: "{{ lookup('env', 'SN_HOST') | default('http://localhost:8000', true) }}"
     openflake_user: "{{ lookup('env', 'SN_USERNAME') | default('admin', true) }}"
     openflake_pass: "{{ lookup('env', 'SN_PASSWORD') | default('admin', true) }}"
+
   tasks:
     - name: Create configuration item
+      register: ci_result
       servicenow.itsm.configuration_item:
         instance:
           host: "{{ openflake_host }}"
           username: "{{ openflake_user }}"
           password: "{{ openflake_pass }}"
+        name: HPE ProLiant BL465C G7
+        short_description: HPE ProLiant Server G7
+        serial_number: ECE-164-E10834-NO
+        asset_tag: P1000613
         sys_class_name: cmdb_ci_server
-        name: "ansible-test-server"
-        short_description: "Created by Ansible smoke test"
-        install_status: installed
-        operational_status: operational
-      register: ci_result
+        assigned_to: admin
+        environment: production
+        category: Hardware
+        other:
+          model_number: BL465C G7
 
     - name: Assert CI created
       ansible.builtin.assert:
         that:
-          - ci_result.record.name == "ansible-test-server"
+          - ci_result.record.name == "HPE ProLiant BL465C G7"
           - ci_result.record.sys_class_name == "cmdb_ci_server"
