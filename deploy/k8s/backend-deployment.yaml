@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openflake-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openflake-backend
+  template:
+    metadata:
+      labels:
+        app: openflake-backend
+    spec:
+      containers:
+        - name: backend
+          image: openflake-backend:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: openflake-secrets
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+          volumeMounts:
+            - name: attachments
+              mountPath: /data/attachments
+      volumes:
+        - name: attachments
+          persistentVolumeClaim:
+            claimName: openflake-attachments

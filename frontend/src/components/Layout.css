@@ -1,0 +1,149 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 240px;
+  background: var(--of-gradient);
+  border-right: 1px solid var(--of-border);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 1rem;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  margin-bottom: 2rem;
+  color: var(--of-text);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.nav-link {
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--of-radius);
+  color: var(--of-sidebar-text);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background: var(--of-sidebar-active-bg);
+  color: var(--of-text);
+}
+
+.logout-btn {
+  margin-top: auto;
+  width: 100%;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.page-header h1 {
+  font-size: 1.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--of-surface);
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  padding: 1.25rem;
+  border-left: 3px solid var(--of-primary);
+}
+
+.stat-card.accent {
+  border-left-color: var(--of-accent);
+}
+
+.stat-card h3 {
+  margin-bottom: 0.5rem;
+}
+
+.stat-card .value {
+  font-family: var(--of-font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--of-accent);
+}
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--of-gradient);
+}
+
+.login-card {
+  background: var(--of-surface);
+  border: 1px solid var(--of-border);
+  border-radius: 12px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-brand img {
+  margin-bottom: 1rem;
+}
+
+.login-brand h1 {
+  font-size: 1.5rem;
+}
+
+.login-brand p {
+  margin-top: 0.25rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

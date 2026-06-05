@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openflake-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openflake-frontend
+  template:
+    metadata:
+      labels:
+        app: openflake-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: openflake-frontend:latest
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080

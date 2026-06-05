@@ -1,0 +1,37 @@
+---
+- name: OpenFlake incident smoke test
+  hosts: localhost
+  gather_facts: false
+  vars:
+    openflake_host: "{{ lookup('env', 'SN_HOST') | default('http://localhost:8000', true) }}"
+    openflake_user: "{{ lookup('env', 'SN_USERNAME') | default('admin', true) }}"
+    openflake_pass: "{{ lookup('env', 'SN_PASSWORD') | default('admin', true) }}"
+  tasks:
+    - name: Create incident
+      servicenow.itsm.incident:
+        instance:
+          host: "{{ openflake_host }}"
+          username: "{{ openflake_user }}"
+          password: "{{ openflake_pass }}"
+        state: new
+        short_description: "OpenFlake Ansible smoke test"
+        impact: medium
+        urgency: medium
+      register: incident_result
+
+    - name: Assert incident created
+      ansible.builtin.assert:
+        that:
+          - incident_result.record.number is defined
+          - incident_result.record.short_description == "OpenFlake Ansible smoke test"
+
+    - name: Resolve incident
+      servicenow.itsm.incident:
+        instance:
+          host: "{{ openflake_host }}"
+          username: "{{ openflake_user }}"
+          password: "{{ openflake_pass }}"
+        number: "{{ incident_result.record.number }}"
+        state: resolved
+        close_code: "Solution provided"
+        close_notes: "Automated test"

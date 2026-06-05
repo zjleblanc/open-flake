@@ -1,0 +1,24 @@
+---
+- name: OpenFlake sys_user API smoke test
+  hosts: localhost
+  gather_facts: false
+  vars:
+    openflake_host: "{{ lookup('env', 'SN_HOST') | default('http://localhost:8000', true) }}"
+    openflake_user: "{{ lookup('env', 'SN_USERNAME') | default('admin', true) }}"
+    openflake_pass: "{{ lookup('env', 'SN_PASSWORD') | default('admin', true) }}"
+  tasks:
+    - name: Lookup admin user
+      servicenow.itsm.api_info:
+        instance:
+          host: "{{ openflake_host }}"
+          username: "{{ openflake_user }}"
+          password: "{{ openflake_pass }}"
+        resource: sys_user
+        sysparm_query: "user_name={{ openflake_user }}"
+      register: user_info
+
+    - name: Assert user found
+      ansible.builtin.assert:
+        that:
+          - user_info.records | length >= 1
+          - user_info.records[0].user_name == openflake_user

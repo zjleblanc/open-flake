@@ -1,0 +1,26 @@
+FROM docker.io/library/python:3.12-slim AS builder
+
+WORKDIR /build
+COPY backend/ ./backend/
+WORKDIR /build/backend
+RUN pip install --no-cache-dir --prefix=/install .
+
+FROM docker.io/library/python:3.12-slim
+
+RUN useradd --create-home --uid 1001 openflake
+WORKDIR /app
+
+COPY --from=builder /install /usr/local
+COPY backend/app ./app
+COPY backend/pyproject.toml .
+
+RUN mkdir -p /data/attachments && chown -R openflake:openflake /data
+
+USER openflake
+
+ENV PYTHONUNBUFFERED=1
+ENV ATTACHMENTS_PATH=/data/attachments
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
