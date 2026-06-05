@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { DetailPageHeader } from "../components/DetailPageHeader";
+import { DetailSection } from "../components/DetailSection";
+import { EditIcon, PlusCircleIcon, PropertiesIcon, SystemIcon } from "../components/DetailIcons";
 import { ToastBanner } from "../components/ToastBanner";
 import "../components/Layout.css";
 
@@ -109,7 +112,7 @@ function PropertyField({ label, value }: { label: string; value: unknown }) {
   const isMultiline = formatted.includes("\n");
 
   return (
-    <div>
+    <div className="detail-field">
       <p className="field-label">{label}</p>
       {isMultiline ? (
         <pre className="code-block" style={{ margin: 0 }}>
@@ -163,10 +166,23 @@ export function ConfigurationItemDetailPage() {
     },
   });
 
-  if (isLoading || !data) return <p>Loading...</p>;
-
+  const itemTitle = data?.name || data?.sys_id || "Loading…";
   const otherPropertyKeys = Object.keys(otherForm).sort();
-  const statusLabel = data.operational_status || data.install_status || data.sys_class_name;
+  const statusLabel = data?.operational_status || data?.install_status || data?.sys_class_name;
+
+  if (isLoading || !data) {
+    return (
+      <div className="detail-page">
+        <DetailPageHeader
+          breadcrumbs={[
+            { label: "Configuration Items", to: "/configuration-items" },
+            { label: "Loading…" },
+          ]}
+          title="Loading…"
+        />
+      </div>
+    );
+  }
 
   const handleSave = () => {
     setSaveMessage(null);
@@ -206,19 +222,17 @@ export function ConfigurationItemDetailPage() {
         />
       )}
 
-      <div>
-        <div className="page-header">
-        <div>
-          <Link to="/configuration-items" className="text-sm">
-            ← Back to Configuration Items
-          </Link>
-          <h1>{data.name || data.sys_id}</h1>
-        </div>
-        {statusLabel && <span className="badge badge-closed">{statusLabel}</span>}
-      </div>
+      <div className="detail-page">
+        <DetailPageHeader
+          breadcrumbs={[
+            { label: "Configuration Items", to: "/configuration-items" },
+            { label: itemTitle },
+          ]}
+          title={itemTitle}
+          badge={statusLabel ? <span className="badge badge-closed">{statusLabel}</span> : undefined}
+        />
 
-      <div className="card">
-        <h2 className="section-title">Properties</h2>
+      <DetailSection title="Properties" icon={<PropertiesIcon />} accent="accent">
         <div className="detail-grid">
           {CMDB_CI_FIELDS.map((field) => (
             <PropertyField key={field.key} label={field.label} value={data[field.key]} />
@@ -227,10 +241,15 @@ export function ConfigurationItemDetailPage() {
             <PropertyField key={key} label={humanizeFieldKey(key)} value={data[key]} />
           ))}
         </div>
-      </div>
+      </DetailSection>
 
       <details className="property-panel" style={{ marginTop: "1rem" }}>
-        <summary>Show system properties</summary>
+        <summary>
+          <span className="property-panel-summary-icon">
+            <SystemIcon size={14} />
+          </span>
+          Show system properties
+        </summary>
         <div className="property-panel-body">
           <div className="detail-grid">
             {CMDB_CI_SYSTEM_FIELDS.map((field) => (
@@ -240,8 +259,12 @@ export function ConfigurationItemDetailPage() {
         </div>
       </details>
 
-      <div className="card" style={{ marginTop: "1rem" }}>
-        <h2 className="section-title">Update</h2>
+      <DetailSection
+        title="Update"
+        icon={<EditIcon />}
+        accent="primary"
+        style={{ marginTop: "1rem" }}
+      >
         <div className="detail-grid">
           {EDITABLE_FIELDS.map((field) => (
             <div className="form-group" key={field.key} style={{ marginBottom: 0 }}>
@@ -255,8 +278,11 @@ export function ConfigurationItemDetailPage() {
           ))}
         </div>
 
-        <details className="property-panel" style={{ marginTop: "1.25rem" }}>
+        <details className="property-panel property-panel--accent" style={{ marginTop: "1.25rem" }}>
           <summary>
+            <span className="property-panel-summary-icon">
+              <PlusCircleIcon size={14} />
+            </span>
             Additional Properties
             <span className="property-panel-count">{otherPropertyKeys.length}</span>
           </summary>
@@ -342,7 +368,7 @@ export function ConfigurationItemDetailPage() {
             {updateMutation.isPending ? "Saving..." : "Save Changes"}
           </button>
         </div>
-      </div>
+      </DetailSection>
       </div>
     </>
   );

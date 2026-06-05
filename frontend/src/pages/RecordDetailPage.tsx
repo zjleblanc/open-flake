@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api, STATE_LABELS, stateBadge } from "../api/client";
+import { DetailPageHeader } from "../components/DetailPageHeader";
+import { DetailSection } from "../components/DetailSection";
+import { EditIcon, OverviewIcon } from "../components/DetailIcons";
+import "../components/Layout.css";
 
 interface RecordDetailProps {
   resource: string;
@@ -28,50 +32,69 @@ export function RecordDetailPage({ resource, title, listPath, editableFields }: 
     },
   });
 
-  if (isLoading || !data) return <p>Loading...</p>;
+  const recordTitle = data?.number || data?.name || data?.sys_id || "Loading…";
+
+  if (isLoading || !data) {
+    return (
+      <div className="detail-page">
+        <DetailPageHeader
+          breadcrumbs={[
+            { label: title, to: listPath },
+            { label: "Loading…" },
+          ]}
+          title="Loading…"
+        />
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <Link to={listPath} className="text-sm">
-            ← Back to {title}
-          </Link>
-          <h1>{data.number || data.name || data.sys_id}</h1>
-        </div>
-        <span className={`badge ${stateBadge(data.state || "1")}`}>
-          {STATE_LABELS[data.state] || data.state || "—"}
-        </span>
-      </div>
+    <div className="detail-page">
+      <DetailPageHeader
+        breadcrumbs={[
+          { label: title, to: listPath },
+          { label: recordTitle },
+        ]}
+        title={recordTitle}
+        badge={
+          <span className={`badge ${stateBadge(data.state || "1")}`}>
+            {STATE_LABELS[data.state] || data.state || "—"}
+          </span>
+        }
+      />
 
-      <div className="card">
+      <DetailSection title="Overview" icon={<OverviewIcon />} accent="accent">
         <div className="detail-grid">
-          <div>
+          <div className="detail-field">
             <p className="field-label">Short Description</p>
             <p>{data.short_description || "—"}</p>
           </div>
-          <div>
+          <div className="detail-field">
             <p className="field-label">Priority</p>
             <p>{data.priority || "—"}</p>
           </div>
           {data.description && (
-            <div style={{ gridColumn: "1 / -1" }}>
+            <div className="detail-field" style={{ gridColumn: "1 / -1" }}>
               <p className="field-label">Description</p>
               <p>{data.description}</p>
             </div>
           )}
           {data.sys_class_name && (
-            <div>
+            <div className="detail-field">
               <p className="field-label">Class</p>
               <p>{data.sys_class_name}</p>
             </div>
           )}
         </div>
-      </div>
+      </DetailSection>
 
       {editableFields && (
-        <div className="card" style={{ marginTop: "1rem" }}>
-          <h2 className="section-title">Update</h2>
+        <DetailSection
+          title="Update"
+          icon={<EditIcon />}
+          accent="primary"
+          style={{ marginTop: "1rem" }}
+        >
           {editableFields.map((f) => (
             <div className="form-group" key={f.key}>
               <label>{f.label}</label>
@@ -110,7 +133,7 @@ export function RecordDetailPage({ resource, title, listPath, editableFields }: 
           >
             Save Changes
           </button>
-        </div>
+        </DetailSection>
       )}
     </div>
   );
