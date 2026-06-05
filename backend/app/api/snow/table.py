@@ -83,7 +83,7 @@ async def table_list(
     )
     exclude = _exclude_links(request)
     records, total = await list_records(
-        db, internal_table, conditions, sysparm_limit, sysparm_offset, exclude
+        db, internal_table, conditions, sysparm_limit, sysparm_offset, exclude, auth=auth
     )
     response.headers["x-total-count"] = str(total)
     return {"result": records}
@@ -99,7 +99,7 @@ async def table_get(
 ):
     internal_table, sys_class_name = _resolve_table(table)
     exclude = _exclude_links(request)
-    record = await get_record_by_sys_id(db, internal_table, sys_id, exclude)
+    record = await get_record_by_sys_id(db, internal_table, sys_id, exclude, auth=auth)
     if not _matches_class(record, sys_class_name):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     return {"result": record}
@@ -117,7 +117,7 @@ async def table_create(
     if sys_class_name:
         payload = {**payload, "sys_class_name": sys_class_name}
     exclude = _exclude_links(request)
-    record = await create_record(db, internal_table, payload, auth.user_sys_id, exclude)
+    record = await create_record(db, internal_table, payload, auth.user_sys_id, exclude, auth=auth)
     return {"result": record}
 
 
@@ -131,12 +131,14 @@ async def table_update(
     db: AsyncSession = Depends(get_db),
 ):
     internal_table, sys_class_name = _resolve_table(table)
-    existing = await get_record_by_sys_id(db, internal_table, sys_id, exclude_links=False)
+    existing = await get_record_by_sys_id(
+        db, internal_table, sys_id, exclude_links=False, auth=auth, skip_auth=True
+    )
     if not _matches_class(existing, sys_class_name):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     exclude = _exclude_links(request)
     record = await update_record(
-        db, internal_table, sys_id, payload, auth.user_sys_id, exclude
+        db, internal_table, sys_id, payload, auth.user_sys_id, exclude, auth=auth
     )
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
@@ -151,10 +153,12 @@ async def table_delete(
     db: AsyncSession = Depends(get_db),
 ):
     internal_table, sys_class_name = _resolve_table(table)
-    existing = await get_record_by_sys_id(db, internal_table, sys_id, exclude_links=False)
+    existing = await get_record_by_sys_id(
+        db, internal_table, sys_id, exclude_links=False, auth=auth, skip_auth=True
+    )
     if not _matches_class(existing, sys_class_name):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
-    deleted = await delete_record(db, internal_table, sys_id)
+    deleted = await delete_record(db, internal_table, sys_id, auth=auth)
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

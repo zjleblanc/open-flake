@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Record-level RBAC and inline detail editing
+
+### Added
+
+- Record-level RBAC with ownership, owner groups, platform roles, per-record view/comment grants, and comments on business records.
+- `SysRole`, `SysGroupRole`, `RecordAccessGrant`, and `SysComment` models with startup backfill and admin role seed.
+- RBAC enforcement in the table service for create/list/get/update/delete across UI and Table API routes.
+- `/api/v1/auth/me`, record grant CRUD, and comment list/create endpoints.
+- `test_rbac.py` coverage and README RBAC documentation.
+- Frontend `AuthContext`, permission-gated navigation and forms, share popover (ownership, grants, your access), and comments section.
+- Shared detail field controls: grouped read-only fields with lock indicators, header toggle switch, and dirty-state save button.
+- VS Code backend debug configurations, `start-backend.sh` task, and `debugpy` dev dependency.
+
+### Changed
+
+- Record and CI detail pages use inline editing in a single section; read-only fields grouped above editable fields with a divider.
+- CI detail page keeps additional properties and RBAC fields out of the main grid; system properties controlled by a header toggle and merged into the read-only group.
+- `assigned_to` and audit user references resolve to display names on the CI detail page.
+- Save Changes stays disabled until the form has pending edits.
+- VS Code launch/tasks reworked so backend debugging starts reliably without preLaunchTask loops.
+
+### Fixed
+
+- CI detail page crash from missing `EDITABLE_FIELD_KEYS` constant.
+- Comments section icon not rendering on detail pages.
+
 ## 2026-06-05
 
 ### Added

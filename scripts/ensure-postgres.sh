@@ -4,8 +4,21 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
+MAX_WAIT_SECONDS=30
+
+postgres_reachable() {
+  (echo >/dev/tcp/localhost/5432) 2>/dev/null
+}
+
+if postgres_reachable; then
+  echo "PostgreSQL already reachable on localhost:5432"
+  exit 0
+fi
+
 if ! podman info >/dev/null 2>&1; then
-  echo "Podman is not running. On macOS, start it with: podman machine start"
+  echo "PostgreSQL is not reachable on localhost:5432 and Podman is not running."
+  echo "Start Podman with: podman machine start"
+  echo "Or run PostgreSQL locally on port 5432."
   exit 1
 fi
 
@@ -56,9 +69,15 @@ else
   fi
 fi
 
+elapsed=0
 until podman exec openflake-postgres pg_isready -U openflake -d openflake >/dev/null 2>&1; do
+  if [ "$elapsed" -ge "$MAX_WAIT_SECONDS" ]; then
+    echo "Timed out waiting for PostgreSQL after ${MAX_WAIT_SECONDS}s"
+    exit 1
+  fi
   echo "Waiting for PostgreSQL..."
   sleep 1
+  elapsed=$((elapsed + 1))
 done
 
 echo "PostgreSQL is ready"

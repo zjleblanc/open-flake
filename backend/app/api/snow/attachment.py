@@ -8,6 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
+from app.auth.rbac import assert_record_action_by_id
+from app.domain.registry import RBAC_RECORD_TABLES
 from app.config import get_settings
 from app.db import get_db
 from app.models import SysAttachment
@@ -39,6 +41,17 @@ def _attachment_to_dict(record: SysAttachment) -> dict:
     }
 
 
+async def _assert_attachment_parent_access(
+    db: AsyncSession,
+    auth: AuthContext,
+    table_name: str,
+    table_sys_id: str,
+    action: str,
+) -> None:
+    if table_name in RBAC_RECORD_TABLES:
+        await assert_record_action_by_id(db, auth, table_name, table_sys_id, action)  # type: ignore[arg-type]
+
+
 @router.get("")
 async def list_attachments(
     response: Response,
@@ -49,6 +62,9 @@ async def list_attachments(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    if table_name and table_sys_id:
+        await _assert_attachment_parent_access(db, auth, table_name, table_sys_id, "read")
+
     filters: list = []
     if table_name:
         filters.append(SysAttachment.table_name == table_name)
@@ -76,6 +92,8 @@ async def upload_attachment(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    await _assert_attachment_parent_access(db, auth, table_name, table_sys_id, "write")
+
     attach_dir = _ensure_attach_dir()
     sys_id = new_sys_id()
     ext = Path(file.filename or "file").suffix
@@ -113,6 +131,9 @@ async def get_attachment_meta(
     record = await db.get(SysAttachment, sys_id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    await _assert_attachment_parent_access(
+        db, auth, record.table_name, record.table_sys_id, "read"
+    )
     return {"result": _attachment_to_dict(record)}
 
 
@@ -125,6 +146,9 @@ async def download_attachment(
     record = await db.get(SysAttachment, sys_id)
     if not record or not os.path.exists(record.storage_path):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    await _assert_attachment_parent_access(
+        db, auth, record.table_name, record.table_sys_id, "read"
+    )
     return FileResponse(
         record.storage_path,
         filename=record.file_name,
@@ -141,6 +165,9 @@ async def delete_attachment(
     record = await db.get(SysAttachment, sys_id)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    await _assert_attachment_parent_access(
+        db, auth, record.table_name, record.table_sys_id, "write"
+    )
     if os.path.exists(record.storage_path):
         os.remove(record.storage_path)
     await db.delete(record)

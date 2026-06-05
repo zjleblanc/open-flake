@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { clearToken } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import openFlakeSm from "../assets/images/open_flake_sm.png";
 import {
   ChangeIcon,
@@ -14,23 +14,26 @@ import {
 } from "./NavIcons";
 import "./Layout.css";
 
-const NAV: { to: string; label: string; icon: ReactNode }[] = [
+const NAV: { to: string; label: string; icon: ReactNode; permission?: string }[] = [
   { to: "/", label: "Dashboard", icon: <DashboardIcon /> },
   { to: "/incidents", label: "Incidents", icon: <IncidentIcon /> },
   { to: "/problems", label: "Problems", icon: <ProblemIcon /> },
   { to: "/changes", label: "Changes", icon: <ChangeIcon /> },
   { to: "/configuration-items", label: "Configuration Items", icon: <ConfigurationItemIcon /> },
-  { to: "/users", label: "Users & Groups", icon: <UsersIcon /> },
+  { to: "/users", label: "Users & Groups", icon: <UsersIcon />, permission: "users.read" },
   { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
 export function Layout() {
   const navigate = useNavigate();
+  const { hasPermission, logout: authLogout } = useAuth();
 
   function logout() {
-    clearToken();
+    authLogout();
     navigate("/login");
   }
+
+  const visibleNav = NAV.filter((item) => !item.permission || hasPermission(item.permission));
 
   return (
     <div className="layout">
@@ -40,7 +43,7 @@ export function Layout() {
           <span className="brand-text">OpenFlake</span>
         </div>
         <nav className="sidebar-nav">
-          {NAV.map((item) => (
+          {visibleNav.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

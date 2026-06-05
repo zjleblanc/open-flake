@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function UsersPage() {
+  const { hasPermission } = useAuth();
+  const canReadUsers = hasPermission("users.read");
+  const canWriteUsers = hasPermission("users.write");
+  const canReadGroups = hasPermission("groups.read");
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     user_name: "",
@@ -13,8 +18,16 @@ export function UsersPage() {
   });
   const queryClient = useQueryClient();
 
-  const users = useQuery({ queryKey: ["records", "users"], queryFn: () => api.listRecords("users") });
-  const groups = useQuery({ queryKey: ["records", "groups"], queryFn: () => api.listRecords("groups") });
+  const users = useQuery({
+    queryKey: ["records", "users"],
+    queryFn: () => api.listRecords("users"),
+    enabled: canReadUsers,
+  });
+  const groups = useQuery({
+    queryKey: ["records", "groups"],
+    queryFn: () => api.listRecords("groups"),
+    enabled: canReadGroups,
+  });
 
   const createMutation = useMutation({
     mutationFn: () => api.createUser(form),
@@ -25,16 +38,27 @@ export function UsersPage() {
     },
   });
 
+  if (!canReadUsers && !canReadGroups) {
+    return (
+      <div>
+        <h1>Users & Groups</h1>
+        <p className="text-muted">You do not have permission to view users or groups.</p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="page-header">
         <h1>Users & Groups</h1>
-        <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? "Cancel" : "New User"}
-        </button>
+        {canWriteUsers && (
+          <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
+            {showCreate ? "Cancel" : "New User"}
+          </button>
+        )}
       </div>
 
-      {showCreate && (
+      {showCreate && canWriteUsers && (
         <div className="card" style={{ marginBottom: "1.5rem" }}>
           <h2 className="section-title">Create User</h2>
           {(["user_name", "password", "first_name", "last_name", "email"] as const).map((key) => (
@@ -58,6 +82,7 @@ export function UsersPage() {
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+        {canReadUsers && (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <h2 className="card-section-title">Users</h2>
           <table>
@@ -81,7 +106,9 @@ export function UsersPage() {
             </tbody>
           </table>
         </div>
+        )}
 
+        {canReadGroups && (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           <h2 className="card-section-title">Groups</h2>
           <table>
@@ -89,6 +116,7 @@ export function UsersPage() {
               <tr>
                 <th>Name</th>
                 <th>Description</th>
+                <th>Owner</th>
               </tr>
             </thead>
             <tbody>
@@ -96,11 +124,13 @@ export function UsersPage() {
                 <tr key={g.sys_id}>
                   <td>{g.name}</td>
                   <td>{g.description}</td>
+                  <td>{typeof g.owner === "object" ? (g.owner as { value?: string }).value : g.owner || "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

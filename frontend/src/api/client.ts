@@ -1,5 +1,27 @@
 const TOKEN_KEY = "openflake_token";
 
+export interface RecordPermissions {
+  read: boolean;
+  write: boolean;
+  comment: boolean;
+  delete: boolean;
+}
+
+export interface AuthMe {
+  sys_id: string;
+  user_name: string;
+  permissions: string[];
+  group_ids: string[];
+}
+
+export function getRecordPermissions(record: Record<string, unknown>): RecordPermissions {
+  const p = record._permissions;
+  if (p && typeof p === "object") {
+    return p as RecordPermissions;
+  }
+  return { read: true, write: true, comment: true, delete: true };
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -40,10 +62,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   login: (username: string, password: string) =>
-    request<{ access_token: string; user_name: string }>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
+    request<{ access_token: string; user_name: string; sys_id: string }>(
+      "/api/v1/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ username, password }),
+      }
+    ),
+
+  me: () => request<AuthMe>("/api/v1/auth/me"),
 
   dashboard: () =>
     request<{
@@ -110,6 +137,42 @@ export const api = {
       "/api/v1/settings/oauth-clients",
       { method: "POST", body: JSON.stringify(data) }
     ),
+
+  listGrants: (resource: string, sysId: string) =>
+    request<
+      {
+        sys_id: string;
+        access_level: string;
+        user_sys_id: string;
+        group_sys_id: string;
+      }[]
+    >(`/api/v1/records/${resource}/${sysId}/grants`),
+
+  createGrant: (
+    resource: string,
+    sysId: string,
+    data: { access_level: string; user_sys_id?: string; group_sys_id?: string }
+  ) =>
+    request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}/grants`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteGrant: (resource: string, sysId: string, grantSysId: string) =>
+    request<void>(`/api/v1/records/${resource}/${sysId}/grants/${grantSysId}`, {
+      method: "DELETE",
+    }),
+
+  listComments: (resource: string, sysId: string) =>
+    request<
+      { sys_id: string; comment: string; sys_created_by: string; sys_created_on: string }[]
+    >(`/api/v1/records/${resource}/${sysId}/comments`),
+
+  createComment: (resource: string, sysId: string, comment: string) =>
+    request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    }),
 };
 
 export const STATE_LABELS: Record<string, string> = {

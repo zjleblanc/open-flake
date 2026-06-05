@@ -16,10 +16,24 @@ const INCIDENT_FIELDS = [
   { key: "urgency", label: "Urgency (1=High, 2=Medium, 3=Low)" },
 ];
 
-const EDIT_INCIDENT = [
+const INCIDENT_DETAIL_FIELDS = [
   { key: "short_description", label: "Short Description" },
   { key: "description", label: "Description", type: "textarea" },
   { key: "state", label: "State", type: "select-state" },
+  { key: "priority", label: "Priority", readOnly: true },
+];
+
+const PROBLEM_DETAIL_FIELDS = [
+  { key: "short_description", label: "Short Description" },
+  { key: "description", label: "Description", type: "textarea" },
+  { key: "state", label: "State", type: "select-state" },
+  { key: "priority", label: "Priority", readOnly: true },
+];
+
+const CHANGE_DETAIL_FIELDS = [
+  { key: "short_description", label: "Short Description" },
+  { key: "state", label: "State", type: "select-state" },
+  { key: "priority", label: "Priority", readOnly: true },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -57,7 +71,7 @@ export function App() {
               resource="incidents"
               title="Incidents"
               listPath="/incidents"
-              editableFields={EDIT_INCIDENT}
+              fields={INCIDENT_DETAIL_FIELDS}
             />
           }
         />
@@ -79,7 +93,7 @@ export function App() {
               resource="problems"
               title="Problems"
               listPath="/problems"
-              editableFields={EDIT_INCIDENT}
+              fields={PROBLEM_DETAIL_FIELDS}
             />
           }
         />
@@ -101,7 +115,7 @@ export function App() {
               resource="change-requests"
               title="Change Requests"
               listPath="/changes"
-              editableFields={[{ key: "short_description", label: "Short Description" }, { key: "state", label: "State", type: "select-state" }]}
+              fields={CHANGE_DETAIL_FIELDS}
             />
           }
         />

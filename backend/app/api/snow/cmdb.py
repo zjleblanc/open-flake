@@ -47,7 +47,7 @@ async def cmdb_list(
     conditions = parse_sysparm_query(sysparm_query)
     conditions.append(QueryCondition(field="sys_class_name", operator="=", value=sys_class_name))
     records, total = await list_records(
-        db, "cmdb_ci", conditions, sysparm_limit, sysparm_offset, True
+        db, "cmdb_ci", conditions, sysparm_limit, sysparm_offset, True, auth=auth
     )
     response.headers["x-total-count"] = str(total)
     return {"result": records}
@@ -60,7 +60,7 @@ async def cmdb_get(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    record = await get_record_by_sys_id(db, "cmdb_ci", sys_id)
+    record = await get_record_by_sys_id(db, "cmdb_ci", sys_id, auth=auth)
     if not record or record.get("sys_class_name") != sys_class_name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     return {"result": record}
@@ -74,7 +74,7 @@ async def cmdb_create(
     db: AsyncSession = Depends(get_db),
 ):
     payload["sys_class_name"] = sys_class_name
-    record = await create_record(db, "cmdb_ci", payload, auth.user_sys_id)
+    record = await create_record(db, "cmdb_ci", payload, auth.user_sys_id, auth=auth)
     return {"result": record}
 
 
@@ -89,7 +89,7 @@ async def cmdb_update(
     existing = await db.get(CmdbCi, sys_id)
     if not existing or existing.sys_class_name != sys_class_name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
-    record = await update_record(db, "cmdb_ci", sys_id, payload, auth.user_sys_id)
+    record = await update_record(db, "cmdb_ci", sys_id, payload, auth.user_sys_id, auth=auth)
     return {"result": record}
 
 
@@ -103,7 +103,7 @@ async def cmdb_delete(
     existing = await db.get(CmdbCi, sys_id)
     if not existing or existing.sys_class_name != sys_class_name:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
-    await delete_record(db, "cmdb_ci", sys_id)
+    await delete_record(db, "cmdb_ci", sys_id, auth=auth)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

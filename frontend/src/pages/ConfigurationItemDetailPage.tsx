@@ -1,10 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { api } from "../api/client";
+import { api, getRecordPermissions } from "../api/client";
 import { DetailPageHeader } from "../components/DetailPageHeader";
 import { DetailSection } from "../components/DetailSection";
-import { EditIcon, PlusCircleIcon, PropertiesIcon, SystemIcon } from "../components/DetailIcons";
+import { PlusCircleIcon, PropertiesIcon, SystemIcon } from "../components/DetailIcons";
+import {
+  DetailFieldGroup,
+  ReadOnlyFieldInput,
+  resolveUserLabel,
+  ToggleSwitch,
+} from "../components/DetailFieldControls";
+import { RecordCommentsSection } from "../components/RecordCommentsSection";
+import { RecordSharePopover } from "../components/RecordSharePopover";
 import { ToastBanner } from "../components/ToastBanner";
 import "../components/Layout.css";
 
@@ -44,9 +52,16 @@ const EDITABLE_FIELDS: { key: string; label: string }[] = [
   { key: "category", label: "Category" },
 ];
 
+const EDITABLE_FIELD_KEYS = new Set(EDITABLE_FIELDS.map((f) => f.key));
+
+const USER_REFERENCE_FIELDS = new Set(["assigned_to", "sys_created_by", "sys_updated_by"]);
+
+const RBAC_FIELD_KEYS = new Set(["owner", "owner_group", "_permissions"]);
+
 const KNOWN_FIELD_KEYS = new Set([
   ...CMDB_CI_FIELDS.map((f) => f.key),
   ...CMDB_CI_SYSTEM_FIELDS.map((f) => f.key),
+  ...RBAC_FIELD_KEYS,
 ]);
 
 type SaveMessage = { type: "success" | "error"; text: string };
@@ -66,6 +81,22 @@ function humanizeFieldKey(key: string): string {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function recordsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if ((a[key] ?? "") !== (b[key] ?? "")) return false;
+  }
+  return true;
+}
+
+function buildFormFromData(data: Record<string, string>): Record<string, string> {
+  const nextForm: Record<string, string> = {};
+  EDITABLE_FIELDS.forEach((field) => {
+    nextForm[field.key] = data[field.key] || "";
+  });
+  return nextForm;
 }
 
 function extractOtherFields(data: Record<string, string>): Record<string, string> {
@@ -107,22 +138,15 @@ function validateOtherFormKeys(otherForm: Record<string, string>): string | null
   return null;
 }
 
-function PropertyField({ label, value }: { label: string; value: unknown }) {
-  const formatted = formatFieldValue(value);
-  const isMultiline = formatted.includes("\n");
-
-  return (
-    <div className="detail-field">
-      <p className="field-label">{label}</p>
-      {isMultiline ? (
-        <pre className="code-block" style={{ margin: 0 }}>
-          {formatted}
-        </pre>
-      ) : (
-        <p>{formatted}</p>
-      )}
-    </div>
-  );
+function resolveLockedFieldValue(
+  key: string,
+  value: unknown,
+  userLabels: Record<string, string>
+): unknown {
+  if (USER_REFERENCE_FIELDS.has(key)) {
+    return resolveUserLabel(value, userLabels);
+  }
+  return value;
 }
 
 export function ConfigurationItemDetailPage() {
@@ -136,6 +160,7 @@ export function ConfigurationItemDetailPage() {
   const [newPropertyValue, setNewPropertyValue] = useState("");
   const [addPropertyError, setAddPropertyError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<SaveMessage | null>(null);
+  const [showSystemProperties, setShowSystemProperties] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["record", resource, sysId],
@@ -143,15 +168,29 @@ export function ConfigurationItemDetailPage() {
     enabled: !!sysId,
   });
 
+  const { data: usersData } = useQuery({
+    queryKey: ["records", "users"],
+    queryFn: () => api.listRecords("users"),
+  });
+
+  const userLabels = useMemo(
+    () =>
+      Object.fromEntries((usersData?.records || []).map((user) => [user.sys_id, user.user_name])),
+    [usersData]
+  );
+
   useEffect(() => {
     if (!data) return;
-    const nextForm: Record<string, string> = {};
-    EDITABLE_FIELDS.forEach((field) => {
-      nextForm[field.key] = data[field.key] || "";
-    });
-    setForm(nextForm);
+    setForm(buildFormFromData(data));
     setOtherForm(extractOtherFields(data));
   }, [data]);
+
+  const savedForm = useMemo(() => (data ? buildFormFromData(data) : {}), [data]);
+  const savedOther = useMemo(() => (data ? extractOtherFields(data) : {}), [data]);
+  const isDirty = useMemo(
+    () => !recordsEqual(form, savedForm) || !recordsEqual(otherForm, savedOther),
+    [form, otherForm, savedForm, savedOther]
+  );
 
   const updateMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
@@ -169,6 +208,19 @@ export function ConfigurationItemDetailPage() {
   const itemTitle = data?.name || data?.sys_id || "Loading…";
   const otherPropertyKeys = Object.keys(otherForm).sort();
   const statusLabel = data?.operational_status || data?.install_status || data?.sys_class_name;
+  const permissions = data ? getRecordPermissions(data) : null;
+  const canWrite = !!permissions?.write;
+  const editableCiFields = CMDB_CI_FIELDS.filter(
+    (field) => canWrite && EDITABLE_FIELD_KEYS.has(field.key)
+  );
+  const lockedCiFields = CMDB_CI_FIELDS.filter(
+    (field) => !canWrite || !EDITABLE_FIELD_KEYS.has(field.key)
+  );
+  const readOnlyFields = [
+    ...lockedCiFields,
+    ...(showSystemProperties ? CMDB_CI_SYSTEM_FIELDS : []),
+  ];
+  const showEditableDivider = readOnlyFields.length > 0 && editableCiFields.length > 0;
 
   if (isLoading || !data) {
     return (
@@ -192,7 +244,7 @@ export function ConfigurationItemDetailPage() {
       return;
     }
     const payload: Record<string, unknown> = { ...form };
-    if (otherPropertyKeys.length > 0) {
+    if (!recordsEqual(otherForm, savedOther)) {
       payload.other = { ...otherForm };
     }
     updateMutation.mutate(payload);
@@ -230,52 +282,61 @@ export function ConfigurationItemDetailPage() {
           ]}
           title={itemTitle}
           badge={statusLabel ? <span className="badge badge-closed">{statusLabel}</span> : undefined}
+          actions={
+            permissions?.read && sysId ? (
+              <RecordSharePopover
+                resource={resource}
+                sysId={sysId}
+                record={data}
+                canWrite={!!permissions?.write}
+              />
+            ) : undefined
+          }
         />
 
-      <DetailSection title="Properties" icon={<PropertiesIcon />} accent="accent">
-        <div className="detail-grid">
-          {CMDB_CI_FIELDS.map((field) => (
-            <PropertyField key={field.key} label={field.label} value={data[field.key]} />
-          ))}
-          {otherPropertyKeys.map((key) => (
-            <PropertyField key={key} label={humanizeFieldKey(key)} value={data[key]} />
-          ))}
-        </div>
-      </DetailSection>
-
-      <details className="property-panel" style={{ marginTop: "1rem" }}>
-        <summary>
-          <span className="property-panel-summary-icon">
-            <SystemIcon size={14} />
-          </span>
-          Show system properties
-        </summary>
-        <div className="property-panel-body">
-          <div className="detail-grid">
-            {CMDB_CI_SYSTEM_FIELDS.map((field) => (
-              <PropertyField key={field.key} label={field.label} value={data[field.key]} />
-            ))}
-          </div>
-        </div>
-      </details>
-
       <DetailSection
-        title="Update"
-        icon={<EditIcon />}
-        accent="primary"
-        style={{ marginTop: "1rem" }}
+        title="Properties"
+        icon={<PropertiesIcon />}
+        accent="accent"
+        headerActions={
+          <ToggleSwitch
+            id="ci-show-system-properties"
+            checked={showSystemProperties}
+            onChange={setShowSystemProperties}
+            icon={<SystemIcon size={14} />}
+            label="System properties"
+          />
+        }
       >
-        <div className="detail-grid">
-          {EDITABLE_FIELDS.map((field) => (
-            <div className="form-group" key={field.key} style={{ marginBottom: 0 }}>
-              <label>{field.label}</label>
-              <input
-                type="text"
-                value={form[field.key] ?? ""}
-                onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-              />
-            </div>
-          ))}
+        <div className="detail-field-groups">
+          {readOnlyFields.length > 0 && (
+            <DetailFieldGroup>
+              {readOnlyFields.map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`ci-${field.key}`}
+                  label={field.label}
+                  value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
+                />
+              ))}
+            </DetailFieldGroup>
+          )}
+
+          {editableCiFields.length > 0 && (
+            <DetailFieldGroup dividerTop={showEditableDivider}>
+              {editableCiFields.map((field) => (
+                <div className="form-group" key={field.key} style={{ marginBottom: 0 }}>
+                  <label htmlFor={`ci-${field.key}`}>{field.label}</label>
+                  <input
+                    id={`ci-${field.key}`}
+                    type="text"
+                    value={form[field.key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                  />
+                </div>
+              ))}
+            </DetailFieldGroup>
+          )}
         </div>
 
         <details className="property-panel property-panel--accent" style={{ marginTop: "1.25rem" }}>
@@ -288,87 +349,116 @@ export function ConfigurationItemDetailPage() {
           </summary>
           <div className="property-panel-body">
             {otherPropertyKeys.length > 0 && (
-              <div className="detail-grid" style={{ marginBottom: "1.25rem" }}>
-                {otherPropertyKeys.map((key) => (
-                  <div className="form-group" key={key} style={{ marginBottom: 0 }}>
-                    <label>{humanizeFieldKey(key)}</label>
-                    <input
-                      type="text"
-                      value={otherForm[key] ?? ""}
-                      onChange={(e) =>
-                        setOtherForm({ ...otherForm, [key]: e.target.value })
-                      }
+              <DetailFieldGroup style={{ marginBottom: canWrite ? "1.25rem" : 0 }}>
+                {otherPropertyKeys.map((key) => {
+                  if (canWrite) {
+                    return (
+                      <div className="form-group" key={key} style={{ marginBottom: 0 }}>
+                        <label htmlFor={`ci-other-${key}`}>{humanizeFieldKey(key)}</label>
+                        <input
+                          id={`ci-other-${key}`}
+                          type="text"
+                          value={otherForm[key] ?? ""}
+                          onChange={(e) => setOtherForm({ ...otherForm, [key]: e.target.value })}
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <ReadOnlyFieldInput
+                      key={key}
+                      id={`ci-other-${key}`}
+                      label={humanizeFieldKey(key)}
+                      value={data[key]}
                     />
-                  </div>
-                ))}
-              </div>
+                  );
+                })}
+              </DetailFieldGroup>
             )}
 
-            <div className="property-add-row">
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label htmlFor="new-property-key">Property Name</label>
-                <input
-                  id="new-property-key"
-                  type="text"
-                  placeholder="e.g. model_number"
-                  value={newPropertyKey}
-                  onChange={(e) => {
-                    setNewPropertyKey(e.target.value);
-                    setAddPropertyError(null);
-                  }}
-                  onBlur={() => {
-                    if (newPropertyKey.trim()) {
-                      setNewPropertyKey(normalizePropertyKey(newPropertyKey));
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddProperty();
-                    }
-                  }}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label htmlFor="new-property-value">Value</label>
-                <input
-                  id="new-property-value"
-                  type="text"
-                  placeholder="Property value"
-                  value={newPropertyValue}
-                  onChange={(e) => setNewPropertyValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddProperty();
-                    }
-                  }}
-                />
-              </div>
-              <div className="property-add-action">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleAddProperty}
-                >
-                  Add Property
-                </button>
-              </div>
-            </div>
-            {addPropertyError && <p className="error">{addPropertyError}</p>}
+            {!permissions?.write && otherPropertyKeys.length === 0 && (
+              <p className="text-muted text-sm">No additional properties.</p>
+            )}
+
+            {permissions?.write && (
+              <>
+                <div className="property-add-row">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="new-property-key">Property Name</label>
+                    <input
+                      id="new-property-key"
+                      type="text"
+                      placeholder="e.g. model_number"
+                      value={newPropertyKey}
+                      onChange={(e) => {
+                        setNewPropertyKey(e.target.value);
+                        setAddPropertyError(null);
+                      }}
+                      onBlur={() => {
+                        if (newPropertyKey.trim()) {
+                          setNewPropertyKey(normalizePropertyKey(newPropertyKey));
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddProperty();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label htmlFor="new-property-value">Value</label>
+                    <input
+                      id="new-property-value"
+                      type="text"
+                      placeholder="Property value"
+                      value={newPropertyValue}
+                      onChange={(e) => setNewPropertyValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddProperty();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="property-add-action">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleAddProperty}
+                    >
+                      Add Property
+                    </button>
+                  </div>
+                </div>
+                {addPropertyError && <p className="error">{addPropertyError}</p>}
+              </>
+            )}
           </div>
         </details>
 
-        <div style={{ marginTop: "1.25rem" }}>
-          <button
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-          >
-            {updateMutation.isPending ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+        {permissions?.write && (
+          <div style={{ marginTop: "1.25rem" }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleSave}
+              disabled={!isDirty || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </DetailSection>
+
+      {sysId && (permissions?.comment || permissions?.write) && (
+        <RecordCommentsSection
+          resource={resource}
+          sysId={sysId}
+          canComment={!!(permissions?.comment || permissions?.write)}
+        />
+      )}
       </div>
     </>
   );

@@ -25,6 +25,11 @@ class TimestampMixin:
     sys_updated_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
+class OwnershipMixin:
+    owner: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    owner_group: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+
+
 class NumberSequence(Base):
     __tablename__ = "number_sequence"
 
@@ -51,7 +56,47 @@ class SysUserGroup(Base, TimestampMixin):
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class SysRole(Base):
+    __tablename__ = "sys_role"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    permissions: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
+
+
+class SysGroupRole(Base):
+    __tablename__ = "sys_group_role"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    group_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+    role_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+
+
+class RecordAccessGrant(Base, TimestampMixin):
+    __tablename__ = "record_access_grant"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(128), index=True)
+    record_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+    user_sys_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    group_sys_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    access_level: Mapped[str] = mapped_column(String(16))  # view | comment
+    granted_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="manual")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SysComment(Base, TimestampMixin):
+    __tablename__ = "sys_comment"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(128), index=True)
+    record_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+    comment: Mapped[str] = mapped_column(Text, default="")
 
 
 class SysUserGrMember(Base, TimestampMixin):
@@ -96,7 +141,7 @@ class ApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Incident(Base, TimestampMixin):
+class Incident(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "incident"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -117,7 +162,7 @@ class Incident(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class Problem(Base, TimestampMixin):
+class Problem(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "problem"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -139,7 +184,7 @@ class Problem(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ProblemTask(Base, TimestampMixin):
+class ProblemTask(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "problem_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -157,7 +202,7 @@ class ProblemTask(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeRequest(Base, TimestampMixin):
+class ChangeRequest(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "change_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -184,7 +229,7 @@ class ChangeRequest(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeTask(Base, TimestampMixin):
+class ChangeTask(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "change_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -207,7 +252,7 @@ class ChangeTask(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class CmdbCi(Base, TimestampMixin):
+class CmdbCi(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "cmdb_ci"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -244,7 +289,7 @@ class CmdbRelCi(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScRequest(Base, TimestampMixin):
+class ScRequest(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "sc_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -260,7 +305,7 @@ class ScRequest(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScTask(Base, TimestampMixin):
+class ScTask(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "sc_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)

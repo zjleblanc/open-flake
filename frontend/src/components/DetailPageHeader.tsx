@@ -5,15 +5,19 @@ interface DetailPageHeaderProps {
   breadcrumbs: BreadcrumbItem[];
   title: string;
   badge?: ReactNode;
+  actions?: ReactNode;
 }
 
-export function DetailPageHeader({ breadcrumbs, title, badge }: DetailPageHeaderProps) {
+export function DetailPageHeader({ breadcrumbs, title, badge, actions }: DetailPageHeaderProps) {
   return (
     <header className="detail-page-header">
       <Breadcrumbs items={breadcrumbs} />
       <div className="detail-page-header-main">
         <h1>{title}</h1>
-        {badge}
+        <div className="detail-page-header-actions">
+          {actions}
+          {badge}
+        </div>
       </div>
     </header>
   );

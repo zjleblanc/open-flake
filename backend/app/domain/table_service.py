@@ -3,9 +3,23 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.deps import AuthContext
+from app.auth.rbac import (
+    assert_can_create_record,
+    assert_platform_action,
+    assert_record_action,
+    filter_record_list_query,
+    resolve_record_permissions,
+)
 from app.config import get_settings
 from app.domain.errors import validate_other_field_keys
-from app.domain.registry import NUMBER_PREFIXES, REFERENCE_FIELDS, TABLE_MODELS
+from app.domain.registry import (
+    NUMBER_PREFIXES,
+    PLATFORM_TABLES,
+    RBAC_RECORD_TABLES,
+    REFERENCE_FIELDS,
+    TABLE_MODELS,
+)
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence
 from app.query.parser import QueryCondition
@@ -56,6 +70,9 @@ def _ref_table(field: str) -> str:
         "requested_by": "sys_user",
         "requested_for": "sys_user",
         "assignment_group": "sys_user_group",
+        "owner": "sys_user",
+        "owner_group": "sys_user_group",
+        "granted_by": "sys_user",
         "change_request": "change_request",
         "problem": "problem",
         "request": "sc_request",
@@ -103,6 +120,37 @@ def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
     return result
 
 
+async def _enrich_with_permissions(
+    db: AsyncSession,
+    auth: AuthContext | None,
+    table: str,
+    record_dict: dict[str, Any],
+    include_permissions: bool,
+) -> dict[str, Any]:
+    if include_permissions and auth and table in RBAC_RECORD_TABLES:
+        perms = await resolve_record_permissions(db, auth, table, record_dict)
+        record_dict["_permissions"] = perms.to_dict()
+    return record_dict
+
+
+async def _filter_platform_list(
+    db: AsyncSession,
+    auth: AuthContext,
+    table: str,
+    records: list[Any],
+) -> list[Any]:
+    if table not in PLATFORM_TABLES:
+        return records
+    filtered = []
+    for record in records:
+        try:
+            await assert_platform_action(db, auth, table, "read", record=record)
+            filtered.append(record)
+        except Exception:
+            continue
+    return filtered
+
+
 async def next_number(db: AsyncSession, table: str) -> str | None:
     prefix = NUMBER_PREFIXES.get(table)
     if not prefix:
@@ -138,6 +186,8 @@ async def list_records(
     limit: int = 1000,
     offset: int = 0,
     exclude_links: bool = True,
+    auth: AuthContext | None = None,
+    include_permissions: bool = False,
 ) -> tuple[list[dict], int]:
     model = TABLE_MODELS.get(table)
     if not model:
@@ -145,14 +195,31 @@ async def list_records(
 
     count_q = select(func.count()).select_from(model)
     count_q = _apply_conditions(count_q, model, conditions)
-    total = (await db.execute(count_q)).scalar() or 0
-
     query = select(model)
     query = _apply_conditions(query, model, conditions)
+
+    if auth:
+        if table in RBAC_RECORD_TABLES:
+            count_q = await filter_record_list_query(db, auth, table, count_q, model)
+            query = await filter_record_list_query(db, auth, table, query, model)
+        elif table in PLATFORM_TABLES:
+            await assert_platform_action(db, auth, table, "read")
+
+    total = (await db.execute(count_q)).scalar() or 0
+
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     records = result.scalars().all()
-    return [_model_to_dict(r, table, exclude_links) for r in records], total
+
+    if auth and table in PLATFORM_TABLES:
+        records = await _filter_platform_list(db, auth, table, records)
+        total = len(records)
+
+    out = []
+    for r in records:
+        record_dict = _model_to_dict(r, table, exclude_links)
+        out.append(await _enrich_with_permissions(db, auth, table, record_dict, include_permissions))
+    return out, total
 
 
 async def get_record_by_sys_id(
@@ -160,6 +227,9 @@ async def get_record_by_sys_id(
     table: str,
     sys_id: str,
     exclude_links: bool = True,
+    auth: AuthContext | None = None,
+    include_permissions: bool = False,
+    skip_auth: bool = False,
 ) -> dict | None:
     model = TABLE_MODELS.get(table)
     if not model:
@@ -167,7 +237,33 @@ async def get_record_by_sys_id(
     record = await db.get(model, sys_id)
     if not record:
         return None
-    return _model_to_dict(record, table, exclude_links)
+
+    if auth and not skip_auth:
+        if table in RBAC_RECORD_TABLES:
+            await assert_record_action(db, auth, table, record, "read")
+        elif table in PLATFORM_TABLES:
+            await assert_platform_action(db, auth, table, "read", record=record)
+        elif table == "record_access_grant":
+            parent_table = getattr(record, "table_name", None)
+            parent_id = getattr(record, "record_sys_id", None)
+            if parent_table and parent_id:
+                parent_model = TABLE_MODELS.get(parent_table)
+                if parent_model:
+                    parent = await db.get(parent_model, parent_id)
+                    if parent:
+                        await assert_record_action(db, auth, parent_table, parent, "read")
+        elif table == "sys_comment":
+            parent_table = getattr(record, "table_name", None)
+            parent_id = getattr(record, "record_sys_id", None)
+            if parent_table and parent_id:
+                parent_model = TABLE_MODELS.get(parent_table)
+                if parent_model:
+                    parent = await db.get(parent_model, parent_id)
+                    if parent:
+                        await assert_record_action(db, auth, parent_table, parent, "read")
+
+    record_dict = _model_to_dict(record, table, exclude_links)
+    return await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
 
 
 async def create_record(
@@ -176,8 +272,34 @@ async def create_record(
     payload: dict[str, Any],
     user_sys_id: str | None = None,
     exclude_links: bool = True,
+    auth: AuthContext | None = None,
 ) -> dict:
     from app.auth.security import hash_password
+
+    if auth:
+        await assert_can_create_record(db, auth, table)
+        if table == "record_access_grant":
+            parent_table = payload.get("table_name")
+            parent_id = payload.get("record_sys_id")
+            if isinstance(parent_id, dict):
+                parent_id = parent_id.get("value")
+            if parent_table and parent_id:
+                parent_model = TABLE_MODELS.get(parent_table)
+                if parent_model:
+                    parent = await db.get(parent_model, parent_id)
+                    if parent:
+                        await assert_record_action(db, auth, parent_table, parent, "write")
+        elif table == "sys_comment":
+            parent_table = payload.get("table_name")
+            parent_id = payload.get("record_sys_id")
+            if isinstance(parent_id, dict):
+                parent_id = parent_id.get("value")
+            if parent_table and parent_id:
+                parent_model = TABLE_MODELS.get(parent_table)
+                if parent_model:
+                    parent = await db.get(parent_model, parent_id)
+                    if parent:
+                        await assert_record_action(db, auth, parent_table, parent, "comment")
 
     model = TABLE_MODELS[table]
     flat = _flatten_payload(payload, table)
@@ -190,6 +312,12 @@ async def create_record(
     if user_sys_id:
         flat["sys_created_by"] = user_sys_id
         flat["sys_updated_by"] = user_sys_id
+
+    if table in RBAC_RECORD_TABLES and user_sys_id and not flat.get("owner"):
+        flat["owner"] = user_sys_id
+
+    if table == "record_access_grant" and user_sys_id:
+        flat.setdefault("granted_by", user_sys_id)
 
     number = await next_number(db, table)
     if number and "number" in {c.name for c in model.__table__.columns}:
@@ -217,6 +345,7 @@ async def update_record(
     payload: dict[str, Any],
     user_sys_id: str | None = None,
     exclude_links: bool = True,
+    auth: AuthContext | None = None,
 ) -> dict | None:
     from app.auth.security import hash_password
 
@@ -224,6 +353,23 @@ async def update_record(
     record = await db.get(model, sys_id)
     if not record:
         return None
+
+    if auth:
+        if table in RBAC_RECORD_TABLES:
+            await assert_record_action(db, auth, table, record, "write")
+        elif table == "sys_user":
+            if sys_id == auth.user_sys_id:
+                await assert_platform_action(
+                    db, auth, table, "self_write", target_user_sys_id=sys_id
+                )
+            else:
+                await assert_platform_action(
+                    db, auth, table, "write", target_user_sys_id=sys_id
+                )
+        elif table == "sys_user_group":
+            await assert_platform_action(db, auth, table, "manage", record=record)
+        elif table == "sys_user_grmember":
+            await assert_platform_action(db, auth, table, "write", record=record)
 
     flat = _flatten_payload(payload, table)
     if table == "sys_user" and flat.get("user_password"):
@@ -249,11 +395,38 @@ async def update_record(
     return result
 
 
-async def delete_record(db: AsyncSession, table: str, sys_id: str) -> bool:
+async def delete_record(
+    db: AsyncSession,
+    table: str,
+    sys_id: str,
+    auth: AuthContext | None = None,
+) -> bool:
     model = TABLE_MODELS[table]
     record = await db.get(model, sys_id)
     if not record:
         return False
+
+    if auth:
+        if table in RBAC_RECORD_TABLES:
+            await assert_record_action(db, auth, table, record, "delete")
+        elif table == "sys_user":
+            await assert_platform_action(
+                db, auth, table, "write", target_user_sys_id=sys_id
+            )
+        elif table == "sys_user_group":
+            await assert_platform_action(db, auth, table, "write", record=record)
+        elif table == "record_access_grant":
+            parent_table = getattr(record, "table_name", None)
+            parent_id = getattr(record, "record_sys_id", None)
+            if parent_table and parent_id:
+                parent_model = TABLE_MODELS.get(parent_table)
+                if parent_model:
+                    parent = await db.get(parent_model, parent_id)
+                    if parent:
+                        await assert_record_action(db, auth, parent_table, parent, "write")
+        elif table == "sys_user_grmember":
+            await assert_platform_action(db, auth, table, "write", record=record)
+
     result = _model_to_dict(record, table, exclude_links=False)
     await db.delete(record)
     await db.flush()

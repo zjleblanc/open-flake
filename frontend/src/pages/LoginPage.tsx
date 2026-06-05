@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, setToken } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import openFlakeSm from "../assets/images/open_flake_sm.png";
 import "../components/Layout.css";
 
@@ -10,6 +11,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { refresh } = useAuth();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -18,6 +20,7 @@ export function LoginPage() {
     try {
       const res = await api.login(username, password);
       setToken(res.access_token);
+      await refresh();
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");

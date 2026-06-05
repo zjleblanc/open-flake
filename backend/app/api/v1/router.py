@@ -6,6 +6,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
+from app.auth.rbac import (
+    assert_grant_management,
+    assert_record_action_by_id,
+    filter_record_list_query,
+    get_user_group_ids,
+    get_user_permissions,
+)
 from app.auth.security import create_access_token, hash_api_key, hash_password, verify_password
 from app.config import get_settings
 from app.db import get_db
@@ -24,6 +31,8 @@ from app.models import (
     Incident,
     OAuthClient,
     Problem,
+    RecordAccessGrant,
+    SysComment,
     SysUser,
     SysUserGroup,
 )
@@ -41,6 +50,7 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     user_name: str
+    sys_id: str
 
 
 @router.post("/auth/login", response_model=LoginResponse)
@@ -50,8 +60,22 @@ async def ui_login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(body.password, user.user_password):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
     token = create_access_token(user.user_name)
-    response = LoginResponse(access_token=token, user_name=user.user_name)
-    return response
+    return LoginResponse(access_token=token, user_name=user.user_name, sys_id=user.sys_id)
+
+
+@router.get("/auth/me")
+async def auth_me(
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    perms = await get_user_permissions(db, auth.user_sys_id)
+    group_ids = list(await get_user_group_ids(db, auth.user_sys_id))
+    return {
+        "sys_id": auth.user_sys_id,
+        "user_name": auth.user_name,
+        "permissions": sorted(perms),
+        "group_ids": group_ids,
+    }
 
 
 @router.get("/dashboard")
@@ -59,17 +83,20 @@ async def dashboard(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    async def count(model, open_states: list[str] | None = None):
+    async def count(model, table: str, open_states: list[str] | None = None):
         q = select(func.count()).select_from(model)
         if open_states:
             q = q.where(model.state.in_(open_states))
+        q = await filter_record_list_query(db, auth, table, q, model)
         return (await db.execute(q)).scalar() or 0
 
     return {
-        "incidents_open": await count(Incident, ["1", "2", "3"]),
-        "problems_open": await count(Problem, ["1", "2", "3"]),
-        "changes_open": await count(ChangeRequest, ["-5", "-4", "-3", "-2", "-1", "0", "1", "2"]),
-        "cis_total": await count(CmdbCi),
+        "incidents_open": await count(Incident, "incident", ["1", "2", "3"]),
+        "problems_open": await count(Problem, "problem", ["1", "2", "3"]),
+        "changes_open": await count(
+            ChangeRequest, "change_request", ["-5", "-4", "-3", "-2", "-1", "0", "1", "2"]
+        ),
+        "cis_total": await count(CmdbCi, "cmdb_ci"),
     }
 
 
@@ -108,7 +135,9 @@ async def list_resource(
     conditions = []
     if state:
         conditions.append(QueryCondition(field="state", operator="=", value=state))
-    records, total = await list_records(db, table, conditions, limit, offset, False)
+    records, total = await list_records(
+        db, table, conditions, limit, offset, False, auth=auth, include_permissions=True
+    )
     return {"records": records, "total": total}
 
 
@@ -122,7 +151,9 @@ async def get_resource(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    record = await get_record_by_sys_id(db, table, sys_id, False)
+    record = await get_record_by_sys_id(
+        db, table, sys_id, False, auth=auth, include_permissions=True
+    )
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return record
@@ -138,7 +169,7 @@ async def create_resource(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    return await create_record(db, table, payload, auth.user_sys_id, False)
+    return await create_record(db, table, payload, auth.user_sys_id, False, auth=auth)
 
 
 @router.patch("/records/{resource}/{sys_id}")
@@ -152,7 +183,7 @@ async def update_resource(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    record = await update_record(db, table, sys_id, payload, auth.user_sys_id, False)
+    record = await update_record(db, table, sys_id, payload, auth.user_sys_id, False, auth=auth)
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return record
@@ -168,7 +199,7 @@ async def delete_resource(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    if not await delete_record(db, table, sys_id):
+    if not await delete_record(db, table, sys_id, auth=auth):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -200,6 +231,160 @@ async def create_user(
         },
         auth.user_sys_id,
         False,
+        auth=auth,
+    )
+
+
+class CreateGrantRequest(BaseModel):
+    access_level: str
+    user_sys_id: str | None = None
+    group_sys_id: str | None = None
+
+
+@router.get("/records/{resource}/{sys_id}/grants")
+async def list_grants(
+    resource: str,
+    sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    await assert_grant_management(db, auth, table, sys_id)
+    result = await db.execute(
+        select(RecordAccessGrant).where(
+            RecordAccessGrant.table_name == table,
+            RecordAccessGrant.record_sys_id == sys_id,
+        )
+    )
+    grants = result.scalars().all()
+    return [
+        {
+            "sys_id": g.sys_id,
+            "access_level": g.access_level,
+            "user_sys_id": g.user_sys_id or "",
+            "group_sys_id": g.group_sys_id or "",
+            "source": g.source,
+            "granted_by": g.granted_by or "",
+        }
+        for g in grants
+    ]
+
+
+@router.post("/records/{resource}/{sys_id}/grants", status_code=status.HTTP_201_CREATED)
+async def create_grant(
+    resource: str,
+    sys_id: str,
+    body: CreateGrantRequest,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    if body.access_level not in ("view", "comment"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "access_level must be view or comment")
+    if bool(body.user_sys_id) == bool(body.group_sys_id):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Specify exactly one of user_sys_id or group_sys_id"
+        )
+    await assert_grant_management(db, auth, table, sys_id)
+    payload: dict[str, Any] = {
+        "table_name": table,
+        "record_sys_id": sys_id,
+        "access_level": body.access_level,
+        "granted_by": auth.user_sys_id,
+        "source": "manual",
+    }
+    if body.user_sys_id:
+        payload["user_sys_id"] = body.user_sys_id
+    if body.group_sys_id:
+        payload["group_sys_id"] = body.group_sys_id
+    return await create_record(
+        db,
+        "record_access_grant",
+        payload,
+        auth.user_sys_id,
+        False,
+        auth=auth,
+    )
+
+
+@router.delete("/records/{resource}/{sys_id}/grants/{grant_sys_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_grant(
+    resource: str,
+    sys_id: str,
+    grant_sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    await assert_grant_management(db, auth, table, sys_id)
+    grant = await db.get(RecordAccessGrant, grant_sys_id)
+    if not grant or grant.table_name != table or grant.record_sys_id != sys_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Grant not found")
+    if not await delete_record(db, "record_access_grant", grant_sys_id, auth=auth):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Grant not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class CreateCommentRequest(BaseModel):
+    comment: str
+
+
+@router.get("/records/{resource}/{sys_id}/comments")
+async def list_comments(
+    resource: str,
+    sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    await assert_record_action_by_id(db, auth, table, sys_id, "read")
+    result = await db.execute(
+        select(SysComment)
+        .where(SysComment.table_name == table, SysComment.record_sys_id == sys_id)
+        .order_by(SysComment.sys_created_on.desc())
+    )
+    comments = result.scalars().all()
+    return [
+        {
+            "sys_id": c.sys_id,
+            "comment": c.comment,
+            "sys_created_by": c.sys_created_by or "",
+            "sys_created_on": c.sys_created_on.isoformat() if c.sys_created_on else "",
+        }
+        for c in comments
+    ]
+
+
+@router.post("/records/{resource}/{sys_id}/comments", status_code=status.HTTP_201_CREATED)
+async def create_comment(
+    resource: str,
+    sys_id: str,
+    body: CreateCommentRequest,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    return await create_record(
+        db,
+        "sys_comment",
+        {
+            "table_name": table,
+            "record_sys_id": sys_id,
+            "comment": body.comment,
+        },
+        auth.user_sys_id,
+        False,
+        auth=auth,
     )
 
 

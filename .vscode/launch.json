@@ -5,14 +5,30 @@
       "name": "Backend: FastAPI",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
-      "args": ["app.main:app", "--reload", "--port", "8000"],
+      "program": "${workspaceFolder}/backend/.venv/bin/uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}/backend",
       "envFile": "${workspaceFolder}/backend/.env",
-      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
+    },
+    {
+      "name": "Backend: FastAPI (reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/.venv/bin/uvicorn",
+      "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000", "--reload"],
+      "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal",
+      "justMyCode": true,
       "subProcess": true,
-      "preLaunchTask": "Ensure PostgreSQL (Podman)",
-      "console": "integratedTerminal"
+      "env": {
+        "PYDEVD_DISABLE_FILE_VALIDATION": "1"
+      }
     },
     {
       "name": "Frontend: Vite",
@@ -27,12 +43,27 @@
         "uriFormat": "%s",
         "action": "openExternally"
       }
+    },
+    {
+      "name": "OpenFlake: Full Stack",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/frontend",
+      "console": "integratedTerminal",
+      "preLaunchTask": "Start Backend Server",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
     }
   ],
   "compounds": [
     {
-      "name": "OpenFlake: Full Stack",
-      "configurations": ["Backend: FastAPI", "Frontend: Vite"],
+      "name": "OpenFlake: Debug Backend + Frontend",
+      "configurations": ["Backend: FastAPI (reload)", "Frontend: Vite"],
       "stopAll": true
     }
   ]

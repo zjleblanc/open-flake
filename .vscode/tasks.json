@@ -3,16 +3,50 @@
   "tasks": [
     {
       "label": "Ensure PostgreSQL (Podman)",
-      "type": "shell",
-      "command": "${workspaceFolder}/scripts/ensure-postgres.sh",
+      "type": "process",
+      "command": "/bin/bash",
+      "args": ["${workspaceFolder}/scripts/ensure-postgres.sh"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
       "presentation": {
-        "reveal": "silent",
+        "reveal": "always",
         "panel": "shared",
-        "showReuseMessage": false
+        "showReuseMessage": false,
+        "close": true
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Start Backend Server",
+      "type": "process",
+      "command": "/bin/bash",
+      "args": ["${workspaceFolder}/scripts/start-backend.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "uvicorn",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^INFO:",
+          "endsPattern": "Application startup complete"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "openflake"
+      },
+      "runOptions": {
+        "instanceLimit": 1
       }
     }
   ]

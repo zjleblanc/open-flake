@@ -162,6 +162,17 @@ button,
   background: var(--of-primary-dark);
 }
 
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary:disabled:hover,
+.btn-primary[disabled]:hover {
+  background: var(--of-primary);
+}
+
 .btn-secondary {
   background: var(--of-surface-hover);
   color: var(--of-text);
