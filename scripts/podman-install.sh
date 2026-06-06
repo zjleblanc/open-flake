@@ -19,6 +19,7 @@ SSL_KEY="${OPENFLAKE_SSL_KEY:-privkey.pem}"
 ATTACHMENTS_DIR="${OPENFLAKE_ATTACHMENTS_DIR:-}"
 IMAGE_TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
 REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zleblanc}"
+HTTPS_PORT="${OPENFLAKE_HTTPS_PORT:-8443}"
 HTTP_ONLY=0
 
 usage() {
@@ -30,6 +31,7 @@ Install OpenFlake from container registry images (Quay.io by default).
 Environment variables:
   OPENFLAKE_INSTALL_DIR   Install directory (default: ~/.local/share/openflake)
   OPENFLAKE_DOMAIN        Public hostname (default: localhost)
+  OPENFLAKE_HTTPS_PORT    Host HTTPS port (default: 8443; rootless-safe, maps to container 443)
   OPENFLAKE_SSL_DIR       TLS certificate directory (required for HTTPS)
   OPENFLAKE_SSL_CERT      Certificate filename in SSL_DIR (default: fullchain.pem)
   OPENFLAKE_SSL_KEY       Private key filename in SSL_DIR (default: privkey.pem)
@@ -109,8 +111,12 @@ derive_urls() {
     OPENFLAKE_CORS_ORIGINS="http://localhost:8080,http://localhost:5173"
     return
   fi
-  OPENFLAKE_BASE_URL="https://${DOMAIN}"
-  OPENFLAKE_CORS_ORIGINS="https://${DOMAIN},https://${DOMAIN}:5173,http://localhost:8080,http://localhost:5173"
+  local ui_origin="https://${DOMAIN}"
+  if [[ "${HTTPS_PORT}" != "443" ]]; then
+    ui_origin="https://${DOMAIN}:${HTTPS_PORT}"
+  fi
+  OPENFLAKE_BASE_URL="${ui_origin}"
+  OPENFLAKE_CORS_ORIGINS="${ui_origin},https://${DOMAIN}:5173,http://localhost:8080,http://localhost:5173"
 }
 
 download_file() {
@@ -214,6 +220,7 @@ TRUSTED_PROXIES=*
 EOF
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
   cat >> "${INSTALL_DIR}/.env" <<EOF
+OPENFLAKE_HTTPS_PORT=${HTTPS_PORT}
 OPENFLAKE_SSL_BACKEND_MOUNT=${OPENFLAKE_SSL_BACKEND_MOUNT}
 OPENFLAKE_SSL_FRONTEND_MOUNT=${OPENFLAKE_SSL_FRONTEND_MOUNT}
 EOF
@@ -256,6 +263,8 @@ echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 
 if [[ "${HTTP_ONLY}" -eq 1 ]]; then
   UI_URL="http://localhost:8080"
+elif [[ "${HTTPS_PORT}" != "443" ]]; then
+  UI_URL="https://${DOMAIN}:${HTTPS_PORT}"
 else
   UI_URL="https://${DOMAIN}"
 fi

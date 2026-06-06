@@ -45,6 +45,7 @@ Certificates are valid for 10 years (3650 days). Files are gitignored; do not co
 After generating certs:
 
 ```bash
+OPENFLAKE_HTTPS_PORT=8443 \
 OPENFLAKE_SSL_DIR=deploy/certs \
 OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro \
 OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro \
@@ -53,7 +54,7 @@ podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml u
 
 Set `OPENFLAKE_SSL_DIR` to the absolute path of `deploy/certs` when using the registry install script.
 
-With the SSL compose override, the same certificates are mounted into the backend (HTTPS on port 8000) and nginx (HTTPS on port 443).
+With the SSL compose override, the same certificates are mounted into the backend (HTTPS on port 8000) and nginx (HTTPS on container port 443, published on host 8443 by default).
 
 Browsers will show a warning for self-signed certs — expected for development.
 

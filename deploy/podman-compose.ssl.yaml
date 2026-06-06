@@ -15,7 +15,7 @@ services:
       OPENFLAKE_SSL_CERT: ${OPENFLAKE_SSL_CERT:-fullchain.pem}
       OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
     ports:
-      - "443:443"
+      - "${OPENFLAKE_HTTPS_PORT:-8443}:443"
     volumes:
       - ${OPENFLAKE_SSL_FRONTEND_MOUNT}
     healthcheck:

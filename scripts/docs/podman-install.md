@@ -91,6 +91,7 @@ cp deploy/openflake.env.example scripts/openflake.env
 |----------|---------|-------------|
 | `OPENFLAKE_INSTALL_DIR` | `~/.local/share/openflake` | Install and config directory |
 | `OPENFLAKE_DOMAIN` | `localhost` | Public hostname |
+| `OPENFLAKE_HTTPS_PORT` | `8443` | Host HTTPS port (maps to nginx 443; rootless-safe) |
 | `OPENFLAKE_SSL_DIR` | — | TLS directory (required unless `--http-only`) |
 | `OPENFLAKE_SSL_CERT` | `fullchain.pem` | Certificate filename in `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_SSL_KEY` | `privkey.pem` | Private key filename in `OPENFLAKE_SSL_DIR` |
@@ -116,7 +117,7 @@ Podman volumes `openflake-pg-data` and `openflake-attachments` persist database 
 
 | Endpoint | URL |
 |----------|-----|
-| UI (HTTPS) | `https://<domain>` |
+| UI (HTTPS) | `https://<domain>:8443` (or custom `OPENFLAKE_HTTPS_PORT`) |
 | UI (HTTP-only) | `http://localhost:8080` |
 | API (HTTPS) | `https://<domain>:8000` |
 | API (HTTP-only) | `http://localhost:8000` |

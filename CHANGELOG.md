@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Rootless Podman ports for registry install
+
+### Changed
+
+- HTTPS publishes on host port `8443` by default (`OPENFLAKE_HTTPS_PORT` maps to nginx 443 in the container); install script derives `BASE_URL` and CORS with the host port.
+- Registry compose no longer publishes PostgreSQL on the host (internal network only).
+
 ## 2026-06-05 — Remove automatic SELinux relabeling from Podman mounts
 
 ### Changed

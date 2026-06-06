@@ -47,7 +47,7 @@ curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/p
 
 Or copy [deploy/openflake.env.example](deploy/openflake.env.example) to `openflake.env` next to the install script and run without inline env vars.
 
-The install script writes config to `~/.local/share/openflake/`, pulls images from Quay, and starts the stack with HTTPS on port 443.
+The install script writes config to `~/.local/share/openflake/`, pulls images from Quay, and starts the stack with HTTPS on host port **8443** (rootless-safe; maps to nginx 443 in the container). Put a reverse proxy on 443 if you need the standard HTTPS port.
 
 Pin a release tag:
 
@@ -67,7 +67,7 @@ curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/p
 mkdir openflake && cd openflake
 curl -fsSLO https://raw.githubusercontent.com/zjleblanc/open-flake/main/deploy/{podman-compose.registry.yaml,podman-compose.ssl.yaml,.env.example}
 cp .env.example .env
-# Edit .env: OPENFLAKE_DOMAIN, OPENFLAKE_SSL_DIR, OPENFLAKE_SSL_*_MOUNT, OPENFLAKE_SSL_CERT, OPENFLAKE_SSL_KEY, SECRET_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD
+# Edit .env: OPENFLAKE_DOMAIN, OPENFLAKE_HTTPS_PORT, OPENFLAKE_SSL_DIR, OPENFLAKE_SSL_*_MOUNT, OPENFLAKE_SSL_CERT, OPENFLAKE_SSL_KEY, SECRET_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD
 podman compose -f podman-compose.registry.yaml -f podman-compose.ssl.yaml --env-file .env up -d
 ```
 
@@ -119,7 +119,7 @@ Host-native build only:
 ./scripts/publish-images.sh --single-arch
 ```
 
-Change default passwords and `SECRET_KEY` before production. Consider not exposing port 5432 publicly.
+Change default passwords and `SECRET_KEY` before production. Registry install does not publish PostgreSQL on the host (containers reach it on the internal network only).
 
 ### RHEL VM sizing
 
@@ -142,10 +142,10 @@ sudo dnf install -y podman podman-compose
 sudo systemctl enable --now podman.socket
 ```
 
-**Firewall** (expose HTTPS; keep Postgres off the public internet):
+**Firewall** (rootless Podman uses host port 8443 for HTTPS):
 
 ```bash
-sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --add-port=8443/tcp
 # Optional: direct API for Ansible on a trusted network
 sudo firewall-cmd --permanent --add-port=8000/tcp
 sudo firewall-cmd --reload
@@ -153,10 +153,9 @@ sudo firewall-cmd --reload
 
 | Port | Exposure | Purpose |
 |------|----------|---------|
-| 443 | Public or load balancer | UI and API via nginx |
+| 8443 | Public or load balancer | UI and API via nginx (HTTPS) |
 | 8080 | Internal | HTTP redirect to HTTPS |
 | 8000 | Internal / Ansible subnet | Direct API (optional) |
-| 5432 | Never public | PostgreSQL |
 
 **SELinux** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. If containers cannot read host certificate or attachment paths, adjust SELinux labels on those directories per your site policy.
 
@@ -174,9 +173,10 @@ Generate local development certificates:
 ./scripts/generate-dev-certs.sh
 ```
 
-Start with the SSL compose override (mounts `deploy/certs/` by default and publishes port 443):
+Start with the SSL compose override (nginx listens on 443 in the container; publish **8443** on the host for rootless Podman):
 
 ```bash
+OPENFLAKE_HTTPS_PORT=8443 \
 OPENFLAKE_SSL_DIR=deploy/certs \
 OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro \
 OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro \
@@ -192,7 +192,7 @@ OPENFLAKE_SSL_KEY=key.pem \
 podman compose -f deploy/podman-compose.registry.yaml -f deploy/podman-compose.ssl.yaml --env-file .env up -d
 ```
 
-- **UI:** https://localhost (accept the browser warning for self-signed certs)
+- **UI:** https://localhost:8443 (accept the browser warning for self-signed certs)
 - **HTTP redirect:** http://localhost:8080 redirects to HTTPS when certificates are mounted
 - **API (direct):** https://localhost:8000 when certificates are mounted (http://localhost:8000 without the SSL override)
 
@@ -254,12 +254,12 @@ Use the UI hostname through nginx, or the direct API on port 8000 (HTTPS when th
     # ...
 ```
 
-Or route API calls through nginx on port 443:
+Or route API calls through nginx on host port 8443:
 
 ```yaml
 - servicenow.itsm.incident:
     instance:
-      host: https://localhost
+      host: https://localhost:8443
       username: admin
       password: admin
     # ...
@@ -269,7 +269,7 @@ For self-signed certificates in development only:
 
 ```yaml
 instance:
-  host: https://localhost
+  host: https://localhost:8443
   validate_certs: false
 ```
 
