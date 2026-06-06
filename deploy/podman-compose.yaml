@@ -4,12 +4,14 @@ services:
     container_name: openflake-postgres
     ports:
       - "5432:5432"
+    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
     environment:
       POSTGRES_USER: openflake
       POSTGRES_PASSWORD: openflake
       POSTGRES_DB: openflake
     volumes:
       - openflake-pg-data:/var/lib/postgresql/data
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     networks:
       - openflake-net
     healthcheck:

@@ -37,6 +37,7 @@ Also available as the VS Code task **Ensure PostgreSQL (Podman)**.
 | Database | `openflake` |
 | Port | `5432` |
 | Volume | `openflake-pg-data` |
+| Client access | `deploy/postgres/pg_hba.conf` allows loopback and private subnets only |
 
 These match `backend/.env.example` and the full Podman compose stack.
 
@@ -49,6 +50,13 @@ podman machine start
 ```
 
 **Port in use:** Stop other PostgreSQL instances or change the host port in `deploy/podman-compose.yaml`.
+
+**Recreated container needed:** If `openflake-postgres` already exists without `pg_hba.conf`, recreate it to apply subnet restrictions:
+
+```bash
+podman rm -f openflake-postgres
+./scripts/ensure-postgres.sh
+```
 
 **Timed out waiting:** Check `podman logs openflake-postgres`.
 

@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Restrict PostgreSQL client access to local subnets
+
+### Added
+
+- `deploy/postgres/pg_hba.conf` allowing loopback and RFC 1918 private subnets only (no catch-all public access).
+
+### Changed
+
+- Podman compose postgres service mounts `pg_hba.conf` and sets `hba_file` in dev and registry stacks.
+- `ensure-postgres.sh` fallback `podman run` uses the same config; docs note container recreation to apply restrictions.
+
+## 2026-06-06 — Tighten .dockerignore for container builds
+
+### Changed
+
+- Exclude docs, scripts (with exceptions for dev helper scripts), `.vscode`, `.github`, markdown files, and `.ansible` from the build context to shrink image build scope.
+
 ## 2026-06-05 — Fix rootless TLS permissions and backend SSL healthchecks
 
 ### Fixed

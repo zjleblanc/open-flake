@@ -1,5 +1,6 @@
 .git
 .gitignore
+**/.ansible
 **/.venv
 **/.env
 **/.env.*
@@ -9,7 +10,14 @@
 **/.pytest_cache
 **/.DS_Store
 **/.cursor
+**/.vscode
+**/.github
+**/*.md
 data/
-backend/.ansible
+docs/
+scripts/
 deploy/certs/*
 !deploy/certs/.gitkeep
+!scripts/ensure-postgres.sh
+!scripts/start-backend.sh
+!scripts/stop-backend.sh
