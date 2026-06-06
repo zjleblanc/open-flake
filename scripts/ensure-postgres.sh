@@ -48,13 +48,15 @@ start_with_podman_run() {
     -e POSTGRES_PASSWORD=openflake \
     -e POSTGRES_DB=openflake \
     -v openflake-pg-data:/var/lib/postgresql/data \
-    -v "$ROOT/deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro" \
+    -v "$ROOT/deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf.ro:ro" \
+    -v "$ROOT/deploy/postgres/docker-entrypoint.sh:/etc/postgresql/docker-entrypoint.sh:ro" \
+    --entrypoint /bin/sh \
     --health-cmd "pg_isready -U openflake -d openflake" \
     --health-interval 5s \
     --health-timeout 5s \
     --health-retries 10 \
     docker.io/library/postgres:16-alpine \
-    postgres -c hba_file=/etc/postgresql/pg_hba.conf
+    /etc/postgresql/docker-entrypoint.sh
 }
 
 if podman container exists openflake-postgres 2>/dev/null; then

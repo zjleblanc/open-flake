@@ -263,10 +263,15 @@ if [[ -n "${ATTACHMENTS_DIR}" ]]; then
 fi
 
 echo "Downloading compose files to ${INSTALL_DIR}..."
+mkdir -p "${INSTALL_DIR}/postgres"
 download_file "${INSTALL_DIR}/podman-compose.registry.yaml" \
   "${GITHUB_RAW}/deploy/podman-compose.registry.yaml"
 download_file "${INSTALL_DIR}/podman-compose.ssl.yaml" \
   "${GITHUB_RAW}/deploy/podman-compose.ssl.yaml"
+download_file "${INSTALL_DIR}/postgres/pg_hba.conf" \
+  "${GITHUB_RAW}/deploy/postgres/pg_hba.conf"
+download_file "${INSTALL_DIR}/postgres/docker-entrypoint.sh" \
+  "${GITHUB_RAW}/deploy/postgres/docker-entrypoint.sh"
 download_file "${INSTALL_DIR}/podman-upgrade.sh" \
   "${GITHUB_RAW}/scripts/podman-upgrade.sh"
 chmod +x "${INSTALL_DIR}/podman-upgrade.sh"

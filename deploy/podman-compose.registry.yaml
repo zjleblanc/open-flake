@@ -2,14 +2,15 @@ services:
   postgres:
     image: docker.io/library/postgres:16-alpine
     container_name: openflake-postgres
-    command: ["postgres", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    entrypoint: ["/bin/sh", "/etc/postgresql/docker-entrypoint.sh"]
     environment:
       POSTGRES_USER: openflake
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openflake}
       POSTGRES_DB: openflake
     volumes:
       - openflake-pg-data:/var/lib/postgresql/data
-      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf.ro:ro
+      - ./postgres/docker-entrypoint.sh:/etc/postgresql/docker-entrypoint.sh:ro
     networks:
       - openflake-net
     healthcheck:

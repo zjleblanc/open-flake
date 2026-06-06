@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Fix Postgres pg_hba permission denied under rootless Podman
+
+### Fixed
+
+- Postgres entrypoint wrapper copies mounted `pg_hba.conf` into the data volume as `postgres:postgres` before startup (fixes `could not load /etc/postgresql/pg_hba.conf: Permission denied` when the bind mount is not readable by the container user).
+- `podman-install.sh` downloads `postgres/pg_hba.conf` and `postgres/docker-entrypoint.sh` into the install directory (registry compose referenced them but install did not ship them).
+
+### Changed
+
+- Dev and registry compose, plus `ensure-postgres.sh` fallback `podman run`, mount HBA at `/etc/postgresql/pg_hba.conf.ro` and use `deploy/postgres/docker-entrypoint.sh` instead of `hba_file` on the bind mount.
+
 ## 2026-06-06 — Fix Podman upgrade backend recreation
 
 ### Fixed
