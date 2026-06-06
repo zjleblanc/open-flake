@@ -103,8 +103,24 @@ ensure_ssl_mount_env() {
   set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs:ro,z"
 }
 
+load_compose_env() {
+  set -a
+  # shellcheck source=/dev/null
+  source "${INSTALL_DIR}/.env"
+  set +a
+}
+
+require_ssl_mount_vars() {
+  if [[ -z "${OPENFLAKE_SSL_BACKEND_MOUNT:-}" || -z "${OPENFLAKE_SSL_FRONTEND_MOUNT:-}" ]]; then
+    echo "OPENFLAKE_SSL_BACKEND_MOUNT and OPENFLAKE_SSL_FRONTEND_MOUNT must be set in ${INSTALL_DIR}/.env" >&2
+    echo "Re-run scripts/podman-install.sh or add them from OPENFLAKE_SSL_DIR." >&2
+    exit 1
+  fi
+}
+
 build_compose_files() {
   COMPOSE_FILES=(-f "${INSTALL_DIR}/podman-compose.registry.yaml")
+  USE_SSL_COMPOSE=0
   if [[ -f "${INSTALL_DIR}/podman-compose.ssl.yaml" ]]; then
     # shellcheck source=/dev/null
     source "${INSTALL_DIR}/.env"
@@ -113,6 +129,7 @@ build_compose_files() {
     local ssl_key="${OPENFLAKE_SSL_KEY:-privkey.pem}"
     if [[ -n "${ssl_dir}" && -f "${ssl_dir}/${ssl_cert}" && -f "${ssl_dir}/${ssl_key}" ]]; then
       COMPOSE_FILES+=(-f "${INSTALL_DIR}/podman-compose.ssl.yaml")
+      USE_SSL_COMPOSE=1
     fi
   fi
 }
@@ -169,16 +186,28 @@ build_compose_files
 
 cd "${INSTALL_DIR}"
 
+if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
+  load_compose_env
+  require_ssl_mount_vars
+fi
+
+compose_up() {
+  if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
+    load_compose_env
+  fi
+  run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" "$@"
+}
+
 echo "Pulling updated images..."
-run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" pull backend frontend
+compose_up pull backend frontend
 
 echo "Recreating backend (runs database migrations on startup)..."
-run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" up -d --force-recreate --no-deps backend
+compose_up up -d --force-recreate --no-deps backend
 
 wait_for_backend
 
 echo "Recreating frontend..."
-run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" up -d --force-recreate --no-deps frontend
+compose_up up -d --force-recreate --no-deps frontend
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 

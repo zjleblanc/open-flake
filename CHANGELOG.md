@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Export compose env for podman-compose SSL volume mounts
+
+### Fixed
+
+- Install and upgrade scripts export `.env` before compose and validate `OPENFLAKE_SSL_*_MOUNT` so `podman-compose` resolves SSL volume paths (fixes empty certificate mounts and "container directory cannot be empty").
+
 ## 2026-06-05 — Precompute SSL volume mounts for podman-compose
 
 ### Fixed

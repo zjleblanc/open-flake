@@ -142,6 +142,43 @@ ssl_mounts() {
   OPENFLAKE_SSL_FRONTEND_MOUNT="${dir}:/etc/nginx/certs:ro,z"
 }
 
+set_env_var() {
+  local env_file="$1"
+  local key="$2"
+  local value="$3"
+  if grep -q "^${key}=" "${env_file}"; then
+    sed -i.bak "s|^${key}=.*|${key}=${value}|" "${env_file}"
+    rm -f "${env_file}.bak"
+  else
+    echo "${key}=${value}" >> "${env_file}"
+  fi
+}
+
+ensure_ssl_mount_env() {
+  local env_file="${INSTALL_DIR}/.env"
+  # shellcheck source=/dev/null
+  source "${env_file}"
+  local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
+  [[ -n "${ssl_dir}" ]] || return 0
+  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs:ro,z"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs:ro,z"
+}
+
+load_compose_env() {
+  set -a
+  # shellcheck source=/dev/null
+  source "${INSTALL_DIR}/.env"
+  set +a
+}
+
+require_ssl_mount_vars() {
+  if [[ -z "${OPENFLAKE_SSL_BACKEND_MOUNT:-}" || -z "${OPENFLAKE_SSL_FRONTEND_MOUNT:-}" ]]; then
+    echo "OPENFLAKE_SSL_BACKEND_MOUNT and OPENFLAKE_SSL_FRONTEND_MOUNT must be set in ${INSTALL_DIR}/.env" >&2
+    echo "Re-run scripts/podman-install.sh or add them from OPENFLAKE_SSL_DIR." >&2
+    exit 1
+  fi
+}
+
 require_podman
 
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
@@ -205,10 +242,18 @@ if [[ "${HTTP_ONLY}" -eq 0 ]]; then
 fi
 
 cd "${INSTALL_DIR}"
+if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+  ensure_ssl_mount_env
+  load_compose_env
+  require_ssl_mount_vars
+fi
 echo "Pulling images..."
 run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" pull
 
 echo "Starting OpenFlake..."
+if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+  load_compose_env
+fi
 run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" up -d
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
