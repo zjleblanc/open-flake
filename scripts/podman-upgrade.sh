@@ -248,16 +248,27 @@ compose_up() {
   run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" "$@"
 }
 
+remove_container_if_exists() {
+  local name="$1"
+  if podman container exists "${name}" 2>/dev/null; then
+    podman rm -f "${name}"
+  fi
+}
+
 echo "Pulling updated images..."
 compose_up pull backend frontend
 
 echo "Recreating backend (runs database migrations on startup)..."
-compose_up up -d --force-recreate --no-deps backend
+# Frontend depends_on backend; Podman refuses to replace backend until dependents are removed.
+remove_container_if_exists openflake-frontend
+remove_container_if_exists openflake-backend
+compose_up up -d --no-deps backend
 
 wait_for_backend
 
 echo "Recreating frontend..."
-compose_up up -d --force-recreate --no-deps frontend
+remove_container_if_exists openflake-frontend
+compose_up up -d --no-deps frontend
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 

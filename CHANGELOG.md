@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Fix Podman upgrade backend recreation
+
+### Fixed
+
+- `podman-upgrade.sh` removes frontend before backend (compose `depends_on` blocks Podman from replacing backend while dependents exist), then recreates each service with `compose up --no-deps` instead of `--force-recreate`.
+
 ## 2026-06-06 — Restrict PostgreSQL client access to local subnets
 
 ### Added

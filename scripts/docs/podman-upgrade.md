@@ -77,10 +77,11 @@ Backups are written to `<install-dir>/backups/openflake-<timestamp>.sql`.
 1. Optionally back up PostgreSQL with `pg_dump`
 2. Update `OPENFLAKE_IMAGE_TAG` in `.env`
 3. Pull new backend and frontend images
-4. Recreate **backend** first (`--force-recreate --no-deps`) — migrations run on startup
-5. Wait for `/health/ready`
-6. Recreate **frontend**
-7. Update `installed-version`
+4. Remove **frontend** (it `depends_on` backend; Podman blocks backend replacement otherwise)
+5. Remove and recreate **backend** (`--no-deps`) — migrations run on startup
+6. Wait for `/health/ready`
+7. Remove and recreate **frontend**
+8. Update `installed-version`
 
 Postgres data in the `openflake-pg-data` volume is not touched.
 
