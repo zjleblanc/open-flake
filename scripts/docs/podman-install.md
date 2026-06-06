@@ -1,6 +1,6 @@
 # podman-install.sh
 
-Install OpenFlake from pre-built container images on Quay.io. Downloads compose files, writes configuration, pulls images, and starts the full stack (PostgreSQL, backend, frontend).
+Install OpenFlake from pre-built container images on Quay.io. Downloads compose files, writes configuration, pulls images, and starts the full stack (PostgreSQL, backend, frontend). Reinstalls remove any existing OpenFlake containers first, then bring services up in order so Podman does not error on missing dependents when Postgres is recreated.
 
 ## Prerequisites
 

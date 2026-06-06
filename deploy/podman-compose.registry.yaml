@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: openflake
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openflake}
       POSTGRES_DB: openflake
+    ports:
+      - "5432:5432"
     volumes:
       - openflake-pg-data:/var/lib/postgresql/data
       - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z

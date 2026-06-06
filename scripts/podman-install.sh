@@ -213,6 +213,40 @@ require_ssl_mount_vars() {
   fi
 }
 
+remove_container_if_exists() {
+  local name="$1"
+  if podman container exists "${name}" 2>/dev/null; then
+    podman rm -f "${name}"
+  fi
+}
+
+wait_for_postgres() {
+  local elapsed=0
+  local max_wait=60
+  until podman exec openflake-postgres pg_isready -U "${POSTGRES_USER:-openflake}" -d "${POSTGRES_DB:-openflake}" >/dev/null 2>&1; do
+    if [[ "${elapsed}" -ge "${max_wait}" ]]; then
+      echo "Timed out waiting for PostgreSQL after ${max_wait}s" >&2
+      exit 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+}
+
+start_openflake_stack() {
+  # Remove dependents first so Podman does not error stopping missing containers
+  # when Postgres is recreated (e.g. after adding a published port).
+  remove_container_if_exists openflake-frontend
+  remove_container_if_exists openflake-backend
+  remove_container_if_exists openflake-postgres
+
+  local compose_args=("${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env")
+  run_compose "${compose_args[@]}" up -d --no-deps postgres
+  wait_for_postgres
+  run_compose "${compose_args[@]}" up -d --no-deps backend
+  run_compose "${compose_args[@]}" up -d --no-deps frontend
+}
+
 require_podman
 
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
@@ -292,7 +326,7 @@ echo "Starting OpenFlake..."
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
   load_compose_env
 fi
-run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" up -d
+start_openflake_stack
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 
