@@ -51,6 +51,8 @@ podman machine start
 
 **Port in use:** Stop other PostgreSQL instances or change the host port in `deploy/podman-compose.yaml`.
 
+**`could not load /etc/postgresql/pg_hba.conf` / Permission denied (SELinux):** Compose and `ensure-postgres.sh` mount `pg_hba.conf` with `:Z` so the container can read the file. Recreate after pulling updated compose:
+
 **Stale container config:** Recreate if compose settings changed:
 
 ```bash

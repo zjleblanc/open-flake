@@ -48,7 +48,7 @@ start_with_podman_run() {
     -e POSTGRES_PASSWORD=openflake \
     -e POSTGRES_DB=openflake \
     -v openflake-pg-data:/var/lib/postgresql/data \
-    -v "$ROOT/deploy/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro" \
+    -v "$ROOT/deploy/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z" \
     --health-cmd "pg_isready -U openflake -d openflake" \
     --health-interval 5s \
     --health-timeout 5s \

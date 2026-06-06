@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — SELinux label for pg_hba.conf bind mount
+
+### Fixed
+
+- Postgres could not load bind-mounted `pg_hba.conf` on SELinux hosts despite mode `644`; mount now uses `:Z` so the container can read the file.
+
+### Changed
+
+- Dev and registry compose and `ensure-postgres.sh` `podman run` fallback mount `pg_hba.conf` as `:ro,Z`.
+
 ## 2026-06-06 — Bind-mount deploy/pg_hba.conf for Postgres client access
 
 ### Added

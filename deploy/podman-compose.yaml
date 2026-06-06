@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: openflake
     volumes:
       - openflake-pg-data:/var/lib/postgresql/data
-      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z
     networks:
       - openflake-net
     healthcheck:
