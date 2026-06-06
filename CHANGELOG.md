@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Precompute SSL volume mounts for podman-compose
+
+### Fixed
+
+- SSL compose uses `OPENFLAKE_SSL_BACKEND_MOUNT` and `OPENFLAKE_SSL_FRONTEND_MOUNT` from `.env` instead of inline `${OPENFLAKE_SSL_DIR:-...}` substitution; install and upgrade scripts write or backfill these so certificate paths no longer get a stray `}` on `podman-compose`.
+
 ## 2026-06-05 — Fix Podman Compose SSL directory mount parsing
 
 ### Fixed

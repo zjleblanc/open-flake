@@ -136,6 +136,12 @@ attachments_mount() {
   echo "${dir}:/data/attachments${suffix}"
 }
 
+ssl_mounts() {
+  local dir="$1"
+  OPENFLAKE_SSL_BACKEND_MOUNT="${dir}:/etc/openflake/certs:ro,z"
+  OPENFLAKE_SSL_FRONTEND_MOUNT="${dir}:/etc/nginx/certs:ro,z"
+}
+
 require_podman
 
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
@@ -154,6 +160,10 @@ SECRET_KEY="${SECRET_KEY:-$(generate_secret_key)}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-openflake}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 
+if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+  ssl_mounts "${SSL_DIR}"
+fi
+
 cat > "${INSTALL_DIR}/.env" <<EOF
 OPENFLAKE_REGISTRY=${REGISTRY}
 OPENFLAKE_IMAGE_TAG=${IMAGE_TAG}
@@ -169,6 +179,12 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
 TRUSTED_PROXIES=*
 EOF
+if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+  cat >> "${INSTALL_DIR}/.env" <<EOF
+OPENFLAKE_SSL_BACKEND_MOUNT=${OPENFLAKE_SSL_BACKEND_MOUNT}
+OPENFLAKE_SSL_FRONTEND_MOUNT=${OPENFLAKE_SSL_FRONTEND_MOUNT}
+EOF
+fi
 if [[ -n "${ATTACHMENTS_DIR}" ]]; then
   echo "OPENFLAKE_ATTACHMENTS_DIR=${ATTACHMENTS_DIR}" >> "${INSTALL_DIR}/.env"
   echo "OPENFLAKE_ATTACHMENTS_MOUNT=$(attachments_mount "${ATTACHMENTS_DIR}")" >> "${INSTALL_DIR}/.env"

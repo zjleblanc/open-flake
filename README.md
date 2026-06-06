@@ -67,7 +67,7 @@ curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/p
 mkdir openflake && cd openflake
 curl -fsSLO https://raw.githubusercontent.com/zjleblanc/open-flake/main/deploy/{podman-compose.registry.yaml,podman-compose.ssl.yaml,.env.example}
 cp .env.example .env
-# Edit .env: OPENFLAKE_DOMAIN, OPENFLAKE_SSL_DIR, OPENFLAKE_SSL_CERT, OPENFLAKE_SSL_KEY, SECRET_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD
+# Edit .env: OPENFLAKE_DOMAIN, OPENFLAKE_SSL_DIR, OPENFLAKE_SSL_*_MOUNT, OPENFLAKE_SSL_CERT, OPENFLAKE_SSL_KEY, SECRET_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD
 podman compose -f podman-compose.registry.yaml -f podman-compose.ssl.yaml --env-file .env up -d
 ```
 
@@ -185,7 +185,10 @@ Generate local development certificates:
 Start with the SSL compose override (mounts `deploy/certs/` by default and publishes port 443):
 
 ```bash
-OPENFLAKE_SSL_DIR=deploy/certs podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
+OPENFLAKE_SSL_DIR=deploy/certs \
+OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro,z \
+OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro,z \
+podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
 ```
 
 Custom certificate filenames:
@@ -209,7 +212,7 @@ OPENFLAKE_DOMAIN=openflake.example.com ./scripts/generate-dev-certs.sh
 
 ### Production certificates (Podman)
 
-Mount your own certificate and key into a host directory (defaults: `fullchain.pem` and `privkey.pem` in that directory). Set `OPENFLAKE_SSL_DIR`, and optionally `OPENFLAKE_SSL_CERT` / `OPENFLAKE_SSL_KEY`, then use the SSL compose override as above. Set `OPENFLAKE_BASE_URL` and `OPENFLAKE_CORS_ORIGINS` in `deploy/.env.example` (or pass them via `--env-file`) to match your public hostname.
+Mount your own certificate and key into a host directory (defaults: `fullchain.pem` and `privkey.pem` in that directory). Set `OPENFLAKE_SSL_DIR` and the matching `OPENFLAKE_SSL_BACKEND_MOUNT` / `OPENFLAKE_SSL_FRONTEND_MOUNT` in `.env` (install script writes these automatically), and optionally `OPENFLAKE_SSL_CERT` / `OPENFLAKE_SSL_KEY`, then use the SSL compose override as above. Set `OPENFLAKE_BASE_URL` and `OPENFLAKE_CORS_ORIGINS` in `deploy/.env.example` (or pass them via `--env-file`) to match your public hostname.
 
 ### Local development HTTPS
 

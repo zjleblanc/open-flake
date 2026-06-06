@@ -81,6 +81,28 @@ update_env_tag() {
   fi
 }
 
+set_env_var() {
+  local env_file="$1"
+  local key="$2"
+  local value="$3"
+  if grep -q "^${key}=" "${env_file}"; then
+    sed -i.bak "s|^${key}=.*|${key}=${value}|" "${env_file}"
+    rm -f "${env_file}.bak"
+  else
+    echo "${key}=${value}" >> "${env_file}"
+  fi
+}
+
+ensure_ssl_mount_env() {
+  local env_file="${INSTALL_DIR}/.env"
+  # shellcheck source=/dev/null
+  source "${env_file}"
+  local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
+  [[ -n "${ssl_dir}" ]] || return 0
+  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs:ro,z"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs:ro,z"
+}
+
 build_compose_files() {
   COMPOSE_FILES=(-f "${INSTALL_DIR}/podman-compose.registry.yaml")
   if [[ -f "${INSTALL_DIR}/podman-compose.ssl.yaml" ]]; then
@@ -141,6 +163,7 @@ if [[ "${BACKUP}" -eq 1 ]]; then
 fi
 
 update_env_tag
+ensure_ssl_mount_env
 
 build_compose_files
 
