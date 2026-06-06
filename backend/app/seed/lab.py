@@ -9,14 +9,16 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import select
 
-from app.config import get_settings
-from app.db import async_session_factory
+from app import startup
+from app.config import DEFAULT_LAB_ENV_FILE, Settings, resolve_env_file, settings_from_env_file
+from app.db import async_session_factory, configure_database
 from app.domain.table_service import create_record
 from app.models import CmdbRelType, StdChangeProducerVersion, SysUser, SysUserGroup
 from app.startup import run_migrations, seed_data
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
+
+settings: Settings | None = None
 
 LAB_MARKER_GROUP = "Service Desk"
 LAB_USER_PASSWORD = "lab123"
@@ -45,7 +47,7 @@ async def is_lab_seeded() -> bool:
 
 async def _require_admin(session) -> str:
     result = await session.execute(
-        select(SysUser).where(SysUser.user_name == settings.admin_username)
+        select(SysUser).where(SysUser.user_name == _active_settings().admin_username)
     )
     admin = result.scalar_one_or_none()
     if not admin:
@@ -658,15 +660,30 @@ async def _seed_service_requests(session, ctx: LabContext) -> None:
     )
 
 
+def configure_runtime(env_file: str) -> Settings:
+    """Load settings from env_file and wire DB/startup to that database."""
+    global settings
+    settings = settings_from_env_file(env_file)
+    configure_database(settings.database_url)
+    startup.settings = settings
+    return settings
+
+
+def _active_settings() -> Settings:
+    if settings is None:
+        raise RuntimeError("Call configure_runtime() before seed_lab()")
+    return settings
+
+
 async def seed_lab(*, ensure_base: bool = True, force: bool = False) -> bool:
     """Seed a realistic lab IT environment. Returns True if data was created."""
-    if not force and await is_lab_seeded():
-        logger.info("Lab environment already seeded (group %r exists); skipping", LAB_MARKER_GROUP)
-        return False
-
     if ensure_base:
         await run_migrations()
         await seed_data()
+
+    if not force and await is_lab_seeded():
+        logger.info("Lab environment already seeded (group %r exists); skipping", LAB_MARKER_GROUP)
+        return False
 
     async with async_session_factory() as session:
         admin_id = await _require_admin(session)
@@ -704,6 +721,12 @@ def main() -> None:
         help="Do not run base migrations/seed; require admin user to already exist",
     )
     parser.add_argument(
+        "--env-file",
+        default=str(DEFAULT_LAB_ENV_FILE.name),
+        metavar="PATH",
+        help=f"Env file to load (default: {DEFAULT_LAB_ENV_FILE.name} under backend/)",
+    )
+    parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
@@ -715,6 +738,13 @@ def main() -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(levelname)s: %(message)s",
     )
+
+    try:
+        configure_runtime(args.env_file)
+    except FileNotFoundError as exc:
+        parser.error(str(exc))
+
+    logger.info("Using env file: %s", resolve_env_file(args.env_file))
 
     created = asyncio.run(seed_lab(ensure_base=not args.skip_base, force=args.force))
     if created:

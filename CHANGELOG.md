@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Lab seed env file and migration order
+
+### Added
+
+- `openflake-seed-lab --env-file` loads a chosen env file (default `backend/local.env`); `backend/local.env.example` documents local settings.
+
+### Fixed
+
+- Lab seed runs migrations before checking whether lab data exists (avoids `sys_user_group` does not exist on empty databases).
+
+### Changed
+
+- `configure_runtime()` wires the DB engine and startup settings from the selected env file for remote or alternate targets.
+
 ## 2026-06-06 — SELinux label for pg_hba.conf bind mount
 
 ### Fixed

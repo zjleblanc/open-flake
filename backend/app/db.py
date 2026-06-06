@@ -16,6 +16,17 @@ engine = create_async_engine(
 async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+def configure_database(database_url: str) -> None:
+    """Point the async engine at a new database URL (for CLI tools with custom env files)."""
+    global engine, async_session_factory
+    engine = create_async_engine(
+        database_url,
+        echo=False,
+        pool_pre_ping=True,
+    )
+    async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
 class Base(DeclarativeBase):
     pass
 

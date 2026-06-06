@@ -403,8 +403,11 @@ After the base seed runs (on first backend startup), populate a demo ITIL enviro
 
 ```bash
 source .venv/bin/activate
+cp backend/local.env.example backend/local.env   # first time only
 openflake-seed-lab
-# or: python -m app.seed.lab
+# remote or alternate database:
+openflake-seed-lab --env-file backend/.env
+# or: python -m app.seed.lab --env-file backend/local.env
 ```
 
 Creates an **Acme Corp** lab with Linux/Windows servers, network devices, ITIL assignment groups, and mixed ticket states. Lab users share password `lab123` (e.g. `jsmith`, `mwilson`, `lchen`). Records are prefixed with `[LAB]` for easy identification. Re-running is skipped by default; use `--force` to seed again (creates duplicates).

@@ -1,6 +1,10 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_LAB_ENV_FILE = BACKEND_ROOT / "local.env"
 
 
 class Settings(BaseSettings):
@@ -28,6 +32,20 @@ class Settings(BaseSettings):
         if len(hosts) == 1 and hosts[0] == "*":
             return "*"
         return hosts
+
+
+def resolve_env_file(env_file: str | Path) -> Path:
+    path = Path(env_file)
+    if not path.is_absolute():
+        path = BACKEND_ROOT / path
+    return path.resolve()
+
+
+def settings_from_env_file(env_file: str | Path) -> Settings:
+    path = resolve_env_file(env_file)
+    if not path.is_file():
+        raise FileNotFoundError(f"Env file not found: {path}")
+    return Settings(_env_file=str(path), _env_file_encoding="utf-8")
 
 
 @lru_cache
