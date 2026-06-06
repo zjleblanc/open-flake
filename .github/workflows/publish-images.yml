@@ -55,11 +55,11 @@ jobs:
         id: tags
         run: |
           TAG="${{ steps.meta.outputs.tag }}"
-          BACKEND="quay.io/zjleblanc/openflake-backend:${TAG}"
-          FRONTEND="quay.io/zjleblanc/openflake-frontend:${TAG}"
+          BACKEND="quay.io/zleblanc/openflake-backend:${TAG}"
+          FRONTEND="quay.io/zleblanc/openflake-frontend:${TAG}"
           if [[ "${{ steps.stable.outputs.stable }}" == "true" ]]; then
-            BACKEND="${BACKEND}"$'\n'"quay.io/zjleblanc/openflake-backend:latest"
-            FRONTEND="${FRONTEND}"$'\n'"quay.io/zjleblanc/openflake-frontend:latest"
+            BACKEND="${BACKEND}"$'\n'"quay.io/zleblanc/openflake-backend:latest"
+            FRONTEND="${FRONTEND}"$'\n'"quay.io/zleblanc/openflake-frontend:latest"
           fi
           echo "backend<<EOF" >> "$GITHUB_OUTPUT"
           echo "${BACKEND}" >> "$GITHUB_OUTPUT"

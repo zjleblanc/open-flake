@@ -7,9 +7,11 @@ GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_REF}"
 
 INSTALL_DIR="${OPENFLAKE_INSTALL_DIR:-${HOME}/.local/share/openflake}"
 DOMAIN="${OPENFLAKE_DOMAIN:-localhost}"
-CERT_DIR="${OPENFLAKE_CERT_DIR:-}"
+SSL_DIR="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
+SSL_CERT="${OPENFLAKE_SSL_CERT:-fullchain.pem}"
+SSL_KEY="${OPENFLAKE_SSL_KEY:-privkey.pem}"
 IMAGE_TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
-REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zjleblanc}"
+REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zleblanc}"
 HTTP_ONLY=0
 
 usage() {
@@ -21,9 +23,11 @@ Install OpenFlake from container registry images (Quay.io by default).
 Environment variables:
   OPENFLAKE_INSTALL_DIR   Install directory (default: ~/.local/share/openflake)
   OPENFLAKE_DOMAIN        Public hostname (default: localhost)
-  OPENFLAKE_CERT_DIR      Path to fullchain.pem and privkey.pem (required for HTTPS)
+  OPENFLAKE_SSL_DIR       TLS certificate directory (required for HTTPS)
+  OPENFLAKE_SSL_CERT      Certificate filename in SSL_DIR (default: fullchain.pem)
+  OPENFLAKE_SSL_KEY       Private key filename in SSL_DIR (default: privkey.pem)
   OPENFLAKE_IMAGE_TAG     Image tag to pull (default: latest)
-  OPENFLAKE_REGISTRY      Image registry (default: quay.io/zjleblanc)
+  OPENFLAKE_REGISTRY      Image registry (default: quay.io/zleblanc)
   OPENFLAKE_VERSION       Git ref for compose files (default: main)
   SECRET_KEY              Backend signing key (auto-generated if unset)
   POSTGRES_PASSWORD       Database password (default: openflake)
@@ -31,7 +35,10 @@ Environment variables:
 
 Options:
   --domain DOMAIN         Same as OPENFLAKE_DOMAIN
-  --cert-dir PATH         Same as OPENFLAKE_CERT_DIR
+  --ssl-dir PATH          Same as OPENFLAKE_SSL_DIR
+  --ssl-cert NAME         Same as OPENFLAKE_SSL_CERT
+  --ssl-key NAME          Same as OPENFLAKE_SSL_KEY
+  --cert-dir PATH         Deprecated alias for --ssl-dir
   --tag TAG               Same as OPENFLAKE_IMAGE_TAG
   --install-dir PATH      Same as OPENFLAKE_INSTALL_DIR
   --http-only             Skip HTTPS; serve UI on port 8080 only
@@ -42,7 +49,10 @@ EOF
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --domain) DOMAIN="$2"; shift 2 ;;
-    --cert-dir) CERT_DIR="$2"; shift 2 ;;
+    --ssl-dir) SSL_DIR="$2"; shift 2 ;;
+    --ssl-cert) SSL_CERT="$2"; shift 2 ;;
+    --ssl-key) SSL_KEY="$2"; shift 2 ;;
+    --cert-dir) SSL_DIR="$2"; shift 2 ;;
     --tag) IMAGE_TAG="$2"; shift 2 ;;
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --http-only) HTTP_ONLY=1; shift ;;
@@ -72,9 +82,11 @@ require_podman() {
 
 validate_certs() {
   local dir="$1"
-  if [[ ! -f "${dir}/fullchain.pem" || ! -f "${dir}/privkey.pem" ]]; then
+  local cert="$2"
+  local key="$3"
+  if [[ ! -f "${dir}/${cert}" || ! -f "${dir}/${key}" ]]; then
     echo "TLS certificates not found in ${dir}" >&2
-    echo "Expected: fullchain.pem and privkey.pem" >&2
+    echo "Expected: ${cert} and ${key}" >&2
     exit 1
   fi
 }
@@ -106,11 +118,11 @@ generate_secret_key() {
 require_podman
 
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
-  if [[ -z "${CERT_DIR}" ]]; then
-    echo "OPENFLAKE_CERT_DIR is required for HTTPS install (or pass --http-only)." >&2
+  if [[ -z "${SSL_DIR}" ]]; then
+    echo "OPENFLAKE_SSL_DIR is required for HTTPS install (or pass --http-only)." >&2
     exit 1
   fi
-  validate_certs "${CERT_DIR}"
+  validate_certs "${SSL_DIR}" "${SSL_CERT}" "${SSL_KEY}"
 fi
 
 derive_urls
@@ -125,7 +137,9 @@ cat > "${INSTALL_DIR}/.env" <<EOF
 OPENFLAKE_REGISTRY=${REGISTRY}
 OPENFLAKE_IMAGE_TAG=${IMAGE_TAG}
 OPENFLAKE_DOMAIN=${DOMAIN}
-OPENFLAKE_CERT_DIR=${CERT_DIR}
+OPENFLAKE_SSL_DIR=${SSL_DIR}
+OPENFLAKE_SSL_CERT=${SSL_CERT}
+OPENFLAKE_SSL_KEY=${SSL_KEY}
 OPENFLAKE_BASE_URL=${OPENFLAKE_BASE_URL}
 OPENFLAKE_CORS_ORIGINS=${OPENFLAKE_CORS_ORIGINS}
 SECRET_KEY=${SECRET_KEY}

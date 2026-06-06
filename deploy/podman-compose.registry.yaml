@@ -19,7 +19,7 @@ services:
       retries: 10
 
   backend:
-    image: ${OPENFLAKE_REGISTRY:-quay.io/zjleblanc}/openflake-backend:${OPENFLAKE_IMAGE_TAG:-latest}
+    image: ${OPENFLAKE_REGISTRY:-quay.io/zleblanc}/openflake-backend:${OPENFLAKE_IMAGE_TAG:-latest}
     container_name: openflake-backend
     environment:
       DATABASE_URL: postgresql+asyncpg://openflake:${POSTGRES_PASSWORD:-openflake}@postgres:5432/openflake
@@ -47,7 +47,7 @@ services:
       start_period: 15s
 
   frontend:
-    image: ${OPENFLAKE_REGISTRY:-quay.io/zjleblanc}/openflake-frontend:${OPENFLAKE_IMAGE_TAG:-latest}
+    image: ${OPENFLAKE_REGISTRY:-quay.io/zleblanc}/openflake-frontend:${OPENFLAKE_IMAGE_TAG:-latest}
     container_name: openflake-frontend
     ports:
       - "8080:8080"

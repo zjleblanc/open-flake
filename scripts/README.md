@@ -19,7 +19,7 @@ Helper scripts for local development, container deployment, and image publishing
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/podman-install.sh | \
   OPENFLAKE_DOMAIN=itsm.example.com \
-  OPENFLAKE_CERT_DIR=/etc/ssl/openflake \
+  OPENFLAKE_SSL_DIR=/etc/ssl/openflake \
   bash
 ```
 

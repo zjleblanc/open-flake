@@ -1,8 +1,10 @@
-FROM docker.io/library/node:22-alpine AS builder
+# Build static assets on the host platform so esbuild does not run under QEMU
+# when publishing multi-arch images from Apple Silicon or other cross-build hosts.
+FROM --platform=$BUILDPLATFORM docker.io/library/node:22-alpine AS builder
 
 WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
+RUN npm ci
 COPY frontend/ .
 RUN npm run build
 

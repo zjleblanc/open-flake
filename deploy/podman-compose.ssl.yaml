@@ -5,10 +5,13 @@ services:
       CORS_ORIGINS: ${OPENFLAKE_CORS_ORIGINS:-https://localhost,https://localhost:5173,http://localhost:8080,http://localhost:5173}
 
   frontend:
+    environment:
+      OPENFLAKE_SSL_CERT: ${OPENFLAKE_SSL_CERT:-fullchain.pem}
+      OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
     ports:
       - "443:443"
     volumes:
-      - ${OPENFLAKE_CERT_DIR:-./certs}:/etc/nginx/certs:ro
+      - ${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-./certs}}:/etc/nginx/certs:ro
     healthcheck:
       test:
         [

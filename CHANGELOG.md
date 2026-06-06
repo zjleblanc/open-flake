@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Fix frontend multi-arch container builds
+
+### Fixed
+
+- Frontend image build uses `$BUILDPLATFORM` for the Node builder stage so esbuild runs natively when cross-publishing from Apple Silicon (avoids QEMU `write EPIPE` failures).
+- Added `.dockerignore` to exclude host `node_modules` and dev artifacts from the build context; frontend builder uses `npm ci`.
+
+## 2026-06-05 — Correct default Quay registry path
+
+### Changed
+
+- Default image registry updated from `quay.io/zjleblanc` to `quay.io/zleblanc` across compose files, install/publish scripts, CI workflow, and docs.
+
+## 2026-06-05 — Configurable TLS certificate paths
+
+### Changed
+
+- TLS mount directory renamed to `OPENFLAKE_SSL_DIR` (with `OPENFLAKE_CERT_DIR` still accepted as a deprecated alias).
+- Certificate and key filenames are configurable via `OPENFLAKE_SSL_CERT` and `OPENFLAKE_SSL_KEY` (defaults: `fullchain.pem`, `privkey.pem`).
+- nginx SSL entrypoint resolves cert/key paths from environment variables at container start.
+
 ## 2026-06-05 — Multi-arch image publish and release tagging
 
 ### Added
@@ -19,7 +40,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- Registry-based Podman compose (`deploy/podman-compose.registry.yaml`) pulling `quay.io/zjleblanc/openflake-backend` and `openflake-frontend` images.
+- Registry-based Podman compose (`deploy/podman-compose.registry.yaml`) pulling `quay.io/zleblanc/openflake-backend` and `openflake-frontend` images.
 - Deployment env template (`deploy/.env.example`) for registry URL, image tag, TLS cert path, and production secrets.
 - Install script (`scripts/podman-install.sh`) for one-line Quay pull-and-run with BYO certificates or HTTP-only mode.
 - Upgrade script (`scripts/podman-upgrade.sh`) to pull new images, recreate backend then frontend, wait for migrations, and optionally `pg_dump` backup.

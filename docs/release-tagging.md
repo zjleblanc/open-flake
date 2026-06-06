@@ -49,17 +49,17 @@ git push origin v1.0.0
 
 Pushing `v*` triggers [`.github/workflows/publish-images.yml`](../.github/workflows/publish-images.yml), which publishes multi-arch images to Quay as:
 
-- `quay.io/zjleblanc/openflake-backend:v1.0.0`
-- `quay.io/zjleblanc/openflake-frontend:v1.0.0`
-- `quay.io/zjleblanc/openflake-backend:latest` (stable `vMAJOR.MINOR.PATCH` only)
-- `quay.io/zjleblanc/openflake-frontend:latest`
+- `quay.io/zleblanc/openflake-backend:v1.0.0`
+- `quay.io/zleblanc/openflake-frontend:v1.0.0`
+- `quay.io/zleblanc/openflake-backend:latest` (stable `vMAJOR.MINOR.PATCH` only)
+- `quay.io/zleblanc/openflake-frontend:latest`
 
 ### Production install / upgrade
 
 Pin the stable tag explicitly:
 
 ```bash
-OPENFLAKE_IMAGE_TAG=v1.0.0 ./scripts/podman-install.sh --cert-dir /etc/ssl/openflake --domain itsm.example.com
+OPENFLAKE_IMAGE_TAG=v1.0.0 ./scripts/podman-install.sh --ssl-dir /etc/ssl/openflake --domain itsm.example.com
 ```
 
 ```bash

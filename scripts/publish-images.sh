@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
-REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zjleblanc}"
+REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zleblanc}"
 TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
 PLATFORMS="${OPENFLAKE_PLATFORMS:-linux/amd64,linux/arm64}"
 PUSH=0
@@ -19,7 +19,7 @@ Build OpenFlake container images locally. By default builds multi-arch
 manifests for linux/amd64 and linux/arm64.
 
 Environment variables:
-  OPENFLAKE_REGISTRY    Registry prefix (default: quay.io/zjleblanc)
+  OPENFLAKE_REGISTRY    Registry prefix (default: quay.io/zleblanc)
   OPENFLAKE_IMAGE_TAG   Image tag (default: latest)
   OPENFLAKE_PLATFORMS   Comma-separated platforms (default: linux/amd64,linux/arm64)
   QUAY_USERNAME         Registry username (required with --push)

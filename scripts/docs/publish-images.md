@@ -21,7 +21,7 @@ Build OpenFlake backend and frontend container images from the repository Contai
 ./scripts/publish-images.sh
 ```
 
-Builds `quay.io/zjleblanc/openflake-backend:latest` and `openflake-frontend:latest` as manifest lists for amd64 and arm64.
+Builds `quay.io/zleblanc/openflake-backend:latest` and `openflake-frontend:latest` as manifest lists for amd64 and arm64.
 
 ### Multi-arch build and push
 
@@ -57,7 +57,7 @@ OPENFLAKE_REGISTRY=quay.io/myorg ./scripts/publish-images.sh --push --tag v0.1.0
 |--------|-------------|
 | `--push` | Log in to Quay and push images after build |
 | `--tag TAG` | Image tag (default: `latest`) |
-| `--registry REGISTRY` | Registry prefix (default: `quay.io/zjleblanc`) |
+| `--registry REGISTRY` | Registry prefix (default: `quay.io/zleblanc`) |
 | `--platforms LIST` | Comma-separated platforms (default: `linux/amd64,linux/arm64`) |
 | `--single-arch` | Build for host CPU only |
 | `-h`, `--help` | Show help |
@@ -66,7 +66,7 @@ OPENFLAKE_REGISTRY=quay.io/myorg ./scripts/publish-images.sh --push --tag v0.1.0
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENFLAKE_REGISTRY` | `quay.io/zjleblanc` | Registry prefix |
+| `OPENFLAKE_REGISTRY` | `quay.io/zleblanc` | Registry prefix |
 | `OPENFLAKE_IMAGE_TAG` | `latest` | Image tag |
 | `OPENFLAKE_PLATFORMS` | `linux/amd64,linux/arm64` | Target platforms |
 | `QUAY_USERNAME` | — | Required with `--push` |

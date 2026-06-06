@@ -78,7 +78,10 @@ build_compose_files() {
   if [[ -f "${INSTALL_DIR}/podman-compose.ssl.yaml" ]]; then
     # shellcheck source=/dev/null
     source "${INSTALL_DIR}/.env"
-    if [[ -n "${OPENFLAKE_CERT_DIR:-}" && -f "${OPENFLAKE_CERT_DIR}/fullchain.pem" ]]; then
+    local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
+    local ssl_cert="${OPENFLAKE_SSL_CERT:-fullchain.pem}"
+    local ssl_key="${OPENFLAKE_SSL_KEY:-privkey.pem}"
+    if [[ -n "${ssl_dir}" && -f "${ssl_dir}/${ssl_cert}" && -f "${ssl_dir}/${ssl_key}" ]]; then
       COMPOSE_FILES+=(-f "${INSTALL_DIR}/podman-compose.ssl.yaml")
     fi
   fi

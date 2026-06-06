@@ -45,10 +45,10 @@ Certificates are valid for 10 years (3650 days). Files are gitignored; do not co
 After generating certs:
 
 ```bash
-podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
+OPENFLAKE_SSL_DIR=deploy/certs podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
 ```
 
-Set `OPENFLAKE_CERT_DIR` to the absolute path of `deploy/certs` when using the registry install script.
+Set `OPENFLAKE_SSL_DIR` to the absolute path of `deploy/certs` when using the registry install script.
 
 Browsers will show a warning for self-signed certs — expected for development.
 
