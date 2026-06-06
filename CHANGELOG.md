@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Bind-mount deploy/pg_hba.conf for Postgres client access
+
+### Added
+
+- `deploy/pg_hba.conf` — loopback, container bridge (`10.0.0.0/8`, `172.16.0.0/12`), and common LAN subnets for the `openflake` user.
+
+### Changed
+
+- Dev and registry compose bind-mount `pg_hba.conf` and set `hba_file` / `listen_addresses` (replaces inline shell copy at container start).
+- HBA file moved from `deploy/postgres/pg_hba.conf` to `deploy/pg_hba.conf`; `podman-install.sh` downloads it beside the compose files.
+- `ensure-postgres.sh` `podman run` fallback matches compose HBA settings.
+- `podman-upgrade.sh` requires `pg_hba.conf` in the install directory.
+
 ## 2026-06-06 — Inline Postgres HBA startup for rootless Podman
 
 ### Fixed

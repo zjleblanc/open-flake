@@ -37,8 +37,7 @@ Also available as the VS Code task **Ensure PostgreSQL (Podman)**.
 | Database | `openflake` |
 | Port | `5432` |
 | Volume | `openflake-pg-data` |
-| Client access | `deploy/postgres/pg_hba.conf` allows loopback and private subnets only |
-| HBA install | Startup copies `pg_hba.conf` into the data volume (inline shell, not a bind-mounted script) so rootless Podman can apply rules |
+| Client access | `deploy/pg_hba.conf` bind-mounted at `/etc/postgresql/pg_hba.conf` |
 
 These match `backend/.env.example` and the full Podman compose stack.
 
@@ -52,14 +51,12 @@ podman machine start
 
 **Port in use:** Stop other PostgreSQL instances or change the host port in `deploy/podman-compose.yaml`.
 
-**Recreated container needed:** If `openflake-postgres` already exists without the inline HBA startup, recreate it to apply subnet restrictions:
+**Stale container config:** Recreate if compose settings changed:
 
 ```bash
 podman rm -f openflake-postgres
 ./scripts/ensure-postgres.sh
 ```
-
-**`could not load /etc/postgresql/pg_hba.conf` / Permission denied:** The stack copies HBA rules into the data volume at startup (rootless Podman cannot read host bind mounts as the `postgres` user). Pull the latest compose files from the repo, then recreate the container as above.
 
 **Timed out waiting:** Check `podman logs openflake-postgres`.
 

@@ -69,6 +69,11 @@ require_install() {
     echo "Missing ${INSTALL_DIR}/podman-compose.registry.yaml" >&2
     exit 1
   fi
+  if [[ ! -f "${INSTALL_DIR}/pg_hba.conf" ]]; then
+    echo "Missing ${INSTALL_DIR}/pg_hba.conf (required by compose Postgres service)." >&2
+    echo "Re-run scripts/podman-install.sh or copy deploy/pg_hba.conf into ${INSTALL_DIR}." >&2
+    exit 1
+  fi
 }
 
 update_env_tag() {

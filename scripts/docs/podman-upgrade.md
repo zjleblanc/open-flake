@@ -13,6 +13,7 @@ Install directory must contain:
 
 - `.env`
 - `podman-compose.registry.yaml`
+- `pg_hba.conf` (shipped by [podman-install.sh](podman-install.md))
 
 ## Usage
 

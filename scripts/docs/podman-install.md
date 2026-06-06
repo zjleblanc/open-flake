@@ -108,11 +108,11 @@ cp deploy/openflake.env.example scripts/openflake.env
 
 - `~/.local/share/openflake/.env` — deployment configuration
 - `podman-compose.registry.yaml` and `podman-compose.ssl.yaml` — compose files
-- `postgres/pg_hba.conf` — PostgreSQL client access rules (copied into the data volume at container start)
+- `pg_hba.conf` — PostgreSQL client access rules (bind-mounted into the Postgres container)
 - `podman-upgrade.sh` — copy of the upgrade script
 - `installed-version` — records the deployed image tag
 
-Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data (unless `OPENFLAKE_ATTACHMENTS_DIR` binds a host path instead).
+Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data (unless `OPENFLAKE_ATTACHMENTS_DIR` binds a host path instead). Postgres is not published on the host in the registry stack — only the backend reaches it on the internal network.
 
 ## After install
 
