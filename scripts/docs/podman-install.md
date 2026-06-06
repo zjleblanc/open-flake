@@ -137,4 +137,4 @@ sudo chcon -R -t container_file_t /etc/ssl/openflake
 
 - [podman-upgrade.sh](podman-upgrade.md) — upgrade an existing install
 - [generate-dev-certs.sh](generate-dev-certs.md) — create self-signed certs for testing
-- [README — Install from Quay](../../README.md#install-from-quay-podman)
+- [Installation — Install from Quay](../../docs/installation.md)

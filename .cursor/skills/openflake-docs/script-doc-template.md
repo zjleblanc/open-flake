@@ -47,4 +47,4 @@ Omit **Options** or **Environment variables** if the script has neither.
 ## Related
 
 - [other-script.md](other-script.md) — short link text
-- [README — Section](../../README.md#anchor) — when relevant
+- [Guide name](../../docs/guide.md) — when relevant

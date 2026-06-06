@@ -54,4 +54,4 @@ DATABASE_URL=postgresql+asyncpg://openflake:openflake@localhost:5432/openflake
 
 - [ensure-postgres.sh](ensure-postgres.md) — start the database
 - [stop-backend.sh](stop-backend.md) — stop uvicorn on port 8000
-- [README — Development](../../README.md)
+- [Development](../../docs/development.md)

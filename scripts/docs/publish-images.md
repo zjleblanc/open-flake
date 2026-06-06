@@ -94,5 +94,5 @@ Stable tags (`vMAJOR.MINOR.PATCH`) also update the `latest` image tag on Quay. P
 ## Related
 
 - [Release and image tagging](../../docs/release-tagging.md) — production vs development tags
-- [README — Publishing images](../../README.md#publishing-images-maintainers)
+- [Installation — Publishing images](../../docs/installation.md#publishing-images-maintainers)
 - [podman-install.sh](podman-install.md) — consumes published images

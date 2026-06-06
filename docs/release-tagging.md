@@ -179,4 +179,4 @@ git tag -a v0.2.0-dev.20260605 -m "Dev snapshot" && git push origin v0.2.0-dev.2
 # GitHub Actions workflow_dispatch, tag: dev-main-20260605
 ```
 
-See also: [scripts/docs/publish-images.md](../scripts/docs/publish-images.md), [README — Publishing images](../README.md#publishing-images-maintainers).
+See also: [scripts/docs/publish-images.md](../scripts/docs/publish-images.md), [Installation — Publishing images](installation.md#publishing-images-maintainers).

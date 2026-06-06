@@ -61,4 +61,4 @@ Browsers will show a warning for self-signed certs — expected for development.
 ## Related
 
 - [podman-install.sh](podman-install.md) — production install with your own certs
-- [README — SSL / HTTPS](../../README.md#ssl--https)
+- [SSL / HTTPS](../../docs/ssl-https.md)
