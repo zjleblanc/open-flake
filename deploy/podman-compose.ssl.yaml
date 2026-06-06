@@ -6,7 +6,7 @@ services:
       OPENFLAKE_SSL_CERT: ${OPENFLAKE_SSL_CERT:-fullchain.pem}
       OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
     volumes:
-      - ${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-./certs}}:/etc/openflake/certs:roZ
+      - ${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-./certs}}:/etc/openflake/certs:ro,z
     healthcheck:
       test: ["CMD", "/app/backend-healthcheck.sh"]
 
@@ -17,7 +17,7 @@ services:
     ports:
       - "443:443"
     volumes:
-      - ${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-./certs}}:/etc/nginx/certs:roZ
+      - ${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-./certs}}:/etc/nginx/certs:ro,z
     healthcheck:
       test:
         [

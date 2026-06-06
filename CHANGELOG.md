@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — SELinux volume relabeling for Podman
+
+### Added
+
+- Optional `OPENFLAKE_ATTACHMENTS_DIR` host bind mount for backend attachment storage; Compose appends `:Z` on SELinux systems when set.
+- Install script `--attachments-dir` / `OPENFLAKE_ATTACHMENTS_DIR` passthrough to deployment `.env`.
+
+### Changed
+
+- SSL compose certificate mounts use `:ro,z` (shared read-only label) so nginx and the backend can mount the same TLS directory on RHEL/Fedora.
+
 ## 2026-06-05 — Backend TLS certificate support
 
 ### Added

@@ -33,7 +33,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - openflake-attachments:/data/attachments
+      - ${OPENFLAKE_ATTACHMENTS_DIR:-openflake-attachments}:/data/attachments${OPENFLAKE_ATTACHMENTS_DIR:+:Z}
     depends_on:
       postgres:
         condition: service_healthy

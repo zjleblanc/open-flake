@@ -10,6 +10,7 @@ DOMAIN="${OPENFLAKE_DOMAIN:-localhost}"
 SSL_DIR="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
 SSL_CERT="${OPENFLAKE_SSL_CERT:-fullchain.pem}"
 SSL_KEY="${OPENFLAKE_SSL_KEY:-privkey.pem}"
+ATTACHMENTS_DIR="${OPENFLAKE_ATTACHMENTS_DIR:-}"
 IMAGE_TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
 REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zleblanc}"
 HTTP_ONLY=0
@@ -26,6 +27,7 @@ Environment variables:
   OPENFLAKE_SSL_DIR       TLS certificate directory (required for HTTPS)
   OPENFLAKE_SSL_CERT      Certificate filename in SSL_DIR (default: fullchain.pem)
   OPENFLAKE_SSL_KEY       Private key filename in SSL_DIR (default: privkey.pem)
+  OPENFLAKE_ATTACHMENTS_DIR  Host path for attachment storage (Compose adds :Z on SELinux)
   OPENFLAKE_IMAGE_TAG     Image tag to pull (default: latest)
   OPENFLAKE_REGISTRY      Image registry (default: quay.io/zleblanc)
   OPENFLAKE_VERSION       Git ref for compose files (default: main)
@@ -38,6 +40,7 @@ Options:
   --ssl-dir PATH          Same as OPENFLAKE_SSL_DIR
   --ssl-cert NAME         Same as OPENFLAKE_SSL_CERT
   --ssl-key NAME          Same as OPENFLAKE_SSL_KEY
+  --attachments-dir PATH  Same as OPENFLAKE_ATTACHMENTS_DIR
   --cert-dir PATH         Deprecated alias for --ssl-dir
   --tag TAG               Same as OPENFLAKE_IMAGE_TAG
   --install-dir PATH      Same as OPENFLAKE_INSTALL_DIR
@@ -52,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --ssl-dir) SSL_DIR="$2"; shift 2 ;;
     --ssl-cert) SSL_CERT="$2"; shift 2 ;;
     --ssl-key) SSL_KEY="$2"; shift 2 ;;
+    --attachments-dir) ATTACHMENTS_DIR="$2"; shift 2 ;;
     --cert-dir) SSL_DIR="$2"; shift 2 ;;
     --tag) IMAGE_TAG="$2"; shift 2 ;;
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
@@ -148,6 +152,9 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
 TRUSTED_PROXIES=*
 EOF
+if [[ -n "${ATTACHMENTS_DIR}" ]]; then
+  echo "OPENFLAKE_ATTACHMENTS_DIR=${ATTACHMENTS_DIR}" >> "${INSTALL_DIR}/.env"
+fi
 
 echo "Downloading compose files to ${INSTALL_DIR}..."
 download_file "${INSTALL_DIR}/podman-compose.registry.yaml" \

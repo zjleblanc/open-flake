@@ -68,6 +68,7 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
 | `--ssl-dir PATH` | Directory mounted into nginx and backend for TLS files |
 | `--ssl-cert NAME` | Certificate filename within `--ssl-dir` (default: `fullchain.pem`) |
 | `--ssl-key NAME` | Private key filename within `--ssl-dir` (default: `privkey.pem`) |
+| `--attachments-dir PATH` | Host path for attachment storage (`:Z` SELinux relabel on RHEL/Fedora) |
 | `--cert-dir PATH` | Deprecated alias for `--ssl-dir` |
 | `--tag TAG` | Image tag to pull from Quay (default: `latest`) |
 | `--install-dir PATH` | Where to store config and compose files |
@@ -83,6 +84,7 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
 | `OPENFLAKE_SSL_DIR` | — | TLS directory (required unless `--http-only`) |
 | `OPENFLAKE_SSL_CERT` | `fullchain.pem` | Certificate filename in `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_SSL_KEY` | `privkey.pem` | Private key filename in `OPENFLAKE_SSL_DIR` |
+| `OPENFLAKE_ATTACHMENTS_DIR` | — | Host attachment storage path (`:Z` on SELinux when set) |
 | `OPENFLAKE_CERT_DIR` | — | Deprecated alias for `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_IMAGE_TAG` | `latest` | Quay image tag |
 | `OPENFLAKE_REGISTRY` | `quay.io/zleblanc` | Image registry prefix |
@@ -98,7 +100,7 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
 - `podman-upgrade.sh` — copy of the upgrade script
 - `installed-version` — records the deployed image tag
 
-Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data.
+Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data (unless `OPENFLAKE_ATTACHMENTS_DIR` binds a host path instead).
 
 ## After install
 

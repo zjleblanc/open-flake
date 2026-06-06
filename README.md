@@ -156,10 +156,14 @@ sudo firewall-cmd --reload
 | 8000 | Internal / Ansible subnet | Direct API (optional) |
 | 5432 | Never public | PostgreSQL |
 
-**SELinux** (if cert or data paths are host bind mounts):
+**SELinux** (RHEL/Fedora host bind mounts):
+
+- TLS paths in the SSL compose override use `:ro,z` so nginx and the backend can share the same certificate directory.
+- Set `OPENFLAKE_ATTACHMENTS_DIR` to a host path for attachment storage; Compose adds `:Z` on that backend bind mount automatically.
+- If you mount paths outside Compose, relabel manually:
 
 ```bash
-sudo chcon -Rt svirt_sandbox_file_t /etc/ssl/openflake
+sudo chcon -Rt svirt_sandbox_file_t /etc/ssl/openflake /var/lib/openflake/attachments
 ```
 
 Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres memory pressure grows with CMDB size, or attachment storage nears disk capacity.
