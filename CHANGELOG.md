@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Fix Podman Compose SSL directory mount parsing
+
+### Fixed
+
+- Replace nested `${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-...}}` in SSL compose with `${OPENFLAKE_SSL_DIR:-./certs}` so `podman-compose` no longer appends a stray `}` to certificate paths (fixes `statfs ...}` and backend/frontend failing to start).
+
 ## 2026-06-05 — Optional openflake.env config for Podman install and upgrade
 
 ### Added
