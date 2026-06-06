@@ -296,10 +296,13 @@ echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 
 if [[ "${HTTP_ONLY}" -eq 1 ]]; then
   UI_URL="http://localhost:8080"
+  API_URL="http://localhost:8000"
 elif [[ "${HTTPS_PORT}" != "443" ]]; then
   UI_URL="https://${DOMAIN}:${HTTPS_PORT}"
+  API_URL="https://${DOMAIN}:8000"
 else
   UI_URL="https://${DOMAIN}"
+  API_URL="https://${DOMAIN}:8000"
 fi
 
 cat <<EOF
@@ -307,7 +310,7 @@ cat <<EOF
 OpenFlake is running.
 
   UI:      ${UI_URL}
-  API:     http://localhost:8000
+  API:     ${API_URL}
   Login:   admin / (password from ADMIN_PASSWORD in ${INSTALL_DIR}/.env)
   Install: ${INSTALL_DIR}
   Data:    podman volumes openflake-pg-data, openflake-attachments
