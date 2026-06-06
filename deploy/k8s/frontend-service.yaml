@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openflake-frontend
+spec:
+  selector:
+    app: openflake-frontend
+  ports:
+    - port: 8080
+      targetPort: 8080

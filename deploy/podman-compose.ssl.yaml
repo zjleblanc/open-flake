@@ -1,0 +1,17 @@
+services:
+  backend:
+    environment:
+      BASE_URL: https://localhost
+      CORS_ORIGINS: https://localhost,https://localhost:5173,http://localhost:8080,http://localhost:5173
+
+  frontend:
+    ports:
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "if [ -f /var/run/nginx-ssl-enabled ]; then wget -q --no-check-certificate --spider https://localhost/; else wget -q --spider http://localhost:8080/; fi",
+        ]

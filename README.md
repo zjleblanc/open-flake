@@ -22,6 +22,99 @@ podman compose -f deploy/podman-compose.yaml up -d --build
 - **API (direct):** http://localhost:8000
 - **Default login:** `admin` / `admin`
 
+## SSL / HTTPS
+
+OpenFlake terminates TLS at nginx (Podman) or the Kubernetes Ingress. The backend stays on plain HTTP internally behind the reverse proxy.
+
+### Podman with self-signed certificates
+
+Generate local development certificates:
+
+```bash
+./scripts/generate-dev-certs.sh
+```
+
+Start with the SSL compose override (mounts `deploy/certs/` and publishes port 443):
+
+```bash
+podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
+```
+
+- **UI:** https://localhost (accept the browser warning for self-signed certs)
+- **HTTP redirect:** http://localhost:8080 redirects to HTTPS when certificates are mounted
+- **API (direct):** http://localhost:8000 remains available for Ansible and direct clients
+
+Set a custom domain in the certificate SAN:
+
+```bash
+OPENFLAKE_DOMAIN=openflake.example.com ./scripts/generate-dev-certs.sh
+```
+
+### Production certificates (Podman)
+
+Mount your own certificate and key at:
+
+- `deploy/certs/fullchain.pem`
+- `deploy/certs/privkey.pem`
+
+Then use the SSL compose override as above. Update `BASE_URL` and `CORS_ORIGINS` in `deploy/podman-compose.ssl.yaml` to match your public hostname.
+
+### Local development HTTPS
+
+Run the Vite dev server with a self-signed certificate:
+
+```bash
+cd frontend
+npm run dev:https
+```
+
+Add `https://localhost:5173` to `CORS_ORIGINS` in `backend/.env`:
+
+```bash
+CORS_ORIGINS=http://localhost:8080,http://localhost:5173,https://localhost:5173
+```
+
+### Kubernetes
+
+Apply the frontend Service and Ingress manifests in `deploy/k8s/`. TLS terminates at the Ingress:
+
+```bash
+kubectl apply -f deploy/k8s/frontend-service.yaml
+kubectl apply -f deploy/k8s/ingress.yaml
+```
+
+Create a TLS secret from your certificates:
+
+```bash
+kubectl create secret tls openflake-tls \
+  --cert=fullchain.pem --key=privkey.pem
+```
+
+For automatic certificates, install [cert-manager](https://cert-manager.io/) and uncomment the `cert-manager.io/cluster-issuer` annotation in `deploy/k8s/ingress.yaml`. See `deploy/k8s/tls-secret.example.yaml` for a manual secret template.
+
+Set `BASE_URL` and `CORS_ORIGINS` in the `openflake-secrets` Secret to your public HTTPS hostname.
+
+### Ansible with HTTPS
+
+Continue using the direct API on port 8000 over HTTP, or route through nginx:
+
+```yaml
+- servicenow.itsm.incident:
+    instance:
+      host: https://localhost
+      username: admin
+      password: admin
+    # ...
+```
+
+For self-signed certificates in development only:
+
+```yaml
+instance:
+  host: https://localhost
+  validate_certs: false
+```
+
 ## Ansible Integration
 
 Point the collection at OpenFlake:
@@ -186,6 +279,7 @@ pytest
 | `ATTACHMENTS_PATH` | `/data/attachments` | Attachment storage |
 | `BASE_URL` | `http://localhost:8000` | Reference link base URL |
 | `CORS_ORIGINS` | `http://localhost:8080,...` | Allowed CORS origins |
+| `TRUSTED_PROXIES` | `*` | Trusted reverse-proxy IPs for `X-Forwarded-*` headers |
 
 ## License
 

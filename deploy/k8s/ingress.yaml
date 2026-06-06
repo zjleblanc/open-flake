@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openflake
+  annotations:
+    # Optional: use cert-manager to provision TLS certificates automatically.
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - openflake.example.com
+      secretName: openflake-tls
+  rules:
+    - host: openflake.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openflake-frontend
+                port:
+                  number: 8080

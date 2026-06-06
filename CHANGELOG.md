@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — SSL / HTTPS support
+
+### Added
+
+- Self-signed certificate generator (`scripts/generate-dev-certs.sh`) and `deploy/certs/` mount path for production certificates.
+- nginx TLS termination with conditional SSL entrypoint: HTTPS on port 443 when certs are mounted, HTTP-only fallback on port 8080.
+- Podman SSL compose override (`deploy/podman-compose.ssl.yaml`) for HTTPS without changing the default HTTP quick start.
+- Kubernetes Ingress, frontend Service, and TLS secret example manifests.
+- Vite HTTPS dev mode (`npm run dev:https`) via `@vitejs/plugin-basic-ssl`.
+- Backend `ProxyHeadersMiddleware` and `TRUSTED_PROXIES` setting for reverse-proxy `X-Forwarded-Proto` support.
+
+### Changed
+
+- README documents SSL setup for Podman, Kubernetes, local dev, and Ansible.
+
 ## 2026-06-05 — Sticky navbar, login redirect, and debug teardown
 
 ### Added
