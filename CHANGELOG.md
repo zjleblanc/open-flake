@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Optional openflake.env config for Podman install and upgrade
+
+### Added
+
+- `podman-install.sh` and `podman-upgrade.sh` source an adjacent `openflake.env` before CLI flags and environment variables.
+- `deploy/openflake.env.example` template for install and upgrade settings.
+
+## 2026-06-05 — Fix Podman Compose attachment volume mount parsing
+
+### Fixed
+
+- Replace unsupported `${VAR:+:Z}` Compose expansion with `OPENFLAKE_ATTACHMENTS_MOUNT`; install script writes the full mount spec (including `:Z` on SELinux) so `podman-compose` pull/up no longer fails with `could not parse mount`.
+
 ## 2026-06-05 — SELinux volume relabeling for Podman
 
 ### Added

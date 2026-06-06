@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/openflake.env" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/openflake.env"
+fi
+
 GITHUB_REPO="${OPENFLAKE_GITHUB_REPO:-zjleblanc/open-flake}"
 GITHUB_REF="${OPENFLAKE_VERSION:-main}"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_REF}"
@@ -34,6 +40,8 @@ Environment variables:
   SECRET_KEY              Backend signing key (auto-generated if unset)
   POSTGRES_PASSWORD       Database password (default: openflake)
   ADMIN_PASSWORD          Admin user password (default: admin)
+
+If openflake.env exists next to this script, it is sourced before options and env vars above.
 
 Options:
   --domain DOMAIN         Same as OPENFLAKE_DOMAIN
@@ -119,6 +127,15 @@ generate_secret_key() {
   fi
 }
 
+attachments_mount() {
+  local dir="$1"
+  local suffix=""
+  if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce 2>/dev/null)" != "Disabled" ]]; then
+    suffix=":Z"
+  fi
+  echo "${dir}:/data/attachments${suffix}"
+}
+
 require_podman
 
 if [[ "${HTTP_ONLY}" -eq 0 ]]; then
@@ -154,6 +171,7 @@ TRUSTED_PROXIES=*
 EOF
 if [[ -n "${ATTACHMENTS_DIR}" ]]; then
   echo "OPENFLAKE_ATTACHMENTS_DIR=${ATTACHMENTS_DIR}" >> "${INSTALL_DIR}/.env"
+  echo "OPENFLAKE_ATTACHMENTS_MOUNT=$(attachments_mount "${ATTACHMENTS_DIR}")" >> "${INSTALL_DIR}/.env"
 fi
 
 echo "Downloading compose files to ${INSTALL_DIR}..."

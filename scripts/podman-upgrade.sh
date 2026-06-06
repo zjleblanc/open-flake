@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -f "${SCRIPT_DIR}/openflake.env" ]]; then
+  # shellcheck source=/dev/null
+  source "${SCRIPT_DIR}/openflake.env"
+fi
+
 INSTALL_DIR="${OPENFLAKE_INSTALL_DIR:-${HOME}/.local/share/openflake}"
 IMAGE_TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
 BACKUP=0
@@ -17,6 +23,8 @@ Environment variables:
   OPENFLAKE_IMAGE_TAG     Target image tag (default: latest)
   OPENFLAKE_BACKUP=1      Create a PostgreSQL dump before upgrading
   OPENFLAKE_HEALTH_TIMEOUT Seconds to wait for backend /health/ready (default: 120)
+
+If openflake.env exists next to this script, it is sourced before options and env vars above.
 
 Options:
   --tag TAG               Same as OPENFLAKE_IMAGE_TAG

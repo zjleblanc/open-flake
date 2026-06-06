@@ -48,6 +48,10 @@ Or:
 ./scripts/podman-upgrade.sh --backup --tag v0.2.0
 ```
 
+### Config file (`openflake.env`)
+
+If `openflake.env` exists next to this script (for example `~/.local/share/openflake/openflake.env`), it is sourced before CLI flags and environment variables. Useful for pinning `OPENFLAKE_IMAGE_TAG` or `OPENFLAKE_BACKUP=1`. See [deploy/openflake.env.example](../../deploy/openflake.env.example).
+
 Backups are written to `<install-dir>/backups/openflake-<timestamp>.sql`.
 
 ## Options

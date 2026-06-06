@@ -45,6 +45,8 @@ curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/p
   bash
 ```
 
+Or copy [deploy/openflake.env.example](deploy/openflake.env.example) to `openflake.env` next to the install script and run without inline env vars.
+
 The install script writes config to `~/.local/share/openflake/`, pulls images from Quay, and starts the stack with HTTPS on port 443.
 
 Pin a release tag:
@@ -159,7 +161,7 @@ sudo firewall-cmd --reload
 **SELinux** (RHEL/Fedora host bind mounts):
 
 - TLS paths in the SSL compose override use `:ro,z` so nginx and the backend can share the same certificate directory.
-- Set `OPENFLAKE_ATTACHMENTS_DIR` to a host path for attachment storage; Compose adds `:Z` on that backend bind mount automatically.
+- Set `OPENFLAKE_ATTACHMENTS_DIR` when installing, or `OPENFLAKE_ATTACHMENTS_MOUNT` in `.env` for manual Compose (install script adds `:Z` on SELinux).
 - If you mount paths outside Compose, relabel manually:
 
 ```bash

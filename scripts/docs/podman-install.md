@@ -60,6 +60,16 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
   --domain itsm.example.com
 ```
 
+### Config file (`openflake.env`)
+
+Place `openflake.env` in the same directory as the script you run (for example `scripts/openflake.env` or `~/.local/share/openflake/openflake.env`). It is sourced before CLI flags and environment variables. See [deploy/openflake.env.example](../../deploy/openflake.env.example).
+
+```bash
+cp deploy/openflake.env.example scripts/openflake.env
+# edit scripts/openflake.env
+./scripts/podman-install.sh
+```
+
 ## Options
 
 | Option | Description |
@@ -84,7 +94,7 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
 | `OPENFLAKE_SSL_DIR` | — | TLS directory (required unless `--http-only`) |
 | `OPENFLAKE_SSL_CERT` | `fullchain.pem` | Certificate filename in `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_SSL_KEY` | `privkey.pem` | Private key filename in `OPENFLAKE_SSL_DIR` |
-| `OPENFLAKE_ATTACHMENTS_DIR` | — | Host attachment storage path (`:Z` on SELinux when set) |
+| `OPENFLAKE_ATTACHMENTS_DIR` | — | Host attachment storage path (install script writes `OPENFLAKE_ATTACHMENTS_MOUNT` with `:Z` on SELinux) |
 | `OPENFLAKE_CERT_DIR` | — | Deprecated alias for `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_IMAGE_TAG` | `latest` | Quay image tag |
 | `OPENFLAKE_REGISTRY` | `quay.io/zleblanc` | Image registry prefix |
