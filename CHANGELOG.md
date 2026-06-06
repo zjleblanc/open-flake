@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Quay registry install and upgrade for Podman
+
+### Added
+
+- Registry-based Podman compose (`deploy/podman-compose.registry.yaml`) pulling `quay.io/zjleblanc/openflake-backend` and `openflake-frontend` images.
+- Deployment env template (`deploy/.env.example`) for registry URL, image tag, TLS cert path, and production secrets.
+- Install script (`scripts/podman-install.sh`) for one-line Quay pull-and-run with BYO certificates or HTTP-only mode.
+- Upgrade script (`scripts/podman-upgrade.sh`) to pull new images, recreate backend then frontend, wait for migrations, and optionally `pg_dump` backup.
+- Image publish script (`scripts/publish-images.sh`) and GitHub Actions workflow (`.github/workflows/publish-images.yml`) to push tagged releases to Quay.io.
+
+### Changed
+
+- Podman SSL compose override uses env-driven `OPENFLAKE_CERT_DIR`, `OPENFLAKE_BASE_URL`, and `OPENFLAKE_CORS_ORIGINS` (defaults preserve local dev behavior).
+- README documents Quay install, upgrade, rollback, maintainer publish workflow, and RHEL VM sizing for single-host Podman deployments.
+
 ## 2026-06-05 — SSL / HTTPS support
 
 ### Added

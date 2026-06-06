@@ -22,6 +22,137 @@ podman compose -f deploy/podman-compose.yaml up -d --build
 - **API (direct):** http://localhost:8000
 - **Default login:** `admin` / `admin`
 
+## Install from Quay (Podman)
+
+Pre-built images are published to [Quay.io](https://quay.io) (`quay.io/zjleblanc/openflake-backend`, `quay.io/zjleblanc/openflake-frontend`). Postgres still pulls from `docker.io/library/postgres:16-alpine`.
+
+### Quick install (HTTPS + your certificates)
+
+Place your TLS certificate and key on the host:
+
+- `fullchain.pem`
+- `privkey.pem`
+
+Then run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/podman-install.sh | \
+  OPENFLAKE_DOMAIN=itsm.example.com \
+  OPENFLAKE_CERT_DIR=/etc/ssl/openflake \
+  bash
+```
+
+The install script writes config to `~/.local/share/openflake/`, pulls images from Quay, and starts the stack with HTTPS on port 443.
+
+Pin a release tag:
+
+```bash
+OPENFLAKE_IMAGE_TAG=v0.1.0 OPENFLAKE_CERT_DIR=/etc/ssl/openflake bash -c "$(curl -fsSL .../podman-install.sh)"
+```
+
+HTTP-only (no certificates):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/podman-install.sh | bash -s -- --http-only
+```
+
+### Advanced install (compose only)
+
+```bash
+mkdir openflake && cd openflake
+curl -fsSLO https://raw.githubusercontent.com/zjleblanc/open-flake/main/deploy/{podman-compose.registry.yaml,podman-compose.ssl.yaml,.env.example}
+cp .env.example .env
+# Edit .env: OPENFLAKE_DOMAIN, OPENFLAKE_CERT_DIR, SECRET_KEY, POSTGRES_PASSWORD, ADMIN_PASSWORD
+podman compose -f podman-compose.registry.yaml -f podman-compose.ssl.yaml --env-file .env up -d
+```
+
+### Upgrade
+
+Pull a new release, redeploy containers, and apply database migrations (migrations run automatically when the backend starts):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/podman-upgrade.sh | \
+  OPENFLAKE_IMAGE_TAG=v0.2.0 \
+  bash
+```
+
+Or from an existing install:
+
+```bash
+OPENFLAKE_IMAGE_TAG=v0.2.0 ~/.local/share/openflake/podman-upgrade.sh
+```
+
+Optional PostgreSQL backup before upgrading:
+
+```bash
+OPENFLAKE_IMAGE_TAG=v0.2.0 OPENFLAKE_BACKUP=1 ~/.local/share/openflake/podman-upgrade.sh
+```
+
+**Migrations:** Schema changes apply on backend startup (`create_all` plus incremental column additions). Data persists in the `openflake-pg-data` Podman volume across upgrades. No manual SQL step is required.
+
+**Rollback:** Set `OPENFLAKE_IMAGE_TAG` in `~/.local/share/openflake/.env` to the previous version and re-run the upgrade script. Restore from a backup dump if needed.
+
+### Publishing images (maintainers)
+
+Create public Quay repositories `openflake-backend` and `openflake-frontend`, then add GitHub Actions secrets `QUAY_USERNAME` and `QUAY_TOKEN` (robot account). Tag a release to publish:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+Local build and push:
+
+```bash
+QUAY_USERNAME=... QUAY_TOKEN=... ./scripts/publish-images.sh --push --tag v0.1.0
+```
+
+Change default passwords and `SECRET_KEY` before production. Consider not exposing port 5432 publicly.
+
+### RHEL VM sizing
+
+OpenFlake runs all three containers on a single host. These specs assume RHEL 9 with Podman.
+
+| Profile | vCPU | RAM | Disk | Good for |
+|---------|------|-----|------|----------|
+| Lab / PoC | 2 | 4 GB | 40 GB | Dev, demos, &lt;10 users, light Ansible |
+| Small production | 4 | 8 GB | 100 GB | Small IT team, steady UI and API use |
+| Busier production | 4–8 | 16 GB | 200 GB+ | More users, larger CMDB, many attachments |
+
+**4 vCPU / 8 GB RAM / 100 GB disk** is the recommended starting point for production.
+
+Disk should cover PostgreSQL data, the attachments volume, OS/images, and `pg_dump` backups. Do not size disk for container images alone.
+
+**RHEL setup:**
+
+```bash
+sudo dnf install -y podman podman-compose
+sudo systemctl enable --now podman.socket
+```
+
+**Firewall** (expose HTTPS; keep Postgres off the public internet):
+
+```bash
+sudo firewall-cmd --permanent --add-service=https
+# Optional: direct API for Ansible on a trusted network
+sudo firewall-cmd --permanent --add-port=8000/tcp
+sudo firewall-cmd --reload
+```
+
+| Port | Exposure | Purpose |
+|------|----------|---------|
+| 443 | Public or load balancer | UI and API via nginx |
+| 8080 | Internal | HTTP redirect to HTTPS |
+| 8000 | Internal / Ansible subnet | Direct API (optional) |
+| 5432 | Never public | PostgreSQL |
+
+**SELinux** (if cert or data paths are host bind mounts):
+
+```bash
+sudo chcon -Rt svirt_sandbox_file_t /etc/ssl/openflake
+```
+
+Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres memory pressure grows with CMDB size, or attachment storage nears disk capacity.
+
 ## SSL / HTTPS
 
 OpenFlake terminates TLS at nginx (Podman) or the Kubernetes Ingress. The backend stays on plain HTTP internally behind the reverse proxy.
@@ -57,7 +188,7 @@ Mount your own certificate and key at:
 - `deploy/certs/fullchain.pem`
 - `deploy/certs/privkey.pem`
 
-Then use the SSL compose override as above. Update `BASE_URL` and `CORS_ORIGINS` in `deploy/podman-compose.ssl.yaml` to match your public hostname.
+Then use the SSL compose override as above. Set `OPENFLAKE_BASE_URL` and `OPENFLAKE_CORS_ORIGINS` in `deploy/.env.example` (or pass them via `--env-file`) to match your public hostname.
 
 ### Local development HTTPS
 

@@ -1,14 +1,14 @@
 services:
   backend:
     environment:
-      BASE_URL: https://localhost
-      CORS_ORIGINS: https://localhost,https://localhost:5173,http://localhost:8080,http://localhost:5173
+      BASE_URL: ${OPENFLAKE_BASE_URL:-https://localhost}
+      CORS_ORIGINS: ${OPENFLAKE_CORS_ORIGINS:-https://localhost,https://localhost:5173,http://localhost:8080,http://localhost:5173}
 
   frontend:
     ports:
       - "443:443"
     volumes:
-      - ./certs:/etc/nginx/certs:ro
+      - ${OPENFLAKE_CERT_DIR:-./certs}:/etc/nginx/certs:ro
     healthcheck:
       test:
         [
