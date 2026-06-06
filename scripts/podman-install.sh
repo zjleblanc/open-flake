@@ -101,8 +101,31 @@ validate_certs() {
   if [[ ! -f "${dir}/${cert}" || ! -f "${dir}/${key}" ]]; then
     echo "TLS certificates not found in ${dir}" >&2
     echo "Expected: ${cert} and ${key}" >&2
+    if [[ -d "${dir}" ]]; then
+      echo "Directory contents:" >&2
+      ls -la "${dir}" >&2 || true
+    fi
     exit 1
   fi
+}
+
+ssl_mount_host_dir() {
+  local mount_spec="$1"
+  echo "${mount_spec%%:*}"
+}
+
+validate_ssl_mount_certs() {
+  local mount_spec="$1"
+  local cert="$2"
+  local key="$3"
+  local host_dir
+  host_dir="$(ssl_mount_host_dir "${mount_spec}")"
+  if [[ -z "${host_dir}" || "${host_dir}" == "${mount_spec}" ]]; then
+    echo "Invalid OPENFLAKE_SSL_BACKEND_MOUNT: ${mount_spec}" >&2
+    echo "Expected format: /host/path:/etc/openflake/certs:ro" >&2
+    exit 1
+  fi
+  validate_certs "${host_dir}" "${cert}" "${key}"
 }
 
 derive_urls() {
@@ -249,6 +272,7 @@ if [[ "${HTTP_ONLY}" -eq 0 ]]; then
   ensure_ssl_mount_env
   load_compose_env
   require_ssl_mount_vars
+  validate_ssl_mount_certs "${OPENFLAKE_SSL_BACKEND_MOUNT}" "${SSL_CERT}" "${SSL_KEY}"
 fi
 echo "Pulling images..."
 run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" pull

@@ -7,7 +7,9 @@ RUN pip install --no-cache-dir --prefix=/install .
 
 FROM docker.io/library/python:3.12-slim
 
-RUN useradd --create-home --uid 1001 openflake
+RUN apt-get update && apt-get install -y --no-install-recommends gosu && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --uid 1001 openflake
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
@@ -16,11 +18,11 @@ COPY backend/pyproject.toml .
 COPY deploy/backend-entrypoint.sh /app/entrypoint.sh
 COPY deploy/backend-healthcheck.sh /app/backend-healthcheck.sh
 
-RUN mkdir -p /data/attachments /etc/openflake/certs && \
+RUN mkdir -p /data/attachments /etc/openflake/certs /run/openflake && \
     chmod +x /app/entrypoint.sh /app/backend-healthcheck.sh && \
-    chown -R openflake:openflake /data /etc/openflake
+    chown -R openflake:openflake /data /etc/openflake /run/openflake
 
-USER openflake
+USER root
 
 ENV PYTHONUNBUFFERED=1
 ENV ATTACHMENTS_PATH=/data/attachments

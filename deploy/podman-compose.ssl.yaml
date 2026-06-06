@@ -7,6 +7,7 @@ services:
       OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
       OPENFLAKE_SSL_REQUIRED: "1"
     volumes:
+      - ${OPENFLAKE_ATTACHMENTS_MOUNT:-openflake-attachments:/data/attachments}
       - ${OPENFLAKE_SSL_BACKEND_MOUNT}
     healthcheck:
       test: ["CMD", "/app/backend-healthcheck.sh"]

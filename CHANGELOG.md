@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Fix backend TLS startup for Podman SSL deploy
+
+### Fixed
+
+- Backend entrypoint runs as root, copies mounted TLS files into `/run/openflake/certs` with `openflake`-owned permissions, and starts uvicorn via `gosu` (fixes exit when host keys are root-only or unreadable by uid 1001).
+- SSL compose keeps the attachments volume when overriding backend volumes.
+- Install and upgrade scripts validate certificate files on the `OPENFLAKE_SSL_BACKEND_MOUNT` host path before compose up; backend entrypoint lists mount directory contents when `OPENFLAKE_SSL_REQUIRED` is set but certs are missing.
+
 ## 2026-06-05 — Fix Podman SSL nginx startup and healthchecks
 
 ### Fixed
