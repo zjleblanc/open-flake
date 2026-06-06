@@ -5,6 +5,7 @@ services:
       CORS_ORIGINS: ${OPENFLAKE_CORS_ORIGINS:-https://localhost,https://localhost:5173,http://localhost:8080,http://localhost:5173}
       OPENFLAKE_SSL_CERT: ${OPENFLAKE_SSL_CERT:-fullchain.pem}
       OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
+      OPENFLAKE_SSL_REQUIRED: "1"
     volumes:
       - ${OPENFLAKE_SSL_BACKEND_MOUNT}
     healthcheck:
@@ -14,6 +15,8 @@ services:
     environment:
       OPENFLAKE_SSL_CERT: ${OPENFLAKE_SSL_CERT:-fullchain.pem}
       OPENFLAKE_SSL_KEY: ${OPENFLAKE_SSL_KEY:-privkey.pem}
+      OPENFLAKE_HTTPS_PORT: ${OPENFLAKE_HTTPS_PORT:-8443}
+      OPENFLAKE_SSL_REQUIRED: "1"
     ports:
       - "${OPENFLAKE_HTTPS_PORT:-8443}:443"
     volumes:
@@ -22,5 +25,5 @@ services:
       test:
         [
           "CMD-SHELL",
-          "if [ -f /var/run/nginx-ssl-enabled ]; then wget -q --no-check-certificate --spider https://localhost/; else wget -q --spider http://localhost:8080/; fi",
+          "if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi",
         ]

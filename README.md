@@ -157,7 +157,7 @@ sudo firewall-cmd --reload
 | 8080 | Internal | HTTP redirect to HTTPS |
 | 8000 | Internal / Ansible subnet | Direct API (optional) |
 
-**SELinux** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. If containers cannot read host certificate or attachment paths, adjust SELinux labels on those directories per your site policy.
+**SELinux** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. Label TLS and attachment paths so containers can read them, for example `sudo chcon -R -t container_file_t /etc/ssl/openflake`. If HTTPS on port 8443 resets the connection, check `podman logs openflake-frontend` for missing or unreadable certificate files.
 
 Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres memory pressure grows with CMDB size, or attachment storage nears disk capacity.
 

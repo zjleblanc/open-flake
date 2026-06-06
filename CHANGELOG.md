@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Fix Podman SSL nginx startup and healthchecks
+
+### Fixed
+
+- SSL compose sets `OPENFLAKE_SSL_REQUIRED` and validates readable certificate files before nginx/backend start (avoids HTTP-only fallback while host port 8443 maps to closed container 443).
+- nginx HTTP redirect includes `OPENFLAKE_HTTPS_PORT`; frontend healthcheck uses `nc` on port 443 instead of wget with unsupported certificate flags.
+
 ## 2026-06-05 — Rootless Podman ports for registry install
 
 ### Changed
