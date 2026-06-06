@@ -40,6 +40,11 @@ start_with_podman_run() {
   podman network exists openflake-net 2>/dev/null || podman network create openflake-net
   podman volume exists openflake-pg-data 2>/dev/null || podman volume create openflake-pg-data
 
+  local hba_startup='cp /etc/postgresql/pg_hba.conf.ro /var/lib/postgresql/data/pg_hba.openflake.conf
+chown postgres:postgres /var/lib/postgresql/data/pg_hba.openflake.conf
+chmod 600 /var/lib/postgresql/data/pg_hba.openflake.conf
+exec /usr/local/bin/docker-entrypoint.sh postgres -c "hba_file=/var/lib/postgresql/data/pg_hba.openflake.conf"'
+
   podman run -d \
     --name openflake-postgres \
     --network openflake-net \
@@ -49,14 +54,13 @@ start_with_podman_run() {
     -e POSTGRES_DB=openflake \
     -v openflake-pg-data:/var/lib/postgresql/data \
     -v "$ROOT/deploy/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf.ro:ro" \
-    -v "$ROOT/deploy/postgres/docker-entrypoint.sh:/etc/postgresql/docker-entrypoint.sh:ro" \
     --entrypoint /bin/sh \
     --health-cmd "pg_isready -U openflake -d openflake" \
     --health-interval 5s \
     --health-timeout 5s \
     --health-retries 10 \
     docker.io/library/postgres:16-alpine \
-    /etc/postgresql/docker-entrypoint.sh
+    -ec "${hba_startup}"
 }
 
 if podman container exists openflake-postgres 2>/dev/null; then

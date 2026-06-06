@@ -4,7 +4,13 @@ services:
     container_name: openflake-postgres
     ports:
       - "5432:5432"
-    entrypoint: ["/bin/sh", "/etc/postgresql/docker-entrypoint.sh"]
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        cp /etc/postgresql/pg_hba.conf.ro /var/lib/postgresql/data/pg_hba.openflake.conf
+        chown postgres:postgres /var/lib/postgresql/data/pg_hba.openflake.conf
+        chmod 600 /var/lib/postgresql/data/pg_hba.openflake.conf
+        exec /usr/local/bin/docker-entrypoint.sh postgres -c "hba_file=/var/lib/postgresql/data/pg_hba.openflake.conf"
     environment:
       POSTGRES_USER: openflake
       POSTGRES_PASSWORD: openflake
@@ -12,7 +18,6 @@ services:
     volumes:
       - openflake-pg-data:/var/lib/postgresql/data
       - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf.ro:ro
-      - ./postgres/docker-entrypoint.sh:/etc/postgresql/docker-entrypoint.sh:ro
     networks:
       - openflake-net
     healthcheck:

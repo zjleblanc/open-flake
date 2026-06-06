@@ -108,7 +108,7 @@ cp deploy/openflake.env.example scripts/openflake.env
 
 - `~/.local/share/openflake/.env` — deployment configuration
 - `podman-compose.registry.yaml` and `podman-compose.ssl.yaml` — compose files
-- `postgres/pg_hba.conf` and `postgres/docker-entrypoint.sh` — PostgreSQL client access rules (copied into the data volume at container start)
+- `postgres/pg_hba.conf` — PostgreSQL client access rules (copied into the data volume at container start)
 - `podman-upgrade.sh` — copy of the upgrade script
 - `installed-version` — records the deployed image tag
 

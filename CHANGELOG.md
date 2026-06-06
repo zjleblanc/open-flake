@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-06 — Inline Postgres HBA startup for rootless Podman
+
+### Fixed
+
+- Bind-mounted `docker-entrypoint.sh` also fails with permission denied under rootless Podman; compose and `ensure-postgres.sh` copy `pg_hba.conf` via inline shell instead of a mounted script.
+
+### Changed
+
+- `podman-install.sh` no longer downloads `postgres/docker-entrypoint.sh`; only `pg_hba.conf` is shipped to the install directory.
+
 ## 2026-06-06 — Fix Postgres pg_hba permission denied under rootless Podman
 
 ### Fixed
