@@ -93,37 +93,14 @@ set_env_var() {
   fi
 }
 
-reject_letsencrypt_ssl_dir() {
-  local dir="$1"
-  if [[ "${dir}" == /etc/letsencrypt/* ]]; then
-    cat >&2 <<EOF
-OPENFLAKE_SSL_DIR cannot be under /etc/letsencrypt (Podman cannot SELinux-relabel those paths).
-
-Copy certificates to a host directory such as /etc/ssl/openflake, update ${INSTALL_DIR}/.env, and re-run.
-EOF
-    exit 1
-  fi
-}
-
-ssl_mount_suffix() {
-  if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce 2>/dev/null)" != "Disabled" ]]; then
-    echo ":ro,z"
-    return
-  fi
-  echo ":ro"
-}
-
 ensure_ssl_mount_env() {
   local env_file="${INSTALL_DIR}/.env"
   # shellcheck source=/dev/null
   source "${env_file}"
   local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
   [[ -n "${ssl_dir}" ]] || return 0
-  reject_letsencrypt_ssl_dir "${ssl_dir}"
-  local suffix
-  suffix="$(ssl_mount_suffix)"
-  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs${suffix}"
-  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs${suffix}"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs:ro"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs:ro"
 }
 
 load_compose_env() {

@@ -46,8 +46,8 @@ After generating certs:
 
 ```bash
 OPENFLAKE_SSL_DIR=deploy/certs \
-OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro,z \
-OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro,z \
+OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro \
+OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro \
 podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
 ```
 

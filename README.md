@@ -158,16 +158,7 @@ sudo firewall-cmd --reload
 | 8000 | Internal / Ansible subnet | Direct API (optional) |
 | 5432 | Never public | PostgreSQL |
 
-**SELinux** (RHEL/Fedora host bind mounts):
-
-- TLS paths in the SSL compose override use `:ro,z` so nginx and the backend can share the same certificate directory.
-- Do not set `OPENFLAKE_SSL_DIR` under `/etc/letsencrypt/` — install and upgrade reject those paths because Podman cannot SELinux-relabel them. Copy certificates to e.g. `/etc/ssl/openflake` first; `:ro,z` relabeling applies on that directory.
-- Set `OPENFLAKE_ATTACHMENTS_DIR` when installing, or `OPENFLAKE_ATTACHMENTS_MOUNT` in `.env` for manual Compose (install script adds `:Z` on SELinux).
-- If you mount paths outside Compose, relabel manually:
-
-```bash
-sudo chcon -Rt svirt_sandbox_file_t /etc/ssl/openflake /var/lib/openflake/attachments
-```
+**SELinux** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. If containers cannot read host certificate or attachment paths, adjust SELinux labels on those directories per your site policy.
 
 Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres memory pressure grows with CMDB size, or attachment storage nears disk capacity.
 
@@ -187,8 +178,8 @@ Start with the SSL compose override (mounts `deploy/certs/` by default and publi
 
 ```bash
 OPENFLAKE_SSL_DIR=deploy/certs \
-OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro,z \
-OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro,z \
+OPENFLAKE_SSL_BACKEND_MOUNT=deploy/certs:/etc/openflake/certs:ro \
+OPENFLAKE_SSL_FRONTEND_MOUNT=deploy/certs:/etc/nginx/certs:ro \
 podman compose -f deploy/podman-compose.yaml -f deploy/podman-compose.ssl.yaml up -d --build
 ```
 

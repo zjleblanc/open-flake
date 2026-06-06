@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Remove automatic SELinux relabeling from Podman mounts
+
+### Changed
+
+- Install and upgrade scripts use read-only TLS mounts (`:ro`) and plain attachment bind mounts without `:z` or `:Z`; removed Let's Encrypt path rejection tied to relabel failures.
+
 ## 2026-06-05 — Reject Let's Encrypt paths for Podman TLS mounts
 
 ### Fixed
