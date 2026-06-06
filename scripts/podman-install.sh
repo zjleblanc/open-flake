@@ -107,6 +107,15 @@ validate_certs() {
     fi
     exit 1
   fi
+  if [[ ! -r "${dir}/${cert}" || ! -r "${dir}/${key}" ]]; then
+    echo "TLS certificate files exist but are not readable by $(id -un) (uid $(id -u))." >&2
+    echo "Rootless Podman bind mounts use your host user for permission checks, not container root." >&2
+    echo "root:root mode 600 files (typical after copying from Let's Encrypt) cannot be read even with container_file_t." >&2
+    ls -la "${dir}/${cert}" "${dir}/${key}" >&2 || true
+    echo "Fix with:" >&2
+    echo "  sudo chmod 644 ${dir}/${cert} ${dir}/${key}" >&2
+    exit 1
+  fi
 }
 
 ssl_mount_host_dir() {

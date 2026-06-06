@@ -25,9 +25,10 @@ fail_ssl() {
 
 if [ -f "${CERT_PATH}" ] && [ -f "${KEY_PATH}" ]; then
   if [ ! -r "${CERT_PATH}" ] || [ ! -r "${KEY_PATH}" ]; then
-    fail_ssl "TLS certificate files are not readable inside the container.
-Fix permissions or SELinux labels on the host directory, for example:
-  sudo chcon -R -t container_file_t <your-cert-directory>"
+    # shellcheck source=/dev/null
+    . /docker-entrypoint.d/ssl-readability-hint.sh
+    ssl_print_unreadable_hint "${SSL_DIR}" "${SSL_CERT}" "${SSL_KEY}"
+    exit 1
   fi
   echo "SSL certificates found; enabling HTTPS on port 443"
   echo "  certificate: ${CERT_PATH}"

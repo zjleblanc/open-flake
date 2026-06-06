@@ -6,7 +6,7 @@ Pull updated OpenFlake images, redeploy containers in a migration-safe order, an
 
 - An existing install created by [podman-install.sh](podman-install.md)
 - **Podman** with compose support
-- **curl** — to poll `http://localhost:8000/health/ready` during upgrade
+- **curl** — polls backend `/health/ready` during upgrade (HTTPS when SSL compose is active)
 - Running `openflake-postgres` container (not recreated during upgrade)
 
 Install directory must contain:

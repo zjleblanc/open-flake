@@ -123,6 +123,15 @@ Podman volumes `openflake-pg-data` and `openflake-attachments` persist database 
 | API (HTTP-only) | `http://localhost:8000` |
 | Default login | `admin` / value of `ADMIN_PASSWORD` |
 
+## TLS permissions (rootless Podman)
+
+Certificate files must be readable by the user running Podman, not only labeled for SELinux. After copying from Let's Encrypt, fix ownership/mode on the host:
+
+```bash
+sudo chmod 644 /etc/ssl/openflake/fullchain.pem /etc/ssl/openflake/privkey.pem
+sudo chcon -R -t container_file_t /etc/ssl/openflake
+```
+
 ## Related
 
 - [podman-upgrade.sh](podman-upgrade.md) — upgrade an existing install

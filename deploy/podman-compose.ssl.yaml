@@ -11,6 +11,10 @@ services:
       - ${OPENFLAKE_SSL_BACKEND_MOUNT}
     healthcheck:
       test: ["CMD", "/app/backend-healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
 
   frontend:
     environment:

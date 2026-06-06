@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Fix rootless TLS permissions and backend SSL healthchecks
+
+### Fixed
+
+- Shared TLS readability hints explain rootless Podman needs host-readable cert files (mode `600` root keys), not only `container_file_t`; install and upgrade scripts fail early with `chmod 644` guidance.
+- Backend healthcheck probes HTTPS when SSL is enabled (`OPENFLAKE_SSL_REQUIRED` or mounted certs), uses probe timeouts, and registry/SSL compose use `/app/backend-healthcheck.sh` (fixes HTTP probes hanging against TLS-only port 8000).
+- SSL compose backend healthcheck sets a 90s start period for migrations; upgrade script polls `https://localhost:8000/health/ready` when SSL compose is active.
+
 ## 2026-06-05 — Fix backend TLS startup for Podman SSL deploy
 
 ### Fixed

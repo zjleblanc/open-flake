@@ -14,9 +14,9 @@ run_uvicorn() {
 
 if [ -f "${CERT_PATH}" ] && [ -f "${KEY_PATH}" ]; then
   if [ ! -r "${CERT_PATH}" ] || [ ! -r "${KEY_PATH}" ]; then
-    echo "TLS certificate files are not readable inside the container." >&2
-    echo "Fix permissions or SELinux labels on the host directory, for example:" >&2
-    echo "  sudo chcon -R -t container_file_t <your-cert-directory>" >&2
+    # shellcheck source=/dev/null
+    . /app/ssl-readability-hint.sh
+    ssl_print_unreadable_hint "${SSL_DIR}" "${SSL_CERT}" "${SSL_KEY}"
     exit 1
   fi
   install -d -o openflake -g openflake -m 750 "${RUN_SSL_DIR}"

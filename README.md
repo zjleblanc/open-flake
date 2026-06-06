@@ -157,7 +157,7 @@ sudo firewall-cmd --reload
 | 8080 | Internal | HTTP redirect to HTTPS |
 | 8000 | Internal / Ansible subnet | Direct API (optional) |
 
-**SELinux** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. Label TLS and attachment paths so containers can read them, for example `sudo chcon -R -t container_file_t /etc/ssl/openflake`. If HTTPS on port 8443 resets the connection, check `podman logs openflake-frontend` for missing or unreadable certificate files.
+**SELinux and TLS permissions** (RHEL/Fedora host bind mounts): Compose mounts do not apply `:z` or `:Z` relabeling. Label TLS paths with `sudo chcon -R -t container_file_t /etc/ssl/openflake`. Rootless Podman also requires certificate files to be readable by the user running Podman — keys copied from Let's Encrypt as `root:root` mode `600` must be opened up, for example `sudo chmod 644 /etc/ssl/openflake/fullchain.pem /etc/ssl/openflake/privkey.pem`. If HTTPS on port 8443 resets the connection, check `podman logs openflake-frontend` for missing or unreadable certificate files.
 
 Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres memory pressure grows with CMDB size, or attachment storage nears disk capacity.
 

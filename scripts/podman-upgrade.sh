@@ -136,6 +136,15 @@ validate_certs() {
     fi
     exit 1
   fi
+  if [[ ! -r "${dir}/${cert}" || ! -r "${dir}/${key}" ]]; then
+    echo "TLS certificate files exist but are not readable by $(id -un) (uid $(id -u))." >&2
+    echo "Rootless Podman bind mounts use your host user for permission checks, not container root." >&2
+    echo "root:root mode 600 files (typical after copying from Let's Encrypt) cannot be read even with container_file_t." >&2
+    ls -la "${dir}/${cert}" "${dir}/${key}" >&2 || true
+    echo "Fix with:" >&2
+    echo "  sudo chmod 644 ${dir}/${cert} ${dir}/${key}" >&2
+    exit 1
+  fi
 }
 
 validate_ssl_mount_certs() {
@@ -185,9 +194,15 @@ backup_database() {
 
 wait_for_backend() {
   local elapsed=0
+  local curl_args=(-fsS)
+  local url="http://localhost:8000/health/ready"
+  if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
+    url="https://localhost:8000/health/ready"
+    curl_args=(-fsSk)
+  fi
   echo "Waiting for backend migrations (up to ${HEALTH_TIMEOUT}s)..."
   while [[ "${elapsed}" -lt "${HEALTH_TIMEOUT}" ]]; do
-    if curl -fsS "http://localhost:8000/health/ready" >/dev/null 2>&1; then
+    if curl "${curl_args[@]}" "${url}" >/dev/null 2>&1; then
       echo "Backend is ready."
       return 0
     fi

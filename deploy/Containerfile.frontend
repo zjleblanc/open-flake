@@ -14,6 +14,7 @@ COPY deploy/nginx.http.conf /etc/nginx/templates/http.conf
 COPY deploy/nginx.http-redirect.conf /etc/nginx/templates/http-redirect.conf
 COPY deploy/nginx.ssl.conf /etc/nginx/templates/ssl.conf
 COPY deploy/nginx-entrypoint.sh /docker-entrypoint.d/40-openflake-ssl.sh
+COPY deploy/ssl-readability-hint.sh /docker-entrypoint.d/ssl-readability-hint.sh
 RUN chmod +x /docker-entrypoint.d/40-openflake-ssl.sh
 COPY --from=builder /build/dist /usr/share/nginx/html
 

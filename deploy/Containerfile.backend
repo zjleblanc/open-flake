@@ -17,6 +17,7 @@ COPY backend/app ./app
 COPY backend/pyproject.toml .
 COPY deploy/backend-entrypoint.sh /app/entrypoint.sh
 COPY deploy/backend-healthcheck.sh /app/backend-healthcheck.sh
+COPY deploy/ssl-readability-hint.sh /app/ssl-readability-hint.sh
 
 RUN mkdir -p /data/attachments /etc/openflake/certs /run/openflake && \
     chmod +x /app/entrypoint.sh /app/backend-healthcheck.sh && \
