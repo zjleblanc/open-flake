@@ -12,6 +12,8 @@ OpenFlake uses a standard **3-tier architecture** deployed as three containers:
 | Application | `openflake-backend` | FastAPI ServiceNow-compatible APIs |
 | Data | `openflake-postgres` | PostgreSQL 16 |
 
+Script prerequisites and usage: [scripts/README.md](scripts/README.md).
+
 ## Quick Start (Podman)
 
 ```bash
@@ -94,16 +96,24 @@ OPENFLAKE_IMAGE_TAG=v0.2.0 OPENFLAKE_BACKUP=1 ~/.local/share/openflake/podman-up
 
 ### Publishing images (maintainers)
 
+Tagging strategy for stable, pre-release, and dev images: [docs/release-tagging.md](docs/release-tagging.md).
+
 Create public Quay repositories `openflake-backend` and `openflake-frontend`, then add GitHub Actions secrets `QUAY_USERNAME` and `QUAY_TOKEN` (robot account). Tag a release to publish:
 
 ```bash
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-Local build and push:
+Local build and push (multi-arch `linux/amd64` + `linux/arm64` by default):
 
 ```bash
 QUAY_USERNAME=... QUAY_TOKEN=... ./scripts/publish-images.sh --push --tag v0.1.0
+```
+
+Host-native build only:
+
+```bash
+./scripts/publish-images.sh --single-arch
 ```
 
 Change default passwords and `SECRET_KEY` before production. Consider not exposing port 5432 publicly.
@@ -363,12 +373,11 @@ Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Com
 ### Backend
 
 ```bash
-cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env
+pip install -e "backend/.[dev]"
+cp backend/.env.example backend/.env
 # Requires local PostgreSQL or use podman compose for postgres only
-uvicorn app.main:app --reload --port 8000
+cd backend && uvicorn app.main:app --reload --port 8000
 ```
 
 ### Lab seed data (optional)
@@ -376,7 +385,6 @@ uvicorn app.main:app --reload --port 8000
 After the base seed runs (on first backend startup), populate a demo ITIL environment with users, groups, CMDB CIs, incidents, problems, changes, and catalog requests:
 
 ```bash
-cd backend
 source .venv/bin/activate
 openflake-seed-lab
 # or: python -m app.seed.lab
@@ -395,8 +403,8 @@ npm run dev
 ### Tests
 
 ```bash
-cd backend
-pytest
+source .venv/bin/activate
+cd backend && pytest
 ```
 
 ## Configuration

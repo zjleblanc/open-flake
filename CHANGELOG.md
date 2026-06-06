@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Multi-arch image publish and release tagging
+
+### Added
+
+- Release and image tagging guide (`docs/release-tagging.md`) for stable, pre-release, and dev tags, including when Quay `latest` is updated.
+- Scripts index (`scripts/README.md`) and per-script reference docs under `scripts/docs/`.
+
+### Changed
+
+- `publish-images.sh` builds multi-arch manifests (`linux/amd64`, `linux/arm64`) by default; adds `--single-arch`, `--platforms`, and `OPENFLAKE_PLATFORMS`.
+- GitHub Actions publish workflow uses Buildx and QEMU for multi-arch builds; updates `latest` only for stable semver tags (`vMAJOR.MINOR.PATCH`).
+- README links to scripts docs and release tagging guide; documents multi-arch publish and host-native `--single-arch` builds.
+
 ## 2026-06-05 — Quay registry install and upgrade for Podman
 
 ### Added

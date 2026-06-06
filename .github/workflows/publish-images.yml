@@ -28,6 +28,22 @@ jobs:
             echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Detect stable release
+        id: stable
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if [[ "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stable=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to Quay.io
         uses: docker/login-action@v3
         with:
@@ -35,22 +51,37 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_TOKEN }}
 
+      - name: Set image tags
+        id: tags
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          BACKEND="quay.io/zjleblanc/openflake-backend:${TAG}"
+          FRONTEND="quay.io/zjleblanc/openflake-frontend:${TAG}"
+          if [[ "${{ steps.stable.outputs.stable }}" == "true" ]]; then
+            BACKEND="${BACKEND}"$'\n'"quay.io/zjleblanc/openflake-backend:latest"
+            FRONTEND="${FRONTEND}"$'\n'"quay.io/zjleblanc/openflake-frontend:latest"
+          fi
+          echo "backend<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${BACKEND}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          echo "frontend<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${FRONTEND}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/Containerfile.backend
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            quay.io/zjleblanc/openflake-backend:${{ steps.meta.outputs.tag }}
-            quay.io/zjleblanc/openflake-backend:latest
+          tags: ${{ steps.tags.outputs.backend }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v6
         with:
           context: .
           file: deploy/Containerfile.frontend
+          platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            quay.io/zjleblanc/openflake-frontend:${{ steps.meta.outputs.tag }}
-            quay.io/zjleblanc/openflake-frontend:latest
+          tags: ${{ steps.tags.outputs.frontend }}

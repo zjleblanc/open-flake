@@ -2,12 +2,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$ROOT/backend"
+VENV="$ROOT/.venv"
 
-if [[ ! -x ".venv/bin/python" ]]; then
-  echo "Backend venv not found. Run: cd backend && python -m venv .venv && pip install -e '.[dev]'"
+if [[ ! -x "$VENV/bin/python" ]]; then
+  echo "Backend venv not found. Run: python -m venv .venv && pip install -e 'backend/.[dev]'"
   exit 1
 fi
+
+cd "$ROOT/backend"
 
 if ! (echo >/dev/tcp/localhost/5432) 2>/dev/null; then
   echo "PostgreSQL is not reachable on localhost:5432."
@@ -15,4 +17,4 @@ if ! (echo >/dev/tcp/localhost/5432) 2>/dev/null; then
   exit 1
 fi
 
-exec .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+exec "$VENV/bin/python" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
