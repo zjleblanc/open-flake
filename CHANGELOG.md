@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Backend TLS certificate support
+
+### Added
+
+- Backend container entrypoint enables HTTPS on port 8000 when TLS files are mounted at `/etc/openflake/certs` (same `OPENFLAKE_SSL_DIR`, `OPENFLAKE_SSL_CERT`, and `OPENFLAKE_SSL_KEY` as nginx).
+- SSL-aware backend healthcheck and Podman SSL compose override mounts certificates into the backend service.
+
+### Changed
+
+- nginx HTTPS config proxies to the backend over TLS when the SSL stack is active (`proxy_ssl_verify off` for internal mesh traffic).
+
 ## 2026-06-05 — Fix frontend multi-arch container builds
 
 ### Fixed

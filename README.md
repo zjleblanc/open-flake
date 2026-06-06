@@ -166,7 +166,7 @@ Scale beyond a single VM when CPU stays above ~70% under normal load, Postgres m
 
 ## SSL / HTTPS
 
-OpenFlake terminates TLS at nginx (Podman) or the Kubernetes Ingress. The backend stays on plain HTTP internally behind the reverse proxy.
+OpenFlake terminates TLS at nginx (Podman) or the Kubernetes Ingress. When the SSL compose override is used, the same certificate directory is mounted into the backend and nginx; the backend serves HTTPS on port 8000 and nginx proxies to it over TLS internally.
 
 ### Podman with self-signed certificates
 
@@ -193,7 +193,7 @@ podman compose -f deploy/podman-compose.registry.yaml -f deploy/podman-compose.s
 
 - **UI:** https://localhost (accept the browser warning for self-signed certs)
 - **HTTP redirect:** http://localhost:8080 redirects to HTTPS when certificates are mounted
-- **API (direct):** http://localhost:8000 remains available for Ansible and direct clients
+- **API (direct):** https://localhost:8000 when certificates are mounted (http://localhost:8000 without the SSL override)
 
 Set a custom domain in the certificate SAN:
 
@@ -242,7 +242,18 @@ Set `BASE_URL` and `CORS_ORIGINS` in the `openflake-secrets` Secret to your publ
 
 ### Ansible with HTTPS
 
-Continue using the direct API on port 8000 over HTTP, or route through nginx:
+Use the UI hostname through nginx, or the direct API on port 8000 (HTTPS when the SSL compose override mounts certificates):
+
+```yaml
+- servicenow.itsm.incident:
+    instance:
+      host: https://localhost:8000
+      username: admin
+      password: admin
+    # ...
+```
+
+Or route API calls through nginx on port 443:
 
 ```yaml
 - servicenow.itsm.incident:

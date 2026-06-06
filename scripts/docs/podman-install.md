@@ -7,7 +7,7 @@ Install OpenFlake from pre-built container images on Quay.io. Downloads compose 
 - **Podman** 4.1+ with compose support (`podman compose`) or `podman-compose`
 - **curl** — to download compose files and the upgrade script
 - **openssl** or **python3** — to auto-generate `SECRET_KEY` if not provided
-- For HTTPS (default path): TLS files on the host in a directory you mount into nginx. By default the install expects:
+- For HTTPS (default path): TLS files on the host in a directory mounted into nginx and the backend. By default the install expects:
   - `fullchain.pem` (certificate)
   - `privkey.pem` (private key)
 
@@ -65,7 +65,7 @@ OPENFLAKE_IMAGE_TAG=v0.1.0 ./scripts/podman-install.sh \
 | Option | Description |
 |--------|-------------|
 | `--domain DOMAIN` | Public hostname for UI and CORS (default: `localhost`) |
-| `--ssl-dir PATH` | Directory mounted into nginx for TLS files |
+| `--ssl-dir PATH` | Directory mounted into nginx and backend for TLS files |
 | `--ssl-cert NAME` | Certificate filename within `--ssl-dir` (default: `fullchain.pem`) |
 | `--ssl-key NAME` | Private key filename within `--ssl-dir` (default: `privkey.pem`) |
 | `--cert-dir PATH` | Deprecated alias for `--ssl-dir` |
@@ -106,7 +106,8 @@ Podman volumes `openflake-pg-data` and `openflake-attachments` persist database 
 |----------|-----|
 | UI (HTTPS) | `https://<domain>` |
 | UI (HTTP-only) | `http://localhost:8080` |
-| API | `http://localhost:8000` |
+| API (HTTPS) | `https://<domain>:8000` |
+| API (HTTP-only) | `http://localhost:8000` |
 | Default login | `admin` / value of `ADMIN_PASSWORD` |
 
 ## Related

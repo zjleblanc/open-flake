@@ -13,8 +13,12 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY backend/app ./app
 COPY backend/pyproject.toml .
+COPY deploy/backend-entrypoint.sh /app/entrypoint.sh
+COPY deploy/backend-healthcheck.sh /app/backend-healthcheck.sh
 
-RUN mkdir -p /data/attachments && chown -R openflake:openflake /data
+RUN mkdir -p /data/attachments /etc/openflake/certs && \
+    chmod +x /app/entrypoint.sh /app/backend-healthcheck.sh && \
+    chown -R openflake:openflake /data /etc/openflake
 
 USER openflake
 
@@ -23,4 +27,6 @@ ENV ATTACHMENTS_PATH=/data/attachments
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/app/entrypoint.sh"]
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 --start-period=15s \
+    CMD ["/app/backend-healthcheck.sh"]

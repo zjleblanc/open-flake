@@ -50,6 +50,8 @@ OPENFLAKE_SSL_DIR=deploy/certs podman compose -f deploy/podman-compose.yaml -f d
 
 Set `OPENFLAKE_SSL_DIR` to the absolute path of `deploy/certs` when using the registry install script.
 
+With the SSL compose override, the same certificates are mounted into the backend (HTTPS on port 8000) and nginx (HTTPS on port 443).
+
 Browsers will show a warning for self-signed certs — expected for development.
 
 ## Related
