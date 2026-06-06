@@ -17,6 +17,8 @@ On macOS, start Podman before running:
 podman machine start
 ```
 
+On RHEL/Fedora with SELinux, `OPENFLAKE_SSL_DIR` must not be under `/etc/letsencrypt/` — install and upgrade reject those paths. Copy certificates to e.g. `/etc/ssl/openflake` and use `--ssl-dir /etc/ssl/openflake`.
+
 ## Usage
 
 ### HTTPS install (production)

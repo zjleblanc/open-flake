@@ -136,10 +136,37 @@ attachments_mount() {
   echo "${dir}:/data/attachments${suffix}"
 }
 
+reject_letsencrypt_ssl_dir() {
+  local dir="$1"
+  if [[ "${dir}" == /etc/letsencrypt/* ]]; then
+    cat >&2 <<EOF
+OPENFLAKE_SSL_DIR cannot be under /etc/letsencrypt (Podman cannot SELinux-relabel those paths).
+
+Copy certificates to a host directory such as /etc/ssl/openflake, then re-run with:
+  --ssl-dir /etc/ssl/openflake
+
+Example:
+  sudo mkdir -p /etc/ssl/openflake
+  sudo cp -L ${dir}/${SSL_CERT} ${dir}/${SSL_KEY} /etc/ssl/openflake/
+EOF
+    exit 1
+  fi
+}
+
+ssl_mount_suffix() {
+  if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce 2>/dev/null)" != "Disabled" ]]; then
+    echo ":ro,z"
+    return
+  fi
+  echo ":ro"
+}
+
 ssl_mounts() {
   local dir="$1"
-  OPENFLAKE_SSL_BACKEND_MOUNT="${dir}:/etc/openflake/certs:ro,z"
-  OPENFLAKE_SSL_FRONTEND_MOUNT="${dir}:/etc/nginx/certs:ro,z"
+  local suffix
+  suffix="$(ssl_mount_suffix)"
+  OPENFLAKE_SSL_BACKEND_MOUNT="${dir}:/etc/openflake/certs${suffix}"
+  OPENFLAKE_SSL_FRONTEND_MOUNT="${dir}:/etc/nginx/certs${suffix}"
 }
 
 set_env_var() {
@@ -160,8 +187,11 @@ ensure_ssl_mount_env() {
   source "${env_file}"
   local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
   [[ -n "${ssl_dir}" ]] || return 0
-  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs:ro,z"
-  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs:ro,z"
+  reject_letsencrypt_ssl_dir "${ssl_dir}"
+  local suffix
+  suffix="$(ssl_mount_suffix)"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_BACKEND_MOUNT" "${ssl_dir}:/etc/openflake/certs${suffix}"
+  set_env_var "${env_file}" "OPENFLAKE_SSL_FRONTEND_MOUNT" "${ssl_dir}:/etc/nginx/certs${suffix}"
 }
 
 load_compose_env() {
@@ -186,6 +216,7 @@ if [[ "${HTTP_ONLY}" -eq 0 ]]; then
     echo "OPENFLAKE_SSL_DIR is required for HTTPS install (or pass --http-only)." >&2
     exit 1
   fi
+  reject_letsencrypt_ssl_dir "${SSL_DIR}"
   validate_certs "${SSL_DIR}" "${SSL_CERT}" "${SSL_KEY}"
 fi
 

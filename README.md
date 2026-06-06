@@ -161,6 +161,7 @@ sudo firewall-cmd --reload
 **SELinux** (RHEL/Fedora host bind mounts):
 
 - TLS paths in the SSL compose override use `:ro,z` so nginx and the backend can share the same certificate directory.
+- Do not set `OPENFLAKE_SSL_DIR` under `/etc/letsencrypt/` — install and upgrade reject those paths because Podman cannot SELinux-relabel them. Copy certificates to e.g. `/etc/ssl/openflake` first; `:ro,z` relabeling applies on that directory.
 - Set `OPENFLAKE_ATTACHMENTS_DIR` when installing, or `OPENFLAKE_ATTACHMENTS_MOUNT` in `.env` for manual Compose (install script adds `:Z` on SELinux).
 - If you mount paths outside Compose, relabel manually:
 

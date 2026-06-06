@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-05 — Reject Let's Encrypt paths for Podman TLS mounts
+
+### Fixed
+
+- Install and upgrade scripts reject `OPENFLAKE_SSL_DIR` under `/etc/letsencrypt/` and keep `:ro,z` SELinux relabeling on supported paths; copy certificates to e.g. `/etc/ssl/openflake` instead (fixes Podman `lsetxattr ... operation not permitted`).
+
 ## 2026-06-05 — Export compose env for podman-compose SSL volume mounts
 
 ### Fixed
