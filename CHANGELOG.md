@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Podman Quadlets for RHEL start on boot
+
+### Added
+
+- `scripts/openflake-quadlets.sh` — generates network, volume, and container Quadlets; supports install, pull, deploy, and stack lifecycle commands.
+- `scripts/openflake-stack.sh` — ordered Compose start/stop for macOS and `--no-systemd` installs.
+
+### Changed
+
+- `podman-install.sh` defaults to Podman Quadlets on Linux (`OPENFLAKE_ENABLE_SYSTEMD`, `--enable-systemd` / `--no-systemd`); Compose remains for `--no-systemd` and non-Linux hosts.
+- `podman-upgrade.sh` detects Quadlet installs (`OPENFLAKE_DEPLOY_METHOD=quadlet`) and redeploys backend/frontend via `restart-apps` without restarting Postgres.
+- RHEL and install docs describe Quadlet units, user lingering, and `openflake-quadlets.sh` management.
+
 ## 2026-06-06 — Lab seed env file and migration order
 
 ### Added

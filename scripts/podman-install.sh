@@ -21,6 +21,9 @@ IMAGE_TAG="${OPENFLAKE_IMAGE_TAG:-latest}"
 REGISTRY="${OPENFLAKE_REGISTRY:-quay.io/zleblanc}"
 HTTPS_PORT="${OPENFLAKE_HTTPS_PORT:-8443}"
 HTTP_ONLY=0
+ENABLE_SYSTEMD="${OPENFLAKE_ENABLE_SYSTEMD:-}"
+SYSTEMD_SCOPE=""
+USE_QUADLETS=0
 
 usage() {
   cat <<EOF
@@ -42,6 +45,7 @@ Environment variables:
   SECRET_KEY              Backend signing key (auto-generated if unset)
   POSTGRES_PASSWORD       Database password (default: openflake)
   ADMIN_PASSWORD          Admin user password (default: admin)
+  OPENFLAKE_ENABLE_SYSTEMD  Install Podman Quadlets for start on boot (default: on Linux)
 
 If openflake.env exists next to this script, it is sourced before options and env vars above.
 
@@ -55,9 +59,19 @@ Options:
   --tag TAG               Same as OPENFLAKE_IMAGE_TAG
   --install-dir PATH      Same as OPENFLAKE_INSTALL_DIR
   --http-only             Skip HTTPS; serve UI on port 8080 only
+  --enable-systemd        Install Podman Quadlets for start on boot (default on Linux)
+  --no-systemd            Skip Quadlet installation; use Podman Compose instead
   -h, --help              Show this help
 EOF
 }
+
+if [[ -z "${ENABLE_SYSTEMD}" ]]; then
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    ENABLE_SYSTEMD=1
+  else
+    ENABLE_SYSTEMD=0
+  fi
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -70,10 +84,16 @@ while [[ $# -gt 0 ]]; do
     --tag) IMAGE_TAG="$2"; shift 2 ;;
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --http-only) HTTP_ONLY=1; shift ;;
+    --enable-systemd) ENABLE_SYSTEMD=1; shift ;;
+    --no-systemd) ENABLE_SYSTEMD=0; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
 done
+
+if [[ "${ENABLE_SYSTEMD}" -eq 1 && "$(uname -s)" == "Linux" ]]; then
+  USE_QUADLETS=1
+fi
 
 run_compose() {
   if podman compose version >/dev/null 2>&1; then
@@ -213,38 +233,8 @@ require_ssl_mount_vars() {
   fi
 }
 
-remove_container_if_exists() {
-  local name="$1"
-  if podman container exists "${name}" 2>/dev/null; then
-    podman rm -f "${name}"
-  fi
-}
-
-wait_for_postgres() {
-  local elapsed=0
-  local max_wait=60
-  until podman exec openflake-postgres pg_isready -U "${POSTGRES_USER:-openflake}" -d "${POSTGRES_DB:-openflake}" >/dev/null 2>&1; do
-    if [[ "${elapsed}" -ge "${max_wait}" ]]; then
-      echo "Timed out waiting for PostgreSQL after ${max_wait}s" >&2
-      exit 1
-    fi
-    sleep 1
-    elapsed=$((elapsed + 1))
-  done
-}
-
-start_openflake_stack() {
-  # Remove dependents first so Podman does not error stopping missing containers
-  # when Postgres is recreated (e.g. after adding a published port).
-  remove_container_if_exists openflake-frontend
-  remove_container_if_exists openflake-backend
-  remove_container_if_exists openflake-postgres
-
-  local compose_args=("${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env")
-  run_compose "${compose_args[@]}" up -d --no-deps postgres
-  wait_for_postgres
-  run_compose "${compose_args[@]}" up -d --no-deps backend
-  run_compose "${compose_args[@]}" up -d --no-deps frontend
+podman_is_rootless() {
+  podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -Fx true
 }
 
 require_podman
@@ -295,38 +285,60 @@ if [[ -n "${ATTACHMENTS_DIR}" ]]; then
   echo "OPENFLAKE_ATTACHMENTS_DIR=${ATTACHMENTS_DIR}" >> "${INSTALL_DIR}/.env"
   echo "OPENFLAKE_ATTACHMENTS_MOUNT=$(attachments_mount "${ATTACHMENTS_DIR}")" >> "${INSTALL_DIR}/.env"
 fi
+if [[ "${USE_QUADLETS}" -eq 1 ]]; then
+  echo "OPENFLAKE_DEPLOY_METHOD=quadlet" >> "${INSTALL_DIR}/.env"
+fi
 
-echo "Downloading compose files to ${INSTALL_DIR}..."
-download_file "${INSTALL_DIR}/podman-compose.registry.yaml" \
-  "${GITHUB_RAW}/deploy/podman-compose.registry.yaml"
-download_file "${INSTALL_DIR}/podman-compose.ssl.yaml" \
-  "${GITHUB_RAW}/deploy/podman-compose.ssl.yaml"
+echo "Downloading install files to ${INSTALL_DIR}..."
 download_file "${INSTALL_DIR}/pg_hba.conf" \
   "${GITHUB_RAW}/deploy/pg_hba.conf"
 download_file "${INSTALL_DIR}/podman-upgrade.sh" \
   "${GITHUB_RAW}/scripts/podman-upgrade.sh"
 chmod +x "${INSTALL_DIR}/podman-upgrade.sh"
 
-COMPOSE_FILES=(-f "${INSTALL_DIR}/podman-compose.registry.yaml")
-if [[ "${HTTP_ONLY}" -eq 0 ]]; then
-  COMPOSE_FILES+=(-f "${INSTALL_DIR}/podman-compose.ssl.yaml")
-fi
+if [[ "${USE_QUADLETS}" -eq 1 ]]; then
+  download_file "${INSTALL_DIR}/openflake-quadlets.sh" \
+    "${GITHUB_RAW}/scripts/openflake-quadlets.sh"
+  chmod +x "${INSTALL_DIR}/openflake-quadlets.sh"
 
-cd "${INSTALL_DIR}"
-if [[ "${HTTP_ONLY}" -eq 0 ]]; then
-  ensure_ssl_mount_env
-  load_compose_env
-  require_ssl_mount_vars
-  validate_ssl_mount_certs "${OPENFLAKE_SSL_BACKEND_MOUNT}" "${SSL_CERT}" "${SSL_KEY}"
-fi
-echo "Pulling images..."
-run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" pull
+  echo "Generating Podman Quadlets..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" generate
+  echo "Pulling images..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" pull
+  echo "Installing and starting OpenFlake (systemd)..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" install
+  if podman_is_rootless; then
+    SYSTEMD_SCOPE="user"
+  else
+    SYSTEMD_SCOPE="system"
+  fi
+else
+  download_file "${INSTALL_DIR}/podman-compose.registry.yaml" \
+    "${GITHUB_RAW}/deploy/podman-compose.registry.yaml"
+  download_file "${INSTALL_DIR}/podman-compose.ssl.yaml" \
+    "${GITHUB_RAW}/deploy/podman-compose.ssl.yaml"
+  download_file "${INSTALL_DIR}/openflake-stack.sh" \
+    "${GITHUB_RAW}/scripts/openflake-stack.sh"
+  chmod +x "${INSTALL_DIR}/openflake-stack.sh"
 
-echo "Starting OpenFlake..."
-if [[ "${HTTP_ONLY}" -eq 0 ]]; then
-  load_compose_env
+  COMPOSE_FILES=(-f "${INSTALL_DIR}/podman-compose.registry.yaml")
+  if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+    COMPOSE_FILES+=(-f "${INSTALL_DIR}/podman-compose.ssl.yaml")
+  fi
+
+  cd "${INSTALL_DIR}"
+  if [[ "${HTTP_ONLY}" -eq 0 ]]; then
+    ensure_ssl_mount_env
+    load_compose_env
+    require_ssl_mount_vars
+    validate_ssl_mount_certs "${OPENFLAKE_SSL_BACKEND_MOUNT}" "${SSL_CERT}" "${SSL_KEY}"
+  fi
+  echo "Pulling images..."
+  run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" pull
+
+  echo "Starting OpenFlake..."
+  "${INSTALL_DIR}/openflake-stack.sh" start
 fi
-start_openflake_stack
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 
@@ -355,3 +367,23 @@ OpenFlake is running.
 Upgrade later with:
   OPENFLAKE_IMAGE_TAG=<new-tag> ${INSTALL_DIR}/podman-upgrade.sh
 EOF
+
+if [[ "${USE_QUADLETS}" -eq 1 ]]; then
+  if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+    cat <<EOF
+Systemd Quadlets (start on boot):
+  Status:  systemctl --user status openflake-backend.service
+  Restart: systemctl --user restart openflake-backend.service openflake-frontend.service
+  Stop:    ${INSTALL_DIR}/openflake-quadlets.sh stop
+  Start:   ${INSTALL_DIR}/openflake-quadlets.sh start
+EOF
+  else
+    cat <<EOF
+Systemd Quadlets (start on boot):
+  Status:  sudo systemctl status openflake-backend.service
+  Restart: sudo systemctl restart openflake-backend.service openflake-frontend.service
+  Stop:    ${INSTALL_DIR}/openflake-quadlets.sh stop
+  Start:   ${INSTALL_DIR}/openflake-quadlets.sh start
+EOF
+  fi
+fi

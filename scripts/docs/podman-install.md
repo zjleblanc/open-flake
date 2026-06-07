@@ -83,6 +83,8 @@ cp deploy/openflake.env.example scripts/openflake.env
 | `--tag TAG` | Image tag to pull from Quay (default: `latest`) |
 | `--install-dir PATH` | Where to store config and compose files |
 | `--http-only` | Skip HTTPS; UI on port 8080 only |
+| `--enable-systemd` | Install Podman Quadlets for start on boot (default on Linux) |
+| `--no-systemd` | Skip Quadlets; use Podman Compose instead |
 | `-h`, `--help` | Show help |
 
 ## Environment variables
@@ -103,12 +105,15 @@ cp deploy/openflake.env.example scripts/openflake.env
 | `SECRET_KEY` | auto-generated | Backend signing key |
 | `POSTGRES_PASSWORD` | `openflake` | PostgreSQL password |
 | `ADMIN_PASSWORD` | `admin` | Admin user password |
+| `OPENFLAKE_ENABLE_SYSTEMD` | `1` on Linux, `0` elsewhere | Install Podman Quadlets so the stack starts on boot |
 
 ## What it creates
 
 - `~/.local/share/openflake/.env` — deployment configuration
-- `podman-compose.registry.yaml` and `podman-compose.ssl.yaml` — compose files
 - `pg_hba.conf` — PostgreSQL client access rules (bind-mounted into the Postgres container)
+- On Linux with systemd (default): Podman Quadlets under `~/.config/containers/systemd/` (rootless) or `/etc/containers/systemd/` (rootful), plus generated files in `~/.local/share/openflake/quadlets/`
+- On macOS or with `--no-systemd`: `podman-compose.registry.yaml`, `podman-compose.ssl.yaml`, and `openflake-stack.sh`
+- `openflake-quadlets.sh` or `openflake-stack.sh` — stack management helper (depends on deploy method)
 - `podman-upgrade.sh` — copy of the upgrade script
 - `installed-version` — records the deployed image tag
 
@@ -123,6 +128,21 @@ Podman volumes `openflake-pg-data` and `openflake-attachments` persist database 
 | API (HTTPS) | `https://<domain>:8000` |
 | API (HTTP-only) | `http://localhost:8000` |
 | Default login | `admin` / value of `ADMIN_PASSWORD` |
+
+## Systemd Quadlets (RHEL / Linux)
+
+On Linux, install generates [Podman Quadlets](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) by default (`openflake-postgres.container`, `openflake-backend.container`, `openflake-frontend.container`, plus network and volume units). Rootless installs place files in `~/.config/containers/systemd/` and enable lingering for the install user; rootful installs use `/etc/containers/systemd/`.
+
+```bash
+# Rootless (typical RHEL production user)
+systemctl --user status openflake-backend.service
+systemctl --user restart openflake-backend.service openflake-frontend.service
+
+# Rootful
+sudo systemctl status openflake-backend.service
+```
+
+Use `--no-systemd` to install with Podman Compose instead (for example on a dev laptop). Manage a Quadlet install with `${INSTALL_DIR}/openflake-quadlets.sh start|stop|restart|status`.
 
 ## TLS permissions (rootless Podman)
 

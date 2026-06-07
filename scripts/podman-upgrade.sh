@@ -65,13 +65,25 @@ require_install() {
     echo "Run scripts/podman-install.sh first." >&2
     exit 1
   fi
-  if [[ ! -f "${INSTALL_DIR}/podman-compose.registry.yaml" ]]; then
-    echo "Missing ${INSTALL_DIR}/podman-compose.registry.yaml" >&2
+  if [[ ! -f "${INSTALL_DIR}/pg_hba.conf" ]]; then
+    echo "Missing ${INSTALL_DIR}/pg_hba.conf (required by Postgres)." >&2
+    echo "Re-run scripts/podman-install.sh or copy deploy/pg_hba.conf into ${INSTALL_DIR}." >&2
     exit 1
   fi
-  if [[ ! -f "${INSTALL_DIR}/pg_hba.conf" ]]; then
-    echo "Missing ${INSTALL_DIR}/pg_hba.conf (required by compose Postgres service)." >&2
-    echo "Re-run scripts/podman-install.sh or copy deploy/pg_hba.conf into ${INSTALL_DIR}." >&2
+}
+
+is_quadlet_install() {
+  if [[ -f "${INSTALL_DIR}/.env" ]]; then
+    # shellcheck source=/dev/null
+    source "${INSTALL_DIR}/.env"
+    [[ "${OPENFLAKE_DEPLOY_METHOD:-}" == "quadlet" ]] && return 0
+  fi
+  [[ -d "${INSTALL_DIR}/quadlets" && -f "${INSTALL_DIR}/openflake-quadlets.sh" ]]
+}
+
+require_compose_install() {
+  if [[ ! -f "${INSTALL_DIR}/podman-compose.registry.yaml" ]]; then
+    echo "Missing ${INSTALL_DIR}/podman-compose.registry.yaml" >&2
     exit 1
   fi
 }
@@ -201,7 +213,7 @@ wait_for_backend() {
   local elapsed=0
   local curl_args=(-fsS)
   local url="http://localhost:8000/health/ready"
-  if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
+  if [[ "${USE_SSL:-0}" -eq 1 ]]; then
     url="https://localhost:8000/health/ready"
     curl_args=(-fsSk)
   fi
@@ -217,6 +229,36 @@ wait_for_backend() {
   echo "Backend did not become ready within ${HEALTH_TIMEOUT}s." >&2
   echo "Check logs: podman logs openflake-backend" >&2
   return 1
+}
+
+detect_ssl_mode() {
+  USE_SSL=0
+  # shellcheck source=/dev/null
+  source "${INSTALL_DIR}/.env"
+  local ssl_dir="${OPENFLAKE_SSL_DIR:-${OPENFLAKE_CERT_DIR:-}}"
+  local ssl_cert="${OPENFLAKE_SSL_CERT:-fullchain.pem}"
+  local ssl_key="${OPENFLAKE_SSL_KEY:-privkey.pem}"
+  if [[ -n "${ssl_dir}" && -f "${ssl_dir}/${ssl_cert}" && -f "${ssl_dir}/${ssl_key}" ]]; then
+    USE_SSL=1
+  fi
+}
+
+upgrade_quadlets() {
+  if [[ ! -x "${INSTALL_DIR}/openflake-quadlets.sh" ]]; then
+    echo "Missing ${INSTALL_DIR}/openflake-quadlets.sh" >&2
+    echo "Re-run scripts/podman-install.sh or copy scripts/openflake-quadlets.sh into ${INSTALL_DIR}." >&2
+    exit 1
+  fi
+  detect_ssl_mode
+  echo "Regenerating Podman Quadlets..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" generate
+  echo "Pulling updated images..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" pull
+  echo "Deploying updated quadlets..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" deploy
+  echo "Recreating backend and frontend (runs database migrations on startup)..."
+  "${INSTALL_DIR}/openflake-quadlets.sh" restart-apps
+  wait_for_backend
 }
 
 require_install
@@ -236,44 +278,49 @@ fi
 update_env_tag
 ensure_ssl_mount_env
 
-build_compose_files
+if is_quadlet_install; then
+  upgrade_quadlets
+else
+  require_compose_install
+  build_compose_files
 
-cd "${INSTALL_DIR}"
+  cd "${INSTALL_DIR}"
 
-if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
-  load_compose_env
-  require_ssl_mount_vars
-  validate_ssl_mount_certs "${OPENFLAKE_SSL_BACKEND_MOUNT}" "${OPENFLAKE_SSL_CERT:-fullchain.pem}" "${OPENFLAKE_SSL_KEY:-privkey.pem}"
-fi
-
-compose_up() {
   if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
     load_compose_env
+    require_ssl_mount_vars
+    validate_ssl_mount_certs "${OPENFLAKE_SSL_BACKEND_MOUNT}" "${OPENFLAKE_SSL_CERT:-fullchain.pem}" "${OPENFLAKE_SSL_KEY:-privkey.pem}"
   fi
-  run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" "$@"
-}
 
-remove_container_if_exists() {
-  local name="$1"
-  if podman container exists "${name}" 2>/dev/null; then
-    podman rm -f "${name}"
-  fi
-}
+  compose_up() {
+    if [[ "${USE_SSL_COMPOSE}" -eq 1 ]]; then
+      load_compose_env
+    fi
+    run_compose "${COMPOSE_FILES[@]}" --env-file "${INSTALL_DIR}/.env" "$@"
+  }
 
-echo "Pulling updated images..."
-compose_up pull backend frontend
+  remove_container_if_exists() {
+    local name="$1"
+    if podman container exists "${name}" 2>/dev/null; then
+      podman rm -f "${name}"
+    fi
+  }
 
-echo "Recreating backend (runs database migrations on startup)..."
-# Frontend depends_on backend; Podman refuses to replace backend until dependents are removed.
-remove_container_if_exists openflake-frontend
-remove_container_if_exists openflake-backend
-compose_up up -d --no-deps backend
+  echo "Pulling updated images..."
+  compose_up pull backend frontend
 
-wait_for_backend
+  echo "Recreating backend (runs database migrations on startup)..."
+  # Frontend depends_on backend; Podman refuses to replace backend until dependents are removed.
+  remove_container_if_exists openflake-frontend
+  remove_container_if_exists openflake-backend
+  compose_up up -d --no-deps backend
 
-echo "Recreating frontend..."
-remove_container_if_exists openflake-frontend
-compose_up up -d --no-deps frontend
+  wait_for_backend
+
+  echo "Recreating frontend..."
+  remove_container_if_exists openflake-frontend
+  compose_up up -d --no-deps frontend
+fi
 
 echo "${IMAGE_TAG}" > "${INSTALL_DIR}/installed-version"
 

@@ -152,6 +152,15 @@ sudo dnf install -y podman podman-compose
 sudo systemctl enable --now podman.socket
 ```
 
+Install OpenFlake as the user that will run Podman (rootless is recommended). On Linux, the install script generates Podman Quadlets by default so each container starts on boot via systemd. For rootless Podman, the install user must have [lingering enabled](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html/containers_and_systemd_working-together/assembly_porting-containers-to-systemd_using-systemd-to-manage-containers) so user services run without an interactive login:
+
+```bash
+sudo loginctl enable-linger openflake
+systemctl --user status openflake-backend.service
+```
+
+Use `--no-systemd` to install with Podman Compose instead, or manage a Quadlet install with `~/.local/share/openflake/openflake-quadlets.sh`.
+
 **Firewall** (rootless Podman uses host port 8443 for HTTPS):
 
 ```bash
