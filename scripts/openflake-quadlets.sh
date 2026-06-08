@@ -172,6 +172,14 @@ frontend_health_lines() {
   fi
 }
 
+frontend_service_lines() {
+  echo "[Service]"
+  echo "Restart=always"
+  echo "RestartSec=5"
+  echo "StartLimitIntervalSec=0"
+  echo "StartLimitBurst=0"
+}
+
 backend_health_lines() {
   echo "HealthCmd=/app/backend-healthcheck.sh"
   echo "HealthInterval=10s"
@@ -266,6 +274,7 @@ cmd_generate() {
     echo "Image=${REGISTRY}/openflake-backend:${IMAGE_TAG}"
     echo "ContainerName=openflake-backend"
     echo "Network=openflake-net.network"
+    echo "NetworkAlias=backend"
     echo "EnvironmentFile=${QUADLET_SRC}/backend.env"
     backend_volume_lines
     backend_ssl_lines
@@ -296,8 +305,7 @@ cmd_generate() {
     frontend_ssl_lines
     frontend_health_lines
     echo ""
-    echo "[Service]"
-    echo "Restart=always"
+    frontend_service_lines
     echo ""
     echo "[Install]"
     echo "WantedBy=${wanted_by}"
@@ -471,6 +479,13 @@ show_unit_failure() {
   local unit="$1"
   echo "--- systemctl status ${unit} ---" >&2
   run_as_systemd status "${unit}" --no-pager >&2 || true
+  if run_as_systemd show "${unit}" --property=Result --value 2>/dev/null | grep -qx start-limit-hit; then
+    if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+      echo "Start rate limit hit. Run: systemctl --user reset-failed ${unit}" >&2
+    else
+      echo "Start rate limit hit. Run: sudo systemctl reset-failed ${unit}" >&2
+    fi
+  fi
   echo "--- journalctl -u ${unit} (last 30 lines) ---" >&2
   if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
     journalctl --user -u "${unit}" -n 30 --no-pager >&2 || true
@@ -486,13 +501,16 @@ start_stack_units() {
   wait_for_postgres
   run_as_systemd start openflake-backend.service
   wait_for_backend
+  run_as_systemd reset-failed openflake-frontend.service 2>/dev/null || true
   if ! run_as_systemd start openflake-frontend.service; then
     show_unit_failure openflake-frontend.service
+    podman logs openflake-frontend 2>&1 | tail -n 40 >&2 || true
     exit 1
   fi
   if ! podman container exists openflake-frontend 2>/dev/null; then
     echo "Frontend container did not start." >&2
     show_unit_failure openflake-frontend.service
+    podman logs openflake-frontend 2>&1 | tail -n 40 >&2 || true
     exit 1
   fi
   echo "Frontend is running."
@@ -564,6 +582,7 @@ cmd_restart_apps() {
   wait_for_backend
   if ! run_as_systemd restart openflake-frontend.service; then
     show_unit_failure openflake-frontend.service
+    podman logs openflake-frontend 2>&1 | tail -n 40 >&2 || true
     exit 1
   fi
 }

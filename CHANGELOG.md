@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet frontend crash loop and backend DNS
+
+### Fixed
+
+- Frontend systemd unit hit `Start request repeated too quickly` when nginx exited during config test; the backend Quadlet had no `NetworkAlias=backend`, so nginx could not resolve the Compose-style `backend` hostname on the Podman network.
+- nginx failed startup when the backend was not yet resolvable because upstream hostnames were resolved at config load time.
+
+### Changed
+
+- Backend Quadlet sets `NetworkAlias=backend`; frontend unit disables systemd start rate limiting and adds `RestartSec`.
+- nginx HTTP/SSL configs defer backend DNS resolution via `resolver` and variable `proxy_pass`; entrypoint injects Podman DNS from `resolv.conf`.
+- `openflake-quadlets.sh` clears a failed frontend unit before start and prints container logs on failure.
+
 ## 2026-06-07 — Fix Quadlet systemd path corruption from rootless check
 
 ### Fixed

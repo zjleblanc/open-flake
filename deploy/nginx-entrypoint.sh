@@ -23,6 +23,14 @@ fail_ssl() {
   exit 1
 }
 
+podman_resolver() {
+  awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || echo "127.0.0.11"
+}
+
+apply_resolver() {
+  sed "s|__RESOLVER__|$(podman_resolver)|g" "$1"
+}
+
 if [ -f "${CERT_PATH}" ] && [ -f "${KEY_PATH}" ]; then
   if [ ! -r "${CERT_PATH}" ] || [ ! -r "${KEY_PATH}" ]; then
     # shellcheck source=/dev/null
@@ -34,10 +42,10 @@ if [ -f "${CERT_PATH}" ] && [ -f "${KEY_PATH}" ]; then
   echo "  certificate: ${CERT_PATH}"
   echo "  key: ${KEY_PATH}"
   PORT_SUFFIX="$(https_port_suffix)"
-  sed \
+  apply_resolver /etc/nginx/templates/ssl.conf | sed \
     -e "s|__SSL_CERT__|${CERT_PATH}|g" \
     -e "s|__SSL_KEY__|${KEY_PATH}|g" \
-    /etc/nginx/templates/ssl.conf > /tmp/ssl.conf
+    > /tmp/ssl.conf
   sed "s|__HTTPS_PORT_SUFFIX__|${PORT_SUFFIX}|g" \
     /etc/nginx/templates/http-redirect.conf > /tmp/http-redirect.conf
   cat /tmp/http-redirect.conf /tmp/ssl.conf > "$CONF"
@@ -50,7 +58,7 @@ else
   echo "No SSL certificates found; serving HTTP only on port 8080"
   echo "  expected certificate: ${CERT_PATH}"
   echo "  expected key: ${KEY_PATH}"
-  cp /etc/nginx/templates/http.conf "$CONF"
+  apply_resolver /etc/nginx/templates/http.conf > "$CONF"
   rm -f "$FLAG"
   nginx -t
 fi
