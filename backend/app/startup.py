@@ -4,8 +4,9 @@ from contextlib import asynccontextmanager
 from sqlalchemy import select, text
 
 from app.auth.security import hash_password
+from app import db
 from app.config import get_settings
-from app.db import Base, async_session_factory, engine
+from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
 from app.models import (
     ChangeRequest,
@@ -52,7 +53,7 @@ RBAC_BACKFILL_MODELS = {
 
 
 async def run_migrations():
-    async with engine.begin() as conn:
+    async with db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         for table, column, col_type in RBAC_COLUMN_MIGRATIONS:
             await conn.execute(
@@ -61,7 +62,7 @@ async def run_migrations():
 
 
 async def backfill_owners():
-    async with async_session_factory() as session:
+    async with db.async_session_factory() as session:
         updated = False
         for table, model in RBAC_BACKFILL_MODELS.items():
             result = await session.execute(
@@ -76,7 +77,7 @@ async def backfill_owners():
 
 
 async def ensure_rbac_roles():
-    async with async_session_factory() as session:
+    async with db.async_session_factory() as session:
         result = await session.execute(select(SysRole).where(SysRole.name == "platform_admin"))
         role = result.scalar_one_or_none()
         if not role:
@@ -121,7 +122,7 @@ async def ensure_rbac_roles():
 
 
 async def seed_data():
-    async with async_session_factory() as session:
+    async with db.async_session_factory() as session:
         result = await session.execute(select(SysUser).where(SysUser.user_name == settings.admin_username))
         if result.scalar_one_or_none():
             await ensure_rbac_roles()
@@ -238,4 +239,4 @@ async def lifespan(app):
     await seed_data()
     logger.info("OpenFlake backend ready")
     yield
-    await engine.dispose()
+    await db.engine.dispose()

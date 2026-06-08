@@ -9,9 +9,8 @@ from dataclasses import dataclass, field
 
 from sqlalchemy import select
 
-from app import startup
+from app import db, startup
 from app.config import DEFAULT_LAB_ENV_FILE, Settings, resolve_env_file, settings_from_env_file
-from app.db import async_session_factory, configure_database
 from app.domain.table_service import create_record
 from app.models import CmdbRelType, StdChangeProducerVersion, SysUser, SysUserGroup
 from app.startup import run_migrations, seed_data
@@ -38,7 +37,7 @@ class LabContext:
 
 
 async def is_lab_seeded() -> bool:
-    async with async_session_factory() as session:
+    async with db.async_session_factory() as session:
         result = await session.execute(
             select(SysUserGroup).where(SysUserGroup.name == LAB_MARKER_GROUP)
         )
@@ -664,7 +663,7 @@ def configure_runtime(env_file: str) -> Settings:
     """Load settings from env_file and wire DB/startup to that database."""
     global settings
     settings = settings_from_env_file(env_file)
-    configure_database(settings.database_url)
+    db.configure_database(settings.database_url)
     startup.settings = settings
     return settings
 
@@ -685,7 +684,7 @@ async def seed_lab(*, ensure_base: bool = True, force: bool = False) -> bool:
         logger.info("Lab environment already seeded (group %r exists); skipping", LAB_MARKER_GROUP)
         return False
 
-    async with async_session_factory() as session:
+    async with db.async_session_factory() as session:
         admin_id = await _require_admin(session)
         ctx = LabContext(admin_id=admin_id)
         ctx.rel_types = await _load_rel_types(session)

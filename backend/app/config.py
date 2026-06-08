@@ -36,9 +36,12 @@ class Settings(BaseSettings):
 
 def resolve_env_file(env_file: str | Path) -> Path:
     path = Path(env_file)
-    if not path.is_absolute():
-        path = BACKEND_ROOT / path
-    return path.resolve()
+    if path.is_absolute():
+        return path.resolve()
+    cwd_candidate = path.resolve()
+    if cwd_candidate.is_file():
+        return cwd_candidate
+    return (BACKEND_ROOT / path).resolve()
 
 
 def settings_from_env_file(env_file: str | Path) -> Settings:

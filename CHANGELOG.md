@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix lab seed --env-file database targeting
+
+### Fixed
+
+- `openflake-seed-lab --env-file` loaded the chosen env file but migrations, base seed, and lab seed still used the default localhost database because `startup.py` and `lab.py` held stale `engine` and `async_session_factory` references after `configure_database()` reassigned them in `app.db`.
+- `--env-file backend/openflake.env` failed from the repo root because relative paths were always resolved under `backend/`, producing `backend/backend/openflake.env`.
+
+### Changed
+
+- `startup.py` and `lab.py` read `db.engine` and `db.async_session_factory` from the `app.db` module so reconfiguration applies to all seed steps.
+- `resolve_env_file()` tries cwd-relative paths first, then falls back to `backend/`.
+
+### Added
+
+- `backend/tests/test_config.py` covers env file path resolution and database reconfiguration.
+
 ## 2026-06-07 — Fix Quadlet deploy to apply health check updates
 
 ### Fixed
