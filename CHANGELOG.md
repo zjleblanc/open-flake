@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Specify Git branch for podman-install downloads
+
+### Added
+
+- `--branch` / `--ref` and `OPENFLAKE_BRANCH` select the GitHub ref for install file downloads (`OPENFLAKE_VERSION` remains a deprecated alias).
+
+### Changed
+
+- GitHub raw URL is resolved after CLI parsing so branch flags take effect; install records `OPENFLAKE_GITHUB_REF` in `.env` and logs the ref during download.
+
 ## 2026-06-07 — Prefer local install files in podman-install
 
 ### Fixed

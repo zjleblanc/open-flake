@@ -8,8 +8,7 @@ if [[ -f "${SCRIPT_DIR}/openflake.env" ]]; then
 fi
 
 GITHUB_REPO="${OPENFLAKE_GITHUB_REPO:-zjleblanc/open-flake}"
-GITHUB_REF="${OPENFLAKE_VERSION:-main}"
-GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_REF}"
+GITHUB_REF="${OPENFLAKE_BRANCH:-${OPENFLAKE_VERSION:-main}}"
 
 INSTALL_DIR="${OPENFLAKE_INSTALL_DIR:-${HOME}/.local/share/openflake}"
 DOMAIN="${OPENFLAKE_DOMAIN:-localhost}"
@@ -41,7 +40,8 @@ Environment variables:
   OPENFLAKE_ATTACHMENTS_DIR  Host path for attachment storage
   OPENFLAKE_IMAGE_TAG     Image tag to pull (default: latest)
   OPENFLAKE_REGISTRY      Image registry (default: quay.io/zleblanc)
-  OPENFLAKE_VERSION       Git ref for compose files (default: main)
+  OPENFLAKE_BRANCH        Git branch, tag, or commit for install files (default: main)
+  OPENFLAKE_VERSION       Deprecated alias for OPENFLAKE_BRANCH
   SECRET_KEY              Backend signing key (auto-generated if unset)
   POSTGRES_PASSWORD       Database password (default: openflake)
   ADMIN_PASSWORD          Admin user password (default: admin)
@@ -57,6 +57,8 @@ Options:
   --attachments-dir PATH  Same as OPENFLAKE_ATTACHMENTS_DIR
   --cert-dir PATH         Deprecated alias for --ssl-dir
   --tag TAG               Same as OPENFLAKE_IMAGE_TAG
+  --branch REF            Same as OPENFLAKE_BRANCH (branch, tag, or commit on GitHub)
+  --ref REF               Alias for --branch
   --install-dir PATH      Same as OPENFLAKE_INSTALL_DIR
   --http-only             Skip HTTPS; serve UI on port 8080 only
   --enable-systemd        Install Podman Quadlets for start on boot (default on Linux)
@@ -82,6 +84,7 @@ while [[ $# -gt 0 ]]; do
     --attachments-dir) ATTACHMENTS_DIR="$2"; shift 2 ;;
     --cert-dir) SSL_DIR="$2"; shift 2 ;;
     --tag) IMAGE_TAG="$2"; shift 2 ;;
+    --branch|--ref) GITHUB_REF="$2"; shift 2 ;;
     --install-dir) INSTALL_DIR="$2"; shift 2 ;;
     --http-only) HTTP_ONLY=1; shift ;;
     --enable-systemd) ENABLE_SYSTEMD=1; shift ;;
@@ -90,6 +93,8 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" >&2; usage >&2; exit 1 ;;
   esac
 done
+
+GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_REF}"
 
 if [[ "${ENABLE_SYSTEMD}" -eq 1 && "$(uname -s)" == "Linux" ]]; then
   USE_QUADLETS=1
@@ -176,7 +181,7 @@ download_file() {
   local url="$2"
   if ! curl -fsSL -o "${dest}" "${url}"; then
     echo "Failed to download ${url}" >&2
-    echo "Set OPENFLAKE_VERSION to a git ref that includes the file, or run install from a repo checkout with scripts/ and deploy/ present." >&2
+    echo "Pass --branch REF (or OPENFLAKE_BRANCH) for a git ref that includes the file, or run from a repo checkout with scripts/ and deploy/ present." >&2
     exit 1
   fi
 }
@@ -283,6 +288,7 @@ fi
 cat > "${INSTALL_DIR}/.env" <<EOF
 OPENFLAKE_REGISTRY=${REGISTRY}
 OPENFLAKE_IMAGE_TAG=${IMAGE_TAG}
+OPENFLAKE_GITHUB_REF=${GITHUB_REF}
 OPENFLAKE_DOMAIN=${DOMAIN}
 OPENFLAKE_SSL_DIR=${SSL_DIR}
 OPENFLAKE_SSL_CERT=${SSL_CERT}
@@ -310,7 +316,7 @@ if [[ "${USE_QUADLETS}" -eq 1 ]]; then
   echo "OPENFLAKE_DEPLOY_METHOD=quadlet" >> "${INSTALL_DIR}/.env"
 fi
 
-echo "Downloading install files to ${INSTALL_DIR}..."
+echo "Downloading install files to ${INSTALL_DIR} (git ref: ${GITHUB_REF})..."
 stage_install_file "${INSTALL_DIR}/pg_hba.conf" "deploy/pg_hba.conf"
 stage_install_file "${INSTALL_DIR}/podman-upgrade.sh" "scripts/podman-upgrade.sh"
 chmod +x "${INSTALL_DIR}/podman-upgrade.sh"

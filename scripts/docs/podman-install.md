@@ -81,6 +81,8 @@ cp deploy/openflake.env.example scripts/openflake.env
 | `--attachments-dir PATH` | Host path for attachment storage |
 | `--cert-dir PATH` | Deprecated alias for `--ssl-dir` |
 | `--tag TAG` | Image tag to pull from Quay (default: `latest`) |
+| `--branch REF` | Git branch, tag, or commit for install files from GitHub (default: `main`) |
+| `--ref REF` | Alias for `--branch` |
 | `--install-dir PATH` | Where to store config and compose files |
 | `--http-only` | Skip HTTPS; UI on port 8080 only |
 | `--enable-systemd` | Install Podman Quadlets for start on boot (default on Linux) |
@@ -101,7 +103,8 @@ cp deploy/openflake.env.example scripts/openflake.env
 | `OPENFLAKE_CERT_DIR` | — | Deprecated alias for `OPENFLAKE_SSL_DIR` |
 | `OPENFLAKE_IMAGE_TAG` | `latest` | Quay image tag |
 | `OPENFLAKE_REGISTRY` | `quay.io/zleblanc` | Image registry prefix |
-| `OPENFLAKE_VERSION` | `main` | Git ref for downloading compose files |
+| `OPENFLAKE_BRANCH` | `main` | Git branch, tag, or commit for downloading install files |
+| `OPENFLAKE_VERSION` | — | Deprecated alias for `OPENFLAKE_BRANCH` |
 | `SECRET_KEY` | auto-generated | Backend signing key |
 | `POSTGRES_PASSWORD` | `openflake` | PostgreSQL password |
 | `ADMIN_PASSWORD` | `admin` | Admin user password |
