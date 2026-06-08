@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://openflake:openflake@localhost:5432/openflake"
     secret_key: str = "change-me-in-production"
-    attachments_path: str = "/data/attachments"
+    attachments_path: str = str(BACKEND_ROOT / "data" / "attachments")
     cors_origins: str = "http://localhost:8080,http://localhost:5173"
     admin_username: str = "admin"
     admin_password: str = "admin"

@@ -20,6 +20,7 @@ from app.domain.registry import (
     REFERENCE_FIELDS,
     TABLE_MODELS,
 )
+from app.api.snow.attachment import delete_attachments_for_parent
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence
 from app.query.parser import QueryCondition
@@ -428,6 +429,7 @@ async def delete_record(
             await assert_platform_action(db, auth, table, "write", record=record)
 
     result = _model_to_dict(record, table, exclude_links=False)
+    await delete_attachments_for_parent(db, table, sys_id)
     await db.delete(record)
     await db.flush()
     await emit(RecordEvent(action="delete", table=table, sys_id=sys_id, record=result))

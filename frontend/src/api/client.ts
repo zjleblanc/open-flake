@@ -173,6 +173,74 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ comment }),
     }),
+
+  listAttachments: (resource: string, sysId: string) =>
+    request<
+      {
+        sys_id: string;
+        file_name: string;
+        content_type: string;
+        size_bytes: string;
+        sys_created_on: string;
+      }[]
+    >(`/api/v1/records/${resource}/${sysId}/attachments`),
+
+  uploadAttachment: async (resource: string, sysId: string, file: File) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const res = await fetch(`/api/v1/records/${resource}/${sysId}/attachments`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (res.status === 401) {
+      clearToken();
+      window.location.href = "/login";
+      throw new Error("Unauthorized");
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "Upload failed");
+    }
+    return res.json() as Promise<{
+      sys_id: string;
+      file_name: string;
+      content_type: string;
+      size_bytes: string;
+      sys_created_on: string;
+    }>;
+  },
+
+  deleteAttachment: (resource: string, sysId: string, attachmentSysId: string) =>
+    request<void>(`/api/v1/records/${resource}/${sysId}/attachments/${attachmentSysId}`, {
+      method: "DELETE",
+    }),
+
+  fetchAttachmentBlob: async (resource: string, sysId: string, attachmentSysId: string) => {
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const res = await fetch(
+      `/api/v1/records/${resource}/${sysId}/attachments/${attachmentSysId}/file`,
+      { headers }
+    );
+    if (res.status === 401) {
+      clearToken();
+      window.location.href = "/login";
+      throw new Error("Unauthorized");
+    }
+    if (!res.ok) {
+      throw new Error("Failed to load attachment");
+    }
+    return res.blob();
+  },
 };
 
 export const STATE_LABELS: Record<string, string> = {

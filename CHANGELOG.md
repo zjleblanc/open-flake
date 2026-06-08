@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-08 — Add record attachments UI with preview and cascading delete
+
+### Added
+
+- Attachments section on incident, problem, change, and configuration item detail pages: count badge, file list, upload, per-file delete, and inline preview for images, PDFs, text, audio, and video.
+- UI API routes for listing, uploading, downloading, and deleting attachments under `/api/v1/records/{resource}/{sys_id}/attachments`.
+- Cascading attachment cleanup when a parent record is deleted — removes both `sys_attachment` rows and files on disk.
+- `backend/tests/test_attachments.py` for shared attachment delete helpers.
+
+### Changed
+
+- Default `ATTACHMENTS_PATH` for local dev is `backend/data/attachments` (container deploys still use `/data/attachments` via env).
+- Relative attachment paths resolve against the backend root; the attachments directory is created at startup.
+
+### Fixed
+
+- Attachment upload returned 500 on local macOS when the default `/data/attachments` path was missing or read-only.
+
 ## 2026-06-08 — Fix nginx API proxy 404 with variable upstream
 
 ### Fixed

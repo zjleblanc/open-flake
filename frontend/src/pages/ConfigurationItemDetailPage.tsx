@@ -11,6 +11,7 @@ import {
   resolveUserLabel,
   ToggleSwitch,
 } from "../components/DetailFieldControls";
+import { RecordAttachmentsSection } from "../components/RecordAttachmentsSection";
 import { RecordCommentsSection } from "../components/RecordCommentsSection";
 import { RecordDetailHeaderActions } from "../components/RecordDetailHeaderActions";
 import { ToastBanner } from "../components/ToastBanner";
@@ -453,6 +454,14 @@ export function ConfigurationItemDetailPage() {
           </div>
         )}
       </DetailSection>
+
+      {sysId && permissions?.read && (
+        <RecordAttachmentsSection
+          resource={resource}
+          sysId={sysId}
+          canWrite={!!permissions?.write}
+        />
+      )}
 
       {sysId && (permissions?.comment || permissions?.write) && (
         <RecordCommentsSection

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.deps import AuthContext, authenticate_request
 from app.auth.rbac import assert_record_action_by_id
 from app.domain.registry import RBAC_RECORD_TABLES
-from app.config import get_settings
+from app.config import BACKEND_ROOT, get_settings
 from app.db import get_db
 from app.models import SysAttachment
 from app.utils.ids import new_sys_id
@@ -19,8 +19,15 @@ router = APIRouter(prefix="/api/now/attachment", tags=["attachment-api"])
 settings = get_settings()
 
 
-def _ensure_attach_dir() -> Path:
+def resolve_attachments_path() -> Path:
     path = Path(settings.attachments_path)
+    if not path.is_absolute():
+        path = (BACKEND_ROOT / path).resolve()
+    return path
+
+
+def _ensure_attach_dir() -> Path:
+    path = resolve_attachments_path()
     path.mkdir(parents=True, exist_ok=True)
     return path
 
@@ -137,6 +144,32 @@ async def _assert_attachment_parent_access(
         await assert_record_action_by_id(db, auth, table_name, table_sys_id, action)  # type: ignore[arg-type]
 
 
+def _remove_attachment_file(record: SysAttachment) -> None:
+    if record.storage_path and os.path.exists(record.storage_path):
+        os.remove(record.storage_path)
+
+
+async def remove_attachment(db: AsyncSession, record: SysAttachment) -> None:
+    _remove_attachment_file(record)
+    await db.delete(record)
+    await db.flush()
+
+
+async def delete_attachments_for_parent(
+    db: AsyncSession, table_name: str, table_sys_id: str
+) -> int:
+    result = await db.execute(
+        select(SysAttachment).where(
+            SysAttachment.table_name == table_name,
+            SysAttachment.table_sys_id == table_sys_id,
+        )
+    )
+    records = result.scalars().all()
+    for record in records:
+        await remove_attachment(db, record)
+    return len(records)
+
+
 @router.get("")
 async def list_attachments(
     response: Response,
@@ -235,8 +268,5 @@ async def delete_attachment(
     await _assert_attachment_parent_access(
         db, auth, record.table_name, record.table_sys_id, "write"
     )
-    if os.path.exists(record.storage_path):
-        os.remove(record.storage_path)
-    await db.delete(record)
-    await db.flush()
+    await remove_attachment(db, record)
     return None

@@ -9,6 +9,7 @@ import {
   DetailFieldGroup,
   ReadOnlyFieldInput,
 } from "../components/DetailFieldControls";
+import { RecordAttachmentsSection } from "../components/RecordAttachmentsSection";
 import { RecordCommentsSection } from "../components/RecordCommentsSection";
 import { RecordDetailHeaderActions } from "../components/RecordDetailHeaderActions";
 import { EmptyValue } from "../components/EmptyValue";
@@ -224,6 +225,10 @@ export function RecordDetailPage({
           </div>
         )}
       </DetailSection>
+
+      {sysId && permissions?.read && (
+        <RecordAttachmentsSection resource={resource} sysId={sysId} canWrite={canWrite} />
+      )}
 
       {sysId && (permissions?.comment || permissions?.write) && (
         <RecordCommentsSection

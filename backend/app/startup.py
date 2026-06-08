@@ -5,6 +5,7 @@ from sqlalchemy import select, text
 
 from app.auth.security import hash_password
 from app import db
+from app.api.snow.attachment import resolve_attachments_path
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
@@ -235,6 +236,7 @@ async def seed_data():
 
 @asynccontextmanager
 async def lifespan(app):
+    resolve_attachments_path().mkdir(parents=True, exist_ok=True)
     await run_migrations()
     await seed_data()
     logger.info("OpenFlake backend ready")

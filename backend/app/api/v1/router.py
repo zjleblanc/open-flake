@@ -1,6 +1,8 @@
+import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +26,11 @@ from app.domain.table_service import (
     list_records,
     update_record,
 )
+from app.api.snow.attachment import (
+    _attachment_to_dict,
+    _save_attachment,
+    remove_attachment,
+)
 from app.models import (
     ApiKey,
     ChangeRequest,
@@ -32,6 +39,7 @@ from app.models import (
     OAuthClient,
     Problem,
     RecordAccessGrant,
+    SysAttachment,
     SysComment,
     SysUser,
     SysUserGroup,
@@ -386,6 +394,99 @@ async def create_comment(
         False,
         auth=auth,
     )
+
+
+@router.get("/records/{resource}/{sys_id}/attachments")
+async def list_record_attachments(
+    resource: str,
+    sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    await assert_record_action_by_id(db, auth, table, sys_id, "read")
+    result = await db.execute(
+        select(SysAttachment)
+        .where(SysAttachment.table_name == table, SysAttachment.table_sys_id == sys_id)
+        .order_by(SysAttachment.sys_created_on.desc())
+    )
+    return [_attachment_to_dict(record) for record in result.scalars().all()]
+
+
+@router.post("/records/{resource}/{sys_id}/attachments", status_code=status.HTTP_201_CREATED)
+async def upload_record_attachment(
+    resource: str,
+    sys_id: str,
+    file: UploadFile = File(...),
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    await assert_record_action_by_id(db, auth, table, sys_id, "write")
+    content = await file.read()
+    record = await _save_attachment(
+        db,
+        auth,
+        table,
+        sys_id,
+        file.filename or "file",
+        file.content_type or "application/octet-stream",
+        content,
+    )
+    return _attachment_to_dict(record)
+
+
+@router.get("/records/{resource}/{sys_id}/attachments/{attachment_sys_id}/file")
+async def download_record_attachment(
+    resource: str,
+    sys_id: str,
+    attachment_sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    record = await db.get(SysAttachment, attachment_sys_id)
+    if (
+        not record
+        or record.table_name != table
+        or record.table_sys_id != sys_id
+        or not os.path.exists(record.storage_path)
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    await assert_record_action_by_id(db, auth, table, sys_id, "read")
+    return FileResponse(
+        record.storage_path,
+        filename=record.file_name,
+        media_type=record.content_type,
+    )
+
+
+@router.delete(
+    "/records/{resource}/{sys_id}/attachments/{attachment_sys_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_record_attachment(
+    resource: str,
+    sys_id: str,
+    attachment_sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    record = await db.get(SysAttachment, attachment_sys_id)
+    if not record or record.table_name != table or record.table_sys_id != sys_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    await assert_record_action_by_id(db, auth, table, sys_id, "write")
+    await remove_attachment(db, record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 class CreateApiKeyRequest(BaseModel):
