@@ -59,7 +59,7 @@ Demote every heading from the source file by one level when copying into an inde
 
 **scripts/README.md**:
 
-`podman-install` → `podman-upgrade` → `publish-images` → `generate-dev-certs` → `ensure-postgres` → `start-backend` → `stop-backend`
+`podman-install` → `podman-upgrade` → `podman-update-scripts` → `publish-images` → `generate-dev-certs` → `ensure-postgres` → `start-backend` → `stop-backend`
 
 ## Workflows
 
@@ -105,7 +105,7 @@ Demote every heading from the source file by one level when copying into an inde
 
 | Topic | Application guide | Script docs |
 |-------|-------------------|-------------|
-| Podman install / upgrade | [installation.md](../../docs/installation.md) | podman-install, podman-upgrade |
+| Podman install / upgrade | [installation.md](../../docs/installation.md) | podman-install, podman-upgrade, podman-update-scripts |
 | Image publish | [installation.md](../../docs/installation.md) | publish-images |
 | TLS / certs | [ssl-https.md](../../docs/ssl-https.md) | generate-dev-certs |
 | Local dev | [development.md](../../docs/development.md) | ensure-postgres, start-backend, stop-backend |

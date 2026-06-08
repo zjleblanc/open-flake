@@ -105,6 +105,22 @@ Full script reference: [scripts/docs/podman-upgrade.md](../scripts/docs/podman-u
 
 **Rollback:** Set `OPENFLAKE_IMAGE_TAG` in `~/.local/share/openflake/.env` to the previous version and re-run the upgrade script. Restore from a backup dump if needed.
 
+### Update install scripts
+
+Refresh helper scripts in the install directory without changing `.env` secrets or container images:
+
+```bash
+~/.local/share/openflake/podman-update-scripts.sh
+```
+
+Pin a git ref (defaults to `main`):
+
+```bash
+./scripts/podman-update-scripts.sh --branch main --deploy
+```
+
+For Quadlet installs, pass `--deploy` to regenerate systemd units after updating `openflake-quadlets.sh`. Full reference: [scripts/docs/podman-update-scripts.md](../scripts/docs/podman-update-scripts.md).
+
 ### Publishing images (maintainers)
 
 Tagging strategy for stable, pre-release, and dev images: [release-tagging.md](#release-and-image-tagging-strategy).

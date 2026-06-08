@@ -118,6 +118,7 @@ cp deploy/openflake.env.example scripts/openflake.env
 - On macOS or with `--no-systemd`: `podman-compose.registry.yaml`, `podman-compose.ssl.yaml`, and `openflake-stack.sh`
 - `openflake-quadlets.sh` or `openflake-stack.sh` — stack management helper (depends on deploy method)
 - `podman-upgrade.sh` — copy of the upgrade script
+- `podman-update-scripts.sh` — refresh install helper scripts from GitHub
 - `installed-version` — records the deployed image tag
 
 Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data (unless `OPENFLAKE_ATTACHMENTS_DIR` binds a host path instead). Postgres is not published on the host in the registry stack — only the backend reaches it on the internal network.
@@ -159,5 +160,6 @@ sudo chcon -R -t container_file_t /etc/ssl/openflake
 ## Related
 
 - [podman-upgrade.sh](podman-upgrade.md) — upgrade an existing install
+- [podman-update-scripts.sh](podman-update-scripts.md) — refresh install helper scripts
 - [generate-dev-certs.sh](generate-dev-certs.md) — create self-signed certs for testing
 - [Installation — Install from Quay](../../docs/installation.md)

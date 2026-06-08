@@ -99,4 +99,5 @@ podman exec -i openflake-postgres psql -U openflake openflake < backups/openflak
 ## Related
 
 - [podman-install.sh](podman-install.md) — initial install
+- [podman-update-scripts.sh](podman-update-scripts.md) — refresh install helper scripts
 - [Installation — Upgrade](../../docs/installation.md#upgrade)

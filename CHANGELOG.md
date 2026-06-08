@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Add podman-update-scripts for install helper refresh
+
+### Added
+
+- `scripts/podman-update-scripts.sh` — downloads updated install helpers into `~/.local/share/openflake` from a configurable git ref (default `main`) without changing `.env` secrets or container images.
+- `--deploy` flag runs `openflake-quadlets.sh deploy` after update on Quadlet installs; script docs at `scripts/docs/podman-update-scripts.md`.
+
+### Changed
+
+- `podman-install.sh` stages `podman-update-scripts.sh` on install and prints a refresh command in post-install output.
+- Install and script docs describe updating helpers separately from image upgrades.
+
 ## 2026-06-07 — Add record delete, list filtering, and table UI polish
 
 ### Added

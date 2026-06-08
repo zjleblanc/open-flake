@@ -320,6 +320,8 @@ echo "Downloading install files to ${INSTALL_DIR} (git ref: ${GITHUB_REF})..."
 stage_install_file "${INSTALL_DIR}/pg_hba.conf" "deploy/pg_hba.conf"
 stage_install_file "${INSTALL_DIR}/podman-upgrade.sh" "scripts/podman-upgrade.sh"
 chmod +x "${INSTALL_DIR}/podman-upgrade.sh"
+stage_install_file "${INSTALL_DIR}/podman-update-scripts.sh" "scripts/podman-update-scripts.sh"
+chmod +x "${INSTALL_DIR}/podman-update-scripts.sh"
 
 if [[ "${USE_QUADLETS}" -eq 1 ]]; then
   stage_install_file "${INSTALL_DIR}/openflake-quadlets.sh" "scripts/openflake-quadlets.sh"
@@ -387,6 +389,9 @@ OpenFlake is running.
 
 Upgrade later with:
   OPENFLAKE_IMAGE_TAG=<new-tag> ${INSTALL_DIR}/podman-upgrade.sh
+
+Refresh install scripts:
+  ${INSTALL_DIR}/podman-update-scripts.sh
 EOF
 
 if [[ "${USE_QUADLETS}" -eq 1 ]]; then

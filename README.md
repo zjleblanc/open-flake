@@ -49,6 +49,7 @@ For production installs from pre-built Quay images with HTTPS, see [docs/install
 |--------|-------------|
 | [podman-install.sh](scripts/docs/podman-install.md) | Install from Quay registry images |
 | [podman-upgrade.sh](scripts/docs/podman-upgrade.md) | Pull updates, redeploy, and run DB migrations |
+| [podman-update-scripts.sh](scripts/docs/podman-update-scripts.md) | Refresh install helper scripts from GitHub |
 | [publish-images.sh](scripts/docs/publish-images.md) | Build and push multi-arch images to Quay |
 | [generate-dev-certs.sh](scripts/docs/generate-dev-certs.md) | Generate self-signed TLS certs for local HTTPS |
 | [ensure-postgres.sh](scripts/docs/ensure-postgres.md) | Start PostgreSQL in Podman for local dev |

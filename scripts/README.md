@@ -8,6 +8,7 @@ Helper scripts for local development, container deployment, and image publishing
 |--------|---------|
 | [podman-install.sh](docs/podman-install.md) | Install OpenFlake from Quay registry images |
 | [podman-upgrade.sh](docs/podman-upgrade.md) | Pull updates, redeploy, and run DB migrations |
+| [podman-update-scripts.sh](docs/podman-update-scripts.md) | Refresh install helper scripts from GitHub |
 | [publish-images.sh](docs/publish-images.md) | Build and push multi-arch images to Quay |
 | [generate-dev-certs.sh](docs/generate-dev-certs.md) | Generate self-signed TLS certs for local HTTPS |
 | [ensure-postgres.sh](docs/ensure-postgres.md) | Start PostgreSQL in Podman for local dev |
@@ -42,6 +43,7 @@ QUAY_USERNAME=... QUAY_TOKEN=... ./scripts/publish-images.sh --push --tag v0.1.0
 
 - [podman-install.sh](#podman-installsh)
 - [podman-upgrade.sh](#podman-upgradesh)
+- [podman-update-scripts.sh](#podman-update-scriptssh)
 - [publish-images.sh](#publish-imagessh)
 - [generate-dev-certs.sh](#generate-dev-certssh)
 - [ensure-postgres.sh](#ensure-postgressh)
@@ -168,6 +170,7 @@ cp deploy/openflake.env.example scripts/openflake.env
 - On macOS or with `--no-systemd`: `podman-compose.registry.yaml`, `podman-compose.ssl.yaml`, and `openflake-stack.sh`
 - `openflake-quadlets.sh` or `openflake-stack.sh` — stack management helper (depends on deploy method)
 - `podman-upgrade.sh` — copy of the upgrade script
+- `podman-update-scripts.sh` — refresh install helper scripts from GitHub
 - `installed-version` — records the deployed image tag
 
 Podman volumes `openflake-pg-data` and `openflake-attachments` persist database and file data (unless `OPENFLAKE_ATTACHMENTS_DIR` binds a host path instead). Postgres is not published on the host in the registry stack — only the backend reaches it on the internal network.
@@ -315,6 +318,106 @@ podman exec -i openflake-postgres psql -U openflake openflake < backups/openflak
 ### Related
 
 - [podman-install.sh](#podman-installsh) — initial install
+- [Installation — Upgrade](../../docs/installation.md#upgrade)
+
+---
+
+## podman-update-scripts.sh
+
+Download updated OpenFlake install helper scripts into an existing install directory. Does not change secrets in `.env`, pull container images, or restart containers unless `--deploy` is passed on a Quadlet install.
+
+### Prerequisites
+
+- An existing install created by [podman-install.sh](#podman-installsh)
+- **curl** — to download scripts from GitHub
+
+Install directory must contain `.env`.
+
+### Usage
+
+#### Update scripts from main
+
+```bash
+~/.local/share/openflake/podman-update-scripts.sh
+```
+
+From the repository copy:
+
+```bash
+./scripts/podman-update-scripts.sh
+```
+
+One-liner from GitHub:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/podman-update-scripts.sh | bash
+```
+
+#### Pin a git branch, tag, or commit
+
+```bash
+./scripts/podman-update-scripts.sh --branch v0.2.0
+```
+
+Or:
+
+```bash
+OPENFLAKE_BRANCH=main ~/.local/share/openflake/podman-update-scripts.sh
+```
+
+#### Apply Quadlet unit changes after update
+
+```bash
+~/.local/share/openflake/podman-update-scripts.sh --deploy
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--branch REF` | Git branch, tag, or commit on GitHub (default: `main`) |
+| `--ref REF` | Alias for `--branch` |
+| `--install-dir PATH` | Install directory (default: `~/.local/share/openflake`) |
+| `--deploy` | Run `openflake-quadlets.sh deploy` after updating (Quadlet installs only) |
+| `-h`, `--help` | Show help |
+
+### Environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENFLAKE_INSTALL_DIR` | `~/.local/share/openflake` | Install directory |
+| `OPENFLAKE_BRANCH` | `main` | Git ref for script downloads |
+| `OPENFLAKE_VERSION` | — | Deprecated alias for `OPENFLAKE_BRANCH` |
+| `OPENFLAKE_GITHUB_REPO` | `zjleblanc/open-flake` | GitHub repository for raw downloads |
+
+### What it updates
+
+Always:
+
+- `podman-upgrade.sh`
+- `podman-update-scripts.sh`
+- `pg_hba.conf`
+
+For Quadlet installs (`OPENFLAKE_DEPLOY_METHOD=quadlet`):
+
+- `openflake-quadlets.sh`
+
+For Compose installs:
+
+- `podman-compose.registry.yaml`
+- `podman-compose.ssl.yaml`
+- `openflake-stack.sh`
+
+If the deploy method cannot be detected, all of the above are updated.
+
+The script sets `OPENFLAKE_GITHUB_REF` in `.env` to the ref that was downloaded. Other `.env` values (passwords, `SECRET_KEY`, domain, image tag) are not modified.
+
+When run from a repository checkout under `scripts/`, files are copied from the checkout instead of downloaded. When run from the install directory, files are always fetched from GitHub.
+
+### Related
+
+- [podman-install.sh](#podman-installsh) — initial install
+- [podman-upgrade.sh](#podman-upgradesh) — pull new container images
 - [Installation — Upgrade](../../docs/installation.md#upgrade)
 
 ---
