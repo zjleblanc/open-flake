@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-08 — Fix nginx API proxy 404 with variable upstream
+
+### Fixed
+
+- Frontend nginx returned FastAPI 404 for `/api/*` and `/health/*` when proxying through `$backend_host` because variable `proxy_pass` ignored the configured URI prefix; requests reached the backend on the wrong path while direct `:8000` access worked.
+
+### Changed
+
+- Podman nginx HTTP and SSL templates pass `$request_uri` to the backend upstream so deferred DNS resolution and correct path forwarding work together.
+
 ## 2026-06-07 — Add podman-update-scripts for install helper refresh
 
 ### Added
