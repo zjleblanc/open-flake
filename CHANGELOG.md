@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Prefer local install files in podman-install
+
+### Fixed
+
+- Install failed with curl 404 when Quadlet helper scripts were not yet on the default `main` Git ref.
+
+### Changed
+
+- `podman-install.sh` copies bundled files from the script directory or repo checkout before downloading from GitHub; download failures suggest `OPENFLAKE_VERSION` or running from a checkout with `scripts/` and `deploy/` present.
+
 ## 2026-06-07 — Podman Quadlets for RHEL start on boot
 
 ### Added

@@ -174,7 +174,28 @@ derive_urls() {
 download_file() {
   local dest="$1"
   local url="$2"
-  curl -fsSL -o "${dest}" "${url}"
+  if ! curl -fsSL -o "${dest}" "${url}"; then
+    echo "Failed to download ${url}" >&2
+    echo "Set OPENFLAKE_VERSION to a git ref that includes the file, or run install from a repo checkout with scripts/ and deploy/ present." >&2
+    exit 1
+  fi
+}
+
+stage_install_file() {
+  local dest="$1"
+  local repo_path="$2"
+  local basename="${repo_path##*/}"
+  local candidate
+  for candidate in \
+    "${SCRIPT_DIR}/${basename}" \
+    "${SCRIPT_DIR}/${repo_path}" \
+    "${SCRIPT_DIR}/../${repo_path}"; do
+    if [[ -f "${candidate}" ]]; then
+      cp "${candidate}" "${dest}"
+      return 0
+    fi
+  done
+  download_file "${dest}" "${GITHUB_RAW}/${repo_path}"
 }
 
 generate_secret_key() {
@@ -290,15 +311,12 @@ if [[ "${USE_QUADLETS}" -eq 1 ]]; then
 fi
 
 echo "Downloading install files to ${INSTALL_DIR}..."
-download_file "${INSTALL_DIR}/pg_hba.conf" \
-  "${GITHUB_RAW}/deploy/pg_hba.conf"
-download_file "${INSTALL_DIR}/podman-upgrade.sh" \
-  "${GITHUB_RAW}/scripts/podman-upgrade.sh"
+stage_install_file "${INSTALL_DIR}/pg_hba.conf" "deploy/pg_hba.conf"
+stage_install_file "${INSTALL_DIR}/podman-upgrade.sh" "scripts/podman-upgrade.sh"
 chmod +x "${INSTALL_DIR}/podman-upgrade.sh"
 
 if [[ "${USE_QUADLETS}" -eq 1 ]]; then
-  download_file "${INSTALL_DIR}/openflake-quadlets.sh" \
-    "${GITHUB_RAW}/scripts/openflake-quadlets.sh"
+  stage_install_file "${INSTALL_DIR}/openflake-quadlets.sh" "scripts/openflake-quadlets.sh"
   chmod +x "${INSTALL_DIR}/openflake-quadlets.sh"
 
   echo "Generating Podman Quadlets..."
@@ -313,12 +331,9 @@ if [[ "${USE_QUADLETS}" -eq 1 ]]; then
     SYSTEMD_SCOPE="system"
   fi
 else
-  download_file "${INSTALL_DIR}/podman-compose.registry.yaml" \
-    "${GITHUB_RAW}/deploy/podman-compose.registry.yaml"
-  download_file "${INSTALL_DIR}/podman-compose.ssl.yaml" \
-    "${GITHUB_RAW}/deploy/podman-compose.ssl.yaml"
-  download_file "${INSTALL_DIR}/openflake-stack.sh" \
-    "${GITHUB_RAW}/scripts/openflake-stack.sh"
+  stage_install_file "${INSTALL_DIR}/podman-compose.registry.yaml" "deploy/podman-compose.registry.yaml"
+  stage_install_file "${INSTALL_DIR}/podman-compose.ssl.yaml" "deploy/podman-compose.ssl.yaml"
+  stage_install_file "${INSTALL_DIR}/openflake-stack.sh" "scripts/openflake-stack.sh"
   chmod +x "${INSTALL_DIR}/openflake-stack.sh"
 
   COMPOSE_FILES=(-f "${INSTALL_DIR}/podman-compose.registry.yaml")
