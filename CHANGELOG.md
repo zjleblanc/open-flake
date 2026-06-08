@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet deploy to apply health check updates
+
+### Fixed
+
+- Postgres and frontend stayed `(unhealthy)` with stale `/usr/bin/pg_isready` after health check fixes because `deploy` skipped `generate` when quadlets already existed and `restart` reused existing containers without recreating them.
+
+### Changed
+
+- `deploy` always regenerates quadlets and recreates running containers; `stop` and `restart-apps` remove containers before start so updated health checks take effect.
+- Generated quadlet health checks are validated before copy; stale running health checks are reported after start.
+
 ## 2026-06-07 — Fix Quadlet SSL frontend and Postgres health checks
 
 ### Fixed

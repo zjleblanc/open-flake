@@ -13,7 +13,7 @@ Usage: openflake-quadlets.sh {generate|deploy|install|pull|start|stop|restart|st
 Manage the OpenFlake Podman Quadlet deployment in ${INSTALL_DIR}.
 
   generate   Write quadlet and env files to ${QUADLET_SRC}
-  deploy     Copy quadlets to the systemd search path and reload systemd
+  deploy     Regenerate quadlets, copy to systemd, reload, and recreate running containers
   install    deploy, enable lingering, enable units, and start services
   pull       Pull container images from ${INSTALL_DIR}/.env
   start      Start enabled quadlet services
@@ -163,8 +163,8 @@ frontend_ssl_lines() {
 
 frontend_health_lines() {
   if [[ "${USE_SSL}" -eq 1 ]]; then
-    # Port 8080 redirects to https://$host:8443/; wget would follow to a closed in-container port.
-    echo 'HealthCmd=CMD-SHELL if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi'
+    # Port 8080 redirects to host :8443; probe in-container HTTPS on 443 instead.
+    echo 'HealthCmd=CMD-SHELL nc -z 127.0.0.1 443 || exit 1'
     echo "HealthStartPeriod=30s"
   else
     echo 'HealthCmd=CMD-SHELL wget -q --spider http://127.0.0.1:8080/ || exit 1'
@@ -434,9 +434,61 @@ require_quadlet_services() {
 
 install_quadlet_files() {
   collect_quadlet_files
+  verify_generated_quadlet_health_checks
   copy_quadlets_to_systemd
   verify_quadlet_systemd_dir
   reload_quadlet_systemd
+}
+
+verify_generated_quadlet_health_checks() {
+  local pg_file="${QUADLET_SRC}/openflake-postgres.container"
+  local fe_file="${QUADLET_SRC}/openflake-frontend.container"
+  if grep -q '/usr/bin/pg_isready' "${pg_file}"; then
+    echo "Generated postgres quadlet still references /usr/bin/pg_isready." >&2
+    echo "Update ${SCRIPT_DIR}/openflake-quadlets.sh and run generate again." >&2
+    exit 1
+  fi
+  if ! grep -q 'HealthCmd=CMD-SHELL /usr/local/bin/pg_isready' "${pg_file}"; then
+    echo "Generated postgres quadlet is missing the expected pg_isready health check." >&2
+    grep HealthCmd "${pg_file}" >&2 || true
+    exit 1
+  fi
+  if [[ "${USE_SSL}" -eq 1 ]] && ! grep -q 'HealthCmd=CMD-SHELL nc -z 127.0.0.1 443' "${fe_file}"; then
+    echo "Generated frontend quadlet is missing the expected SSL health check." >&2
+    grep HealthCmd "${fe_file}" >&2 || true
+    exit 1
+  fi
+}
+
+remove_stack_containers() {
+  local name
+  for name in openflake-frontend openflake-backend openflake-postgres; do
+    podman rm -f "${name}" 2>/dev/null || true
+  done
+}
+
+remove_app_containers() {
+  podman rm -f openflake-frontend openflake-backend 2>/dev/null || true
+}
+
+verify_running_health_checks() {
+  local pg_test fe_test
+  if podman container exists openflake-postgres 2>/dev/null; then
+    pg_test="$(podman inspect openflake-postgres --format '{{range .Config.Healthcheck.Test}}{{.}} {{end}}' 2>/dev/null || true)"
+    if [[ "${pg_test}" == *"/usr/bin/pg_isready"* ]]; then
+      echo "Postgres container still has stale health check: ${pg_test}" >&2
+      echo "Run: ${SCRIPT_DIR}/openflake-quadlets.sh restart" >&2
+      return 1
+    fi
+  fi
+  if [[ "${USE_SSL}" -eq 1 ]] && podman container exists openflake-frontend 2>/dev/null; then
+    fe_test="$(podman inspect openflake-frontend --format '{{range .Config.Healthcheck.Test}}{{.}} {{end}}' 2>/dev/null || true)"
+    if [[ "${fe_test}" != *"nc"* ]] && [[ "${fe_test}" != *"443"* ]]; then
+      echo "Frontend container still has stale health check: ${fe_test}" >&2
+      echo "Run: ${SCRIPT_DIR}/openflake-quadlets.sh restart" >&2
+      return 1
+    fi
+  fi
 }
 
 wait_for_postgres() {
@@ -517,6 +569,8 @@ start_stack_units() {
     exit 1
   fi
   echo "Frontend is running."
+  load_env
+  verify_running_health_checks || true
 }
 
 enable_linger_if_needed() {
@@ -549,13 +603,23 @@ cmd_deploy() {
     echo "systemctl not found; cannot deploy quadlets." >&2
     exit 1
   fi
-  if [[ ! -d "${QUADLET_SRC}" ]]; then
-    cmd_generate
-  fi
+  load_env
   detect_systemd_scope
+  local had_containers=0
+  if podman container exists openflake-postgres 2>/dev/null \
+    || podman container exists openflake-backend 2>/dev/null \
+    || podman container exists openflake-frontend 2>/dev/null; then
+    had_containers=1
+  fi
+  cmd_generate
   enable_linger_if_needed
   install_quadlet_files
   require_quadlet_services
+  if [[ "${had_containers}" -eq 1 ]]; then
+    echo "Recreating containers to apply updated quadlet settings..."
+    cmd_stop
+    cmd_start
+  fi
 }
 
 cmd_install() {
@@ -571,7 +635,8 @@ cmd_start() {
 
 cmd_stop() {
   detect_systemd_scope
-  run_as_systemd stop openflake-frontend.service openflake-backend.service openflake-postgres.service
+  run_as_systemd stop openflake-frontend.service openflake-backend.service openflake-postgres.service 2>/dev/null || true
+  remove_stack_containers
 }
 
 cmd_restart() {
@@ -581,9 +646,11 @@ cmd_restart() {
 
 cmd_restart_apps() {
   detect_systemd_scope
-  run_as_systemd restart openflake-backend.service
+  run_as_systemd stop openflake-frontend.service openflake-backend.service 2>/dev/null || true
+  remove_app_containers
+  run_as_systemd start openflake-backend.service
   wait_for_backend
-  if ! run_as_systemd restart openflake-frontend.service; then
+  if ! run_as_systemd start openflake-frontend.service; then
     show_unit_failure openflake-frontend.service
     podman logs openflake-frontend 2>&1 | tail -n 40 >&2 || true
     exit 1
