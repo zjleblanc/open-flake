@@ -20,7 +20,7 @@ from app.domain.registry import (
     REFERENCE_FIELDS,
     TABLE_MODELS,
 )
-from app.api.snow.attachment import delete_attachments_for_parent
+from app.api.flake.attachment import delete_attachments_for_parent
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence
 from app.query.parser import QueryCondition
@@ -58,7 +58,7 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             if field in data and data[field]:
                 sys_id = data[field]
                 data[field] = {
-                    "link": f"{settings.base_url}/api/now/table/{_ref_table(field)}/{sys_id}",
+                    "link": f"{settings.base_url}/api/flake/table/{_ref_table(field)}/{sys_id}",
                     "value": sys_id,
                 }
     return data

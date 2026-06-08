@@ -26,7 +26,7 @@ from app.domain.table_service import (
     list_records,
     update_record,
 )
-from app.api.snow.attachment import (
+from app.api.flake.attachment import (
     _attachment_to_dict,
     _save_attachment,
     remove_attachment,

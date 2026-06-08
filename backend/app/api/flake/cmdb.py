@@ -19,7 +19,7 @@ from app.models import CmdbCi, CmdbRelCi
 from app.query.parser import QueryCondition, parse_sysparm_query
 from app.utils.ids import new_sys_id
 
-router = APIRouter(prefix="/api/now/cmdb/instance", tags=["cmdb-api"])
+router = APIRouter(prefix="/api/flake/cmdb/instance", tags=["cmdb-api"])
 settings = get_settings()
 
 

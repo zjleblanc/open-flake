@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-08 — Rename compatibility API module to flake with legacy path rewrite
+
+### Changed
+
+- Renamed `backend/app/api/snow/` to `backend/app/api/flake/` and updated all imports.
+- Table, attachment, and CMDB instance routes now use `/api/flake/*` instead of `/api/now/*`; reference and download links follow the new prefix.
+
+### Added
+
+- `LegacyApiPathMiddleware` rewrites incoming `/api/now/*` requests to `/api/flake/*` on direct backend access (e.g. Ansible against `:8000`).
+- Nginx rewrite rules in `deploy/nginx.conf`, `deploy/nginx.http.conf`, and `deploy/nginx.ssl.conf` map `/api/now/*` to `/api/flake/*` so the `servicenow.itsm` collection keeps working without code changes.
+
 ## 2026-06-08 — Add record attachments UI with preview and cascading delete
 
 ### Added

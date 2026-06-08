@@ -15,7 +15,7 @@ from app.domain.table_service import (
 )
 from app.query.parser import QueryCondition, parse_sysparm_query
 
-router = APIRouter(prefix="/api/now/table", tags=["table-api"])
+router = APIRouter(prefix="/api/flake/table", tags=["table-api"])
 
 
 def _resolve_table(table: str) -> tuple[str, str | None]:

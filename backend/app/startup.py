@@ -5,7 +5,7 @@ from sqlalchemy import select, text
 
 from app.auth.security import hash_password
 from app import db
-from app.api.snow.attachment import resolve_attachments_path
+from app.api.flake.attachment import resolve_attachments_path
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES

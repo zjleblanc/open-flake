@@ -8,11 +8,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.health import router as health_router
-from app.api.snow.attachment import router as attachment_router
-from app.api.snow.catalog import router as catalog_router
-from app.api.snow.cmdb import router as cmdb_router
-from app.api.snow.oauth import router as oauth_router
-from app.api.snow.table import router as table_router
+from app.api.flake.attachment import router as attachment_router
+from app.api.flake.catalog import router as catalog_router
+from app.api.flake.cmdb import router as cmdb_router
+from app.api.flake.oauth import router as oauth_router
+from app.api.flake.table import router as table_router
 from app.api.v1.router import router as v1_router
 from app.config import get_settings
 from app.domain.errors import InvalidFieldNameError
@@ -32,6 +32,18 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class LegacyApiPathMiddleware(BaseHTTPMiddleware):
+    """Rewrite ServiceNow-compatible /api/now/* paths to /api/flake/*."""
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path.startswith("/api/now/"):
+            request.scope["path"] = "/api/flake/" + path[len("/api/now/") :]
+        elif path == "/api/now":
+            request.scope["path"] = "/api/flake"
+        return await call_next(request)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="OpenFlake",
@@ -40,6 +52,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(LegacyApiPathMiddleware)
     app.add_middleware(RequestIdMiddleware)
     app.add_middleware(
         ProxyHeadersMiddleware,

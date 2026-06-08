@@ -15,7 +15,7 @@ from app.db import get_db
 from app.models import SysAttachment
 from app.utils.ids import new_sys_id
 
-router = APIRouter(prefix="/api/now/attachment", tags=["attachment-api"])
+router = APIRouter(prefix="/api/flake/attachment", tags=["attachment-api"])
 settings = get_settings()
 
 
@@ -54,7 +54,7 @@ def _attachment_to_dict(record: SysAttachment) -> dict:
         "size_bytes": str(record.size_bytes),
         "content_type": record.content_type,
         "hash": _attachment_hash(record),
-        "download_link": f"{settings.base_url}/api/now/attachment/{record.sys_id}/file",
+        "download_link": f"{settings.base_url}/api/flake/attachment/{record.sys_id}/file",
         "sys_created_on": record.sys_created_on.isoformat() if record.sys_created_on else "",
         "sys_updated_on": record.sys_updated_on.isoformat() if record.sys_updated_on else "",
         "sys_created_by": record.sys_created_by or "",
