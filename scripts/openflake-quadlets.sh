@@ -163,7 +163,7 @@ frontend_ssl_lines() {
 
 frontend_health_lines() {
   if [[ "${USE_SSL}" -eq 1 ]]; then
-    echo 'HealthCmd=/bin/sh -c "if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi"'
+    echo 'HealthCmd=/bin/sh -c '\''if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi'\'''
     echo "HealthInterval=10s"
     echo "HealthTimeout=5s"
     echo "HealthRetries=3"
@@ -217,7 +217,7 @@ cmd_generate() {
     "VolumeName=openflake-pg-data" \
     "" \
     "[Install]" \
-    "WantedBy=default.target"
+    "WantedBy=${wanted_by}"
 
   if [[ -z "${ATTACHMENTS_DIR}" ]]; then
     write_file "${QUADLET_SRC}/openflake-attachments.volume" \
@@ -246,7 +246,7 @@ cmd_generate() {
     echo "Volume=openflake-pg-data.volume:/var/lib/postgresql/data"
     echo "Volume=${INSTALL_DIR}/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z"
     echo "PublishPort=5432:5432"
-    echo "Exec=postgres -c listen_addresses=* -c hba_file=/etc/postgresql/pg_hba.conf"
+    echo "Exec=postgres -c listen_addresses='*' -c hba_file=/etc/postgresql/pg_hba.conf"
     echo "HealthCmd=/usr/bin/pg_isready -U openflake -d openflake"
     echo "HealthInterval=5s"
     echo "HealthTimeout=5s"
@@ -332,6 +332,83 @@ copy_quadlets_to_systemd() {
   fi
 }
 
+quadlet_install_cmd() {
+  if [[ "${SYSTEMD_SCOPE}" == "system" && "${EUID}" -ne 0 ]]; then
+    echo "sudo podman"
+  else
+    echo "podman"
+  fi
+}
+
+collect_quadlet_files() {
+  QUADLET_FILES=()
+  local pattern path
+  for pattern in '*.network' '*.volume' '*.container'; do
+    for path in "${QUADLET_SRC}"/${pattern}; do
+      [[ -f "${path}" ]] || continue
+      QUADLET_FILES+=("${path}")
+    done
+  done
+  if [[ ${#QUADLET_FILES[@]} -eq 0 ]]; then
+    echo "No quadlet files found in ${QUADLET_SRC}" >&2
+    exit 1
+  fi
+}
+
+reload_quadlet_systemd() {
+  run_as_systemd daemon-reload
+}
+
+diagnose_quadlet_failures() {
+  echo "Quadlet systemd units were not generated." >&2
+  echo "Quadlet files directory: $(quadlet_systemd_dir)" >&2
+  local generator=""
+  if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+    for generator in /usr/lib/systemd/user-generators/podman-user-generator \
+      /usr/lib/systemd/system-generators/podman-system-generator; do
+      [[ -x "${generator}" ]] && break
+    done
+  else
+    generator="/usr/lib/systemd/system-generators/podman-system-generator"
+  fi
+  if [[ -n "${generator}" && -x "${generator}" ]]; then
+    echo "Running quadlet generator dry-run..." >&2
+    if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+      QUADLET_UNIT_DIRS="$(quadlet_systemd_dir)" "${generator}" --user --dryrun >&2 || true
+    else
+      QUADLET_UNIT_DIRS="$(quadlet_systemd_dir)" "${generator}" --dryrun >&2 || true
+    fi
+  fi
+  echo "Ensure Podman 4.4+ is installed and review files in ${QUADLET_SRC}." >&2
+}
+
+require_quadlet_services() {
+  local unit missing=()
+  for unit in openflake-postgres.service openflake-backend.service openflake-frontend.service; do
+    if ! run_as_systemd cat "${unit}" >/dev/null 2>&1; then
+      missing+=("${unit}")
+    fi
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Missing generated units: ${missing[*]}" >&2
+    diagnose_quadlet_failures
+    exit 1
+  fi
+}
+
+install_quadlet_files() {
+  collect_quadlet_files
+  local podman_cmd
+  podman_cmd="$(quadlet_install_cmd)"
+  if ${podman_cmd} quadlet install --help >/dev/null 2>&1; then
+    # shellcheck disable=SC2086
+    ${podman_cmd} quadlet install -r --reload-systemd "${QUADLET_FILES[@]}"
+    return 0
+  fi
+  copy_quadlets_to_systemd
+  reload_quadlet_systemd
+}
+
 enable_linger_if_needed() {
   if [[ "${SYSTEMD_SCOPE}" != "user" ]]; then
     return 0
@@ -366,14 +443,15 @@ cmd_deploy() {
     cmd_generate
   fi
   detect_systemd_scope
-  copy_quadlets_to_systemd
-  run_as_systemd daemon-reload
+  enable_linger_if_needed
+  install_quadlet_files
+  require_quadlet_services
 }
 
 cmd_install() {
   cmd_deploy
-  enable_linger_if_needed
-  run_as_systemd enable openflake-postgres.service openflake-backend.service openflake-frontend.service
+  # Quadlet units are transient; [Install] in .container files is applied at
+  # daemon-reload — do not run systemctl enable on them.
   run_as_systemd start openflake-postgres.service openflake-backend.service openflake-frontend.service
 }
 

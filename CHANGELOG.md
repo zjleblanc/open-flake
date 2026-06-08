@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet systemd deploy and unit generation
+
+### Fixed
+
+- Install failed with `Unit openflake-postgres.service does not exist` because `systemctl enable` was used on transient Quadlet-generated units (boot persistence comes from `[Install]` at `daemon-reload`).
+
+### Changed
+
+- `openflake-quadlets.sh` uses `podman quadlet install` when available, validates generated units before start, and runs generator dry-run diagnostics on failure.
+- Quadlet postgres `Exec` and frontend SSL health-check quoting corrected; volume `WantedBy` respects rootful vs rootless targets.
+
 ## 2026-06-07 — Specify Git branch for podman-install downloads
 
 ### Added
