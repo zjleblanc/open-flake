@@ -260,7 +260,7 @@ require_ssl_mount_vars() {
 }
 
 podman_is_rootless() {
-  podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -Fx true
+  podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -Fxq true
 }
 
 require_podman

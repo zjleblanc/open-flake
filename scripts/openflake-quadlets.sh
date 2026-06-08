@@ -64,7 +64,7 @@ load_env() {
 }
 
 podman_is_rootless() {
-  podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -Fx true
+  podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -Fxq true
 }
 
 detect_systemd_scope() {
@@ -318,6 +318,7 @@ run_as_systemd() {
 copy_quadlets_to_systemd() {
   local dest
   dest="$(quadlet_systemd_dir)"
+  echo "Installing quadlets to ${dest}..."
   if [[ "${SYSTEMD_SCOPE}" == "system" && "${EUID}" -ne 0 ]]; then
     sudo mkdir -p "${dest}"
     sudo cp "${QUADLET_SRC}/"* "${dest}/"
@@ -325,6 +326,7 @@ copy_quadlets_to_systemd() {
     mkdir -p "${dest}"
     cp "${QUADLET_SRC}/"* "${dest}/"
   fi
+  echo "Copied $(find "${dest}" -maxdepth 1 \( -name '*.container' -o -name '*.network' -o -name '*.volume' \) | wc -l | tr -d ' ') quadlet files."
 }
 
 verify_quadlet_systemd_dir() {
@@ -408,7 +410,7 @@ diagnose_quadlet_failures() {
 require_quadlet_services() {
   local unit missing=()
   for unit in openflake-postgres.service openflake-backend.service openflake-frontend.service; do
-    if ! run_as_systemd cat "${unit}" >/dev/null 2>&1; then
+    if ! run_as_systemd show "${unit}" --property=LoadState --value 2>/dev/null | grep -qx loaded; then
       missing+=("${unit}")
     fi
   done

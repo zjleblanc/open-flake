@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet systemd path corruption from rootless check
+
+### Fixed
+
+- Quadlet deploy failed with `true /home/.../.config/containers/systemd not a valid file path` and `No files parsed from []` because `podman_is_rootless()` used `grep -Fx true`, which printed `true` into `$(quadlet_systemd_dir)` command substitutions.
+
+### Changed
+
+- `podman_is_rootless()` in `openflake-quadlets.sh` and `podman-install.sh` uses quiet `grep -Fxq true`.
+- `openflake-quadlets.sh` logs quadlet copy destination and file count; unit presence checks use `systemctl show` `LoadState` instead of `systemctl cat`.
+
 ## 2026-06-07 — Fix Quadlet deploy copy to systemd search path
 
 ### Fixed
