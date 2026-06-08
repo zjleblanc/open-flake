@@ -162,14 +162,16 @@ frontend_ssl_lines() {
 }
 
 frontend_health_lines() {
-  # Port 8080 is always bound (HTTP or redirect); keep the health check simple for Quadlets.
-  echo "HealthCmd=/usr/bin/wget -q --spider http://127.0.0.1:8080/"
+  if [[ "${USE_SSL}" -eq 1 ]]; then
+    # Port 8080 redirects to https://$host:8443/; wget would follow to a closed in-container port.
+    echo 'HealthCmd=CMD-SHELL if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi'
+    echo "HealthStartPeriod=30s"
+  else
+    echo 'HealthCmd=CMD-SHELL wget -q --spider http://127.0.0.1:8080/ || exit 1'
+  fi
   echo "HealthInterval=10s"
   echo "HealthTimeout=5s"
   echo "HealthRetries=3"
-  if [[ "${USE_SSL}" -eq 1 ]]; then
-    echo "HealthStartPeriod=30s"
-  fi
 }
 
 frontend_service_lines() {
@@ -252,10 +254,11 @@ cmd_generate() {
     echo "Volume=${INSTALL_DIR}/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z"
     echo "PublishPort=5432:5432"
     echo "Exec=postgres -c listen_addresses='*' -c hba_file=/etc/postgresql/pg_hba.conf"
-    echo "HealthCmd=/usr/local/bin/pg_isready -U openflake -d openflake -h 127.0.0.1"
+    echo 'HealthCmd=CMD-SHELL /usr/local/bin/pg_isready -U openflake -d openflake || exit 1'
     echo "HealthInterval=5s"
     echo "HealthTimeout=5s"
     echo "HealthRetries=10"
+    echo "HealthStartPeriod=30s"
     echo ""
     echo "[Service]"
     echo "Restart=always"

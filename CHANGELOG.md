@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet SSL frontend and Postgres health checks
+
+### Fixed
+
+- Frontend Quadlet stayed `(unhealthy)` with SSL enabled because `wget` on port 8080 followed a redirect to host port 8443, which is not bound inside the container (nginx listens on 443).
+- Postgres Quadlet health check arguments were not reliably passed to Podman without `CMD-SHELL`.
+
+### Changed
+
+- SSL frontend Quadlet health check probes `127.0.0.1:443` with `nc` (matching Compose); HTTP-only installs use `CMD-SHELL wget`.
+- Postgres Quadlet uses `CMD-SHELL /usr/local/bin/pg_isready -U openflake -d openflake` with a 30s start period.
+
 ## 2026-06-07 — Fix Quadlet Postgres false unhealthy status
 
 ### Fixed
