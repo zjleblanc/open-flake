@@ -327,12 +327,49 @@ copy_quadlets_to_systemd() {
   fi
 }
 
-quadlet_install_cmd() {
-  if [[ "${SYSTEMD_SCOPE}" == "system" && "${EUID}" -ne 0 ]]; then
-    echo "sudo podman"
-  else
-    echo "podman"
+verify_quadlet_systemd_dir() {
+  local dest
+  dest="$(quadlet_systemd_dir)"
+  if [[ ! -d "${dest}" ]]; then
+    echo "Quadlet systemd directory does not exist: ${dest}" >&2
+    exit 1
   fi
+  if ! compgen -G "${dest}/*.container" >/dev/null; then
+    echo "No .container quadlet files in ${dest}" >&2
+    echo "Expected generated files from ${QUADLET_SRC}" >&2
+    ls -la "${dest}" >&2 || true
+    exit 1
+  fi
+}
+
+quadlet_generator_dryrun() {
+  local dir="$1"
+  local generator=""
+  local -a generator_args=()
+
+  if [[ ! -d "${dir}" ]]; then
+    echo "Skipping generator dry-run; directory not found: ${dir}" >&2
+    return 1
+  fi
+
+  if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+    if [[ -x /usr/lib/systemd/user-generators/podman-user-generator ]]; then
+      generator="/usr/lib/systemd/user-generators/podman-user-generator"
+    elif [[ -x /usr/lib/systemd/system-generators/podman-system-generator ]]; then
+      generator="/usr/lib/systemd/system-generators/podman-system-generator"
+      generator_args=(--user)
+    fi
+  elif [[ -x /usr/lib/systemd/system-generators/podman-system-generator ]]; then
+    generator="/usr/lib/systemd/system-generators/podman-system-generator"
+  fi
+
+  if [[ -z "${generator}" ]]; then
+    echo "Podman quadlet generator not found under /usr/lib/systemd/" >&2
+    return 1
+  fi
+
+  echo "Running quadlet generator dry-run on ${dir}..." >&2
+  QUADLET_UNIT_DIRS="${dir}" "${generator}" "${generator_args[@]}" --dryrun >&2 || true
 }
 
 collect_quadlet_files() {
@@ -355,25 +392,16 @@ reload_quadlet_systemd() {
 }
 
 diagnose_quadlet_failures() {
+  local dest
+  dest="$(quadlet_systemd_dir)"
   echo "Quadlet systemd units were not generated." >&2
-  echo "Quadlet files directory: $(quadlet_systemd_dir)" >&2
-  local generator=""
-  if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
-    for generator in /usr/lib/systemd/user-generators/podman-user-generator \
-      /usr/lib/systemd/system-generators/podman-system-generator; do
-      [[ -x "${generator}" ]] && break
-    done
-  else
-    generator="/usr/lib/systemd/system-generators/podman-system-generator"
-  fi
-  if [[ -n "${generator}" && -x "${generator}" ]]; then
-    echo "Running quadlet generator dry-run..." >&2
-    if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
-      QUADLET_UNIT_DIRS="$(quadlet_systemd_dir)" "${generator}" --user --dryrun >&2 || true
-    else
-      QUADLET_UNIT_DIRS="$(quadlet_systemd_dir)" "${generator}" --dryrun >&2 || true
-    fi
-  fi
+  echo "Source quadlets: ${QUADLET_SRC}" >&2
+  echo "Systemd quadlet dir: ${dest}" >&2
+  echo "Source contents:" >&2
+  ls -la "${QUADLET_SRC}" >&2 || true
+  echo "Systemd dir contents:" >&2
+  ls -la "${dest}" >&2 || true
+  quadlet_generator_dryrun "${dest}" || quadlet_generator_dryrun "${QUADLET_SRC}" || true
   echo "Ensure Podman 4.4+ is installed and review files in ${QUADLET_SRC}." >&2
 }
 
@@ -393,14 +421,8 @@ require_quadlet_services() {
 
 install_quadlet_files() {
   collect_quadlet_files
-  local podman_cmd
-  podman_cmd="$(quadlet_install_cmd)"
-  if ${podman_cmd} quadlet install --help >/dev/null 2>&1; then
-    # shellcheck disable=SC2086
-    ${podman_cmd} quadlet install -r --reload-systemd "${QUADLET_FILES[@]}"
-    return 0
-  fi
   copy_quadlets_to_systemd
+  verify_quadlet_systemd_dir
   reload_quadlet_systemd
 }
 

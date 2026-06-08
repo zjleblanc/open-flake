@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet deploy copy to systemd search path
+
+### Fixed
+
+- Quadlet generator saw an empty unit list (`No files parsed from []`) because `podman quadlet install` skipped copying files into `~/.config/containers/systemd/`.
+
+### Changed
+
+- `openflake-quadlets.sh` always copies generated quadlets into the systemd search path, verifies `.container` files are present, then reloads; generator dry-run diagnostics list source and destination directories.
+
 ## 2026-06-07 — Fix Quadlet frontend startup ordering
 
 ### Fixed
