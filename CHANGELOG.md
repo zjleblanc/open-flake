@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet Postgres false unhealthy status
+
+### Fixed
+
+- Postgres Quadlet reported `(unhealthy)` while the database was running because the health check used `/usr/bin/pg_isready`, which does not exist in `postgres:16-alpine` (`/usr/local/bin/pg_isready`).
+
+### Changed
+
+- Postgres Quadlet health check uses `/usr/local/bin/pg_isready -U openflake -d openflake -h 127.0.0.1`.
+
 ## 2026-06-07 — Fix Quadlet frontend crash loop and backend DNS
 
 ### Fixed

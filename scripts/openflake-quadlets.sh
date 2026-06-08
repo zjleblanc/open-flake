@@ -252,7 +252,7 @@ cmd_generate() {
     echo "Volume=${INSTALL_DIR}/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro,Z"
     echo "PublishPort=5432:5432"
     echo "Exec=postgres -c listen_addresses='*' -c hba_file=/etc/postgresql/pg_hba.conf"
-    echo "HealthCmd=/usr/bin/pg_isready -U openflake -d openflake"
+    echo "HealthCmd=/usr/local/bin/pg_isready -U openflake -d openflake -h 127.0.0.1"
     echo "HealthInterval=5s"
     echo "HealthTimeout=5s"
     echo "HealthRetries=10"
