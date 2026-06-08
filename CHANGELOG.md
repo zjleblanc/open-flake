@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Fix Quadlet frontend startup ordering
+
+### Fixed
+
+- Frontend container did not stay running when all Quadlet services were started together; nginx resolves the backend host at startup and exits if the API is not ready yet.
+
+### Changed
+
+- `openflake-quadlets.sh` starts postgres, then backend, waits for `/health/ready`, then starts frontend; upgrade restarts follow the same order.
+- Frontend Quadlet health check simplified to wget on port 8080; hard `Requires=` dependencies replaced with ordered `After=` / `Wants=`.
+
 ## 2026-06-07 — Fix Quadlet systemd deploy and unit generation
 
 ### Fixed

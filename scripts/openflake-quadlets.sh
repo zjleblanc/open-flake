@@ -162,16 +162,13 @@ frontend_ssl_lines() {
 }
 
 frontend_health_lines() {
+  # Port 8080 is always bound (HTTP or redirect); keep the health check simple for Quadlets.
+  echo "HealthCmd=/usr/bin/wget -q --spider http://127.0.0.1:8080/"
+  echo "HealthInterval=10s"
+  echo "HealthTimeout=5s"
+  echo "HealthRetries=3"
   if [[ "${USE_SSL}" -eq 1 ]]; then
-    echo 'HealthCmd=/bin/sh -c '\''if [ -f /var/run/nginx-ssl-enabled ]; then nc -z 127.0.0.1 443; else wget -q --spider http://127.0.0.1:8080/; fi'\'''
-    echo "HealthInterval=10s"
-    echo "HealthTimeout=5s"
-    echo "HealthRetries=3"
-  else
-    echo "HealthCmd=/usr/bin/wget -q --spider http://127.0.0.1:8080/"
-    echo "HealthInterval=10s"
-    echo "HealthTimeout=5s"
-    echo "HealthRetries=3"
+    echo "HealthStartPeriod=30s"
   fi
 }
 
@@ -263,8 +260,7 @@ cmd_generate() {
     echo "[Unit]"
     echo "Description=OpenFlake backend API"
     echo "After=network-online.target openflake-postgres.service"
-    echo "Requires=openflake-postgres.service"
-    echo "Wants=network-online.target"
+    echo "Wants=network-online.target openflake-postgres.service"
     echo ""
     echo "[Container]"
     echo "Image=${REGISTRY}/openflake-backend:${IMAGE_TAG}"
@@ -287,8 +283,7 @@ cmd_generate() {
     echo "[Unit]"
     echo "Description=OpenFlake frontend UI"
     echo "After=network-online.target openflake-backend.service"
-    echo "Requires=openflake-backend.service"
-    echo "Wants=network-online.target"
+    echo "Wants=network-online.target openflake-backend.service"
     echo ""
     echo "[Container]"
     echo "Image=${REGISTRY}/openflake-frontend:${IMAGE_TAG}"
@@ -409,6 +404,76 @@ install_quadlet_files() {
   reload_quadlet_systemd
 }
 
+wait_for_postgres() {
+  local elapsed=0
+  local max_wait=60
+  echo "Waiting for PostgreSQL..."
+  until podman exec openflake-postgres pg_isready -U openflake -d openflake >/dev/null 2>&1; do
+    if [[ "${elapsed}" -ge "${max_wait}" ]]; then
+      echo "Timed out waiting for PostgreSQL after ${max_wait}s" >&2
+      exit 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+}
+
+wait_for_backend() {
+  require_install
+  load_env
+  local elapsed=0
+  local max_wait="${OPENFLAKE_HEALTH_TIMEOUT:-120}"
+  local curl_args=(-fsS)
+  local url="http://localhost:8000/health/ready"
+  if [[ "${USE_SSL}" -eq 1 ]]; then
+    url="https://localhost:8000/health/ready"
+    curl_args=(-fsSk)
+  fi
+  echo "Waiting for backend (up to ${max_wait}s)..."
+  while [[ "${elapsed}" -lt "${max_wait}" ]]; do
+    if curl "${curl_args[@]}" "${url}" >/dev/null 2>&1; then
+      echo "Backend is ready."
+      return 0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+  echo "Backend did not become ready within ${max_wait}s." >&2
+  echo "Check logs: podman logs openflake-backend" >&2
+  exit 1
+}
+
+show_unit_failure() {
+  local unit="$1"
+  echo "--- systemctl status ${unit} ---" >&2
+  run_as_systemd status "${unit}" --no-pager >&2 || true
+  echo "--- journalctl -u ${unit} (last 30 lines) ---" >&2
+  if [[ "${SYSTEMD_SCOPE}" == "user" ]]; then
+    journalctl --user -u "${unit}" -n 30 --no-pager >&2 || true
+  else
+    journalctl -u "${unit}" -n 30 --no-pager >&2 || true
+  fi
+}
+
+start_stack_units() {
+  detect_systemd_scope
+  run_as_systemd reset-failed openflake-postgres.service openflake-backend.service openflake-frontend.service 2>/dev/null || true
+  run_as_systemd start openflake-postgres.service
+  wait_for_postgres
+  run_as_systemd start openflake-backend.service
+  wait_for_backend
+  if ! run_as_systemd start openflake-frontend.service; then
+    show_unit_failure openflake-frontend.service
+    exit 1
+  fi
+  if ! podman container exists openflake-frontend 2>/dev/null; then
+    echo "Frontend container did not start." >&2
+    show_unit_failure openflake-frontend.service
+    exit 1
+  fi
+  echo "Frontend is running."
+}
+
 enable_linger_if_needed() {
   if [[ "${SYSTEMD_SCOPE}" != "user" ]]; then
     return 0
@@ -452,12 +517,11 @@ cmd_install() {
   cmd_deploy
   # Quadlet units are transient; [Install] in .container files is applied at
   # daemon-reload — do not run systemctl enable on them.
-  run_as_systemd start openflake-postgres.service openflake-backend.service openflake-frontend.service
+  start_stack_units
 }
 
 cmd_start() {
-  detect_systemd_scope
-  run_as_systemd start openflake-postgres.service openflake-backend.service openflake-frontend.service
+  start_stack_units
 }
 
 cmd_stop() {
@@ -472,7 +536,12 @@ cmd_restart() {
 
 cmd_restart_apps() {
   detect_systemd_scope
-  run_as_systemd restart openflake-backend.service openflake-frontend.service
+  run_as_systemd restart openflake-backend.service
+  wait_for_backend
+  if ! run_as_systemd restart openflake-frontend.service; then
+    show_unit_failure openflake-frontend.service
+    exit 1
+  fi
 }
 
 cmd_status() {
