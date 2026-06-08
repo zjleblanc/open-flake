@@ -13,7 +13,7 @@ import { DetailSection } from "./DetailSection";
 interface RecordAttachmentsSectionProps {
   resource: string;
   sysId: string;
-  canWrite: boolean;
+  canManageAttachments: boolean;
 }
 
 interface AttachmentPreviewProps {
@@ -110,7 +110,7 @@ function AttachmentPreview({ resource, sysId, attachment, previewKind }: Attachm
 export function RecordAttachmentsSection({
   resource,
   sysId,
-  canWrite,
+  canManageAttachments,
 }: RecordAttachmentsSectionProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,7 +193,7 @@ export function RecordAttachmentsSection({
                       {isExpanded ? "Hide Preview" : "Preview"}
                     </button>
                   )}
-                  {canWrite && (
+                  {canManageAttachments && (
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm attachment-delete-btn"
@@ -221,7 +221,7 @@ export function RecordAttachmentsSection({
         })}
       </ul>
 
-      {canWrite && (
+      {canManageAttachments && (
         <div className="attachment-upload-row">
           <input
             ref={fileInputRef}

@@ -20,7 +20,11 @@ from app.domain.registry import (
     REFERENCE_FIELDS,
     TABLE_MODELS,
 )
-from app.api.flake.attachment import delete_attachments_for_parent
+from app.api.flake.attachment import (
+    _assert_attachment_parent_access,
+    delete_attachments_for_parent,
+    remove_attachment,
+)
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence
 from app.query.parser import QueryCondition
@@ -427,6 +431,20 @@ async def delete_record(
                         await assert_record_action(db, auth, parent_table, parent, "write")
         elif table == "sys_user_grmember":
             await assert_platform_action(db, auth, table, "write", record=record)
+        elif table == "sys_attachment":
+            await _assert_attachment_parent_access(
+                db,
+                auth,
+                record.table_name,
+                record.table_sys_id,
+                "write",
+            )
+
+    if table == "sys_attachment":
+        result = _model_to_dict(record, table, exclude_links=False)
+        await remove_attachment(db, record)
+        await emit(RecordEvent(action="delete", table=table, sys_id=sys_id, record=result))
+        return True
 
     result = _model_to_dict(record, table, exclude_links=False)
     await delete_attachments_for_parent(db, table, sys_id)

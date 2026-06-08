@@ -8,8 +8,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
-from app.auth.rbac import assert_record_action_by_id
-from app.domain.registry import RBAC_RECORD_TABLES
+from app.auth.rbac import assert_record_action_by_id, resolve_record_permissions
+from app.domain.registry import RBAC_RECORD_TABLES, TABLE_MODELS
 from app.config import BACKEND_ROOT, get_settings
 from app.db import get_db
 from app.models import SysAttachment
@@ -100,6 +100,23 @@ async def _parse_upload_request(
     return str(table_name), str(table_sys_id), file_name, mime_type, content
 
 
+async def _remove_existing_by_name(
+    db: AsyncSession,
+    table_name: str,
+    table_sys_id: str,
+    file_name: str,
+) -> None:
+    result = await db.execute(
+        select(SysAttachment).where(
+            SysAttachment.table_name == table_name,
+            SysAttachment.table_sys_id == table_sys_id,
+            SysAttachment.file_name == file_name,
+        )
+    )
+    for existing in result.scalars().all():
+        await remove_attachment(db, existing)
+
+
 async def _save_attachment(
     db: AsyncSession,
     auth: AuthContext,
@@ -109,6 +126,7 @@ async def _save_attachment(
     mime_type: str,
     content: bytes,
 ) -> SysAttachment:
+    await _remove_existing_by_name(db, table_name, table_sys_id, file_name)
     attach_dir = _ensure_attach_dir()
     sys_id = new_sys_id()
     ext = Path(file_name).suffix
@@ -140,13 +158,50 @@ async def _assert_attachment_parent_access(
     table_sys_id: str,
     action: str,
 ) -> None:
-    if table_name in RBAC_RECORD_TABLES:
-        await assert_record_action_by_id(db, auth, table_name, table_sys_id, action)  # type: ignore[arg-type]
+    if table_name not in RBAC_RECORD_TABLES:
+        return
+    if action == "read":
+        await assert_record_action_by_id(db, auth, table_name, table_sys_id, "read")  # type: ignore[arg-type]
+        return
+
+    model = TABLE_MODELS.get(table_name)
+    if not model:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
+    record = await db.get(model, table_sys_id)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
+    perms = await resolve_record_permissions(db, auth, table_name, record)
+    if not (perms.write or perms.delete):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient permissions")
+
+
+def _attachment_storage_candidates(record: SysAttachment) -> list[Path]:
+    candidates: list[Path] = []
+    seen: set[str] = set()
+
+    def add(path: Path) -> None:
+        key = str(path)
+        if key not in seen:
+            seen.add(key)
+            candidates.append(path)
+
+    if record.storage_path:
+        stored = Path(record.storage_path)
+        add(stored)
+        if not stored.is_absolute():
+            add((resolve_attachments_path() / stored).resolve())
+
+    attach_dir = resolve_attachments_path()
+    add(attach_dir / record.sys_id)
+    for match in attach_dir.glob(f"{record.sys_id}*"):
+        add(match)
+    return candidates
 
 
 def _remove_attachment_file(record: SysAttachment) -> None:
-    if record.storage_path and os.path.exists(record.storage_path):
-        os.remove(record.storage_path)
+    for path in _attachment_storage_candidates(record):
+        if path.is_file():
+            path.unlink()
 
 
 async def remove_attachment(db: AsyncSession, record: SysAttachment) -> None:
@@ -168,6 +223,47 @@ async def delete_attachments_for_parent(
     for record in records:
         await remove_attachment(db, record)
     return len(records)
+
+
+async def purge_orphan_attachments(db: AsyncSession) -> int:
+    removed = 0
+    result = await db.execute(select(SysAttachment))
+    for record in result.scalars().all():
+        model = TABLE_MODELS.get(record.table_name)
+        if not model:
+            continue
+        parent = await db.get(model, record.table_sys_id)
+        if parent is None:
+            await remove_attachment(db, record)
+            removed += 1
+    return removed
+
+
+async def purge_stale_attachment_files(db: AsyncSession) -> int:
+    attach_dir = resolve_attachments_path()
+    if not attach_dir.is_dir():
+        return 0
+
+    result = await db.execute(select(SysAttachment))
+    records = result.scalars().all()
+    referenced_paths = {
+        str(path)
+        for record in records
+        for path in _attachment_storage_candidates(record)
+    }
+    referenced_names = {Path(path).name for path in referenced_paths}
+
+    removed = 0
+    for path in attach_dir.iterdir():
+        if not path.is_file():
+            continue
+        if str(path) in referenced_paths or path.name in referenced_names:
+            continue
+        if any(path.name.startswith(record.sys_id) for record in records):
+            continue
+        path.unlink()
+        removed += 1
+    return removed
 
 
 @router.get("")
@@ -244,13 +340,19 @@ async def download_attachment(
     db: AsyncSession = Depends(get_db),
 ):
     record = await db.get(SysAttachment, sys_id)
-    if not record or not os.path.exists(record.storage_path):
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
+    file_path = next(
+        (path for path in _attachment_storage_candidates(record) if path.is_file()),
+        None,
+    )
+    if not file_path:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
     await _assert_attachment_parent_access(
         db, auth, record.table_name, record.table_sys_id, "read"
     )
     return FileResponse(
-        record.storage_path,
+        file_path,
         filename=record.file_name,
         media_type=record.content_type,
     )

@@ -45,6 +45,26 @@ async def test_resolve_owner_has_write():
 
 
 @pytest.mark.asyncio
+async def test_assigned_user_has_write_and_comment():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="tech1", user_name="tech", auth_method="jwt")
+
+    async def mock_execute(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = []
+        return result
+
+    db.execute = mock_execute
+
+    record = {"sys_id": "rec1", "owner": "other", "owner_group": "", "assigned_to": "tech1"}
+    perms = await resolve_record_permissions(db, auth, "incident", record)
+    assert perms.read is True
+    assert perms.write is True
+    assert perms.comment is True
+    assert perms.delete is False
+
+
+@pytest.mark.asyncio
 async def test_resolve_view_grant_read_only():
     db = AsyncMock()
     auth = AuthContext(user_sys_id="viewer", user_name="viewer", auth_method="jwt")

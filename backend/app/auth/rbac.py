@@ -153,6 +153,12 @@ async def resolve_record_permissions(
     if owner == user_sys_id or (owner_group and owner_group in group_ids):
         return RecordPermissions(read=True, write=True, comment=True, delete=True)
 
+    assigned_to = _ref_value(record_dict, "assigned_to")
+    if assigned_to == user_sys_id:
+        base.read = True
+        base.write = True
+        base.comment = True
+
     grants = await _active_grants_for_record(
         db, table, record_dict.get("sys_id", ""), user_sys_id, group_ids
     )

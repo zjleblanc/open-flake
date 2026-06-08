@@ -459,7 +459,7 @@ export function ConfigurationItemDetailPage() {
         <RecordAttachmentsSection
           resource={resource}
           sysId={sysId}
-          canWrite={!!permissions?.write}
+          canManageAttachments={!!(permissions?.write || permissions?.delete)}
         />
       )}
 

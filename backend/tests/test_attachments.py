@@ -1,8 +1,13 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.api.flake.attachment import delete_attachments_for_parent, remove_attachment
+from app.api.flake.attachment import (
+    _save_attachment,
+    delete_attachments_for_parent,
+    remove_attachment,
+)
 from app.models import SysAttachment
 
 
@@ -54,3 +59,29 @@ async def test_remove_attachment_deletes_db_row_and_file():
     remove_file.assert_called_once_with(record)
     db.delete.assert_awaited_once_with(record)
     db.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_save_attachment_replaces_existing_file_name():
+    db = AsyncMock()
+    auth = MagicMock(user_sys_id="user1")
+    existing = SysAttachment(
+        sys_id="old1",
+        table_name="incident",
+        table_sys_id="inc1",
+        file_name="sample.txt",
+        storage_path="/tmp/old1.txt",
+    )
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = [existing]
+    db.execute = AsyncMock(return_value=result)
+
+    with patch("app.api.flake.attachment.remove_attachment", new=AsyncMock()) as remove:
+        with patch("app.api.flake.attachment._ensure_attach_dir") as ensure_dir:
+            ensure_dir.return_value = Path("/tmp/attachments")
+            with patch.object(Path, "write_bytes"):
+                await _save_attachment(
+                    db, auth, "incident", "inc1", "sample.txt", "text/plain", b"data"
+                )
+
+    remove.assert_awaited_once_with(db, existing)

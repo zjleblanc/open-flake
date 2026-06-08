@@ -1,4 +1,3 @@
-import os
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
@@ -27,6 +26,8 @@ from app.domain.table_service import (
     update_record,
 )
 from app.api.flake.attachment import (
+    _assert_attachment_parent_access,
+    _attachment_storage_candidates,
     _attachment_to_dict,
     _save_attachment,
     remove_attachment,
@@ -426,7 +427,7 @@ async def upload_record_attachment(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    await assert_record_action_by_id(db, auth, table, sys_id, "write")
+    await _assert_attachment_parent_access(db, auth, table, sys_id, "write")
     content = await file.read()
     record = await _save_attachment(
         db,
@@ -456,12 +457,13 @@ async def download_record_attachment(
         not record
         or record.table_name != table
         or record.table_sys_id != sys_id
-        or not os.path.exists(record.storage_path)
+        or not any(path.is_file() for path in _attachment_storage_candidates(record))
     ):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
-    await assert_record_action_by_id(db, auth, table, sys_id, "read")
+    await _assert_attachment_parent_access(db, auth, table, sys_id, "read")
+    file_path = next(path for path in _attachment_storage_candidates(record) if path.is_file())
     return FileResponse(
-        record.storage_path,
+        file_path,
         filename=record.file_name,
         media_type=record.content_type,
     )
@@ -484,7 +486,7 @@ async def delete_record_attachment(
     record = await db.get(SysAttachment, attachment_sys_id)
     if not record or record.table_name != table or record.table_sys_id != sys_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Attachment not found")
-    await assert_record_action_by_id(db, auth, table, sys_id, "write")
+    await _assert_attachment_parent_access(db, auth, table, sys_id, "write")
     await remove_attachment(db, record)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

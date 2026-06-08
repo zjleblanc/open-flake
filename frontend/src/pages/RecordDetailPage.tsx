@@ -227,7 +227,11 @@ export function RecordDetailPage({
       </DetailSection>
 
       {sysId && permissions?.read && (
-        <RecordAttachmentsSection resource={resource} sysId={sysId} canWrite={canWrite} />
+        <RecordAttachmentsSection
+          resource={resource}
+          sysId={sysId}
+          canManageAttachments={!!(permissions?.write || permissions?.delete)}
+        />
       )}
 
       {sysId && (permissions?.comment || permissions?.write) && (

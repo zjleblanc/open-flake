@@ -17,9 +17,21 @@ export interface AuthMe {
 export function getRecordPermissions(record: Record<string, unknown>): RecordPermissions {
   const p = record._permissions;
   if (p && typeof p === "object") {
-    return p as RecordPermissions;
+    const perms = p as Record<string, unknown>;
+    return {
+      read: coerceBool(perms.read),
+      write: coerceBool(perms.write),
+      comment: coerceBool(perms.comment),
+      delete: coerceBool(perms.delete),
+    };
   }
   return { read: true, write: true, comment: true, delete: true };
+}
+
+function coerceBool(value: unknown): boolean {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  return Boolean(value);
 }
 
 export function getToken(): string | null {

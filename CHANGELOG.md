@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-08 — Fix attachment duplicates, orphans, and assigned-user access
+
+### Fixed
+
+- Duplicate attachment rows when the same file name was uploaded more than once to a record.
+- Orphaned attachment files and DB rows left after parent record deletion, including when stored paths no longer matched on disk.
+- Assigned users could view attachments on incidents but not upload or delete them.
+
+### Changed
+
+- Upload replaces an existing attachment with the same file name on the same record (matches Ansible idempotent overwrite behavior).
+- File removal resolves storage paths and matches files by attachment sys_id prefix.
+- Startup purges orphan attachment rows whose parent record is gone, then removes unreferenced files from the attachments directory.
+- Table API delete of `sys_attachment` removes the file on disk, not just the metadata row.
+- Attachment manage checks accept write or delete permission on the parent record.
+
+### Added
+
+- Test for replace-on-upload when a file name already exists.
+- RBAC test granting write and comment to users assigned to a record.
+
 ## 2026-06-08 — Rename compatibility API module to flake with legacy path rewrite
 
 ### Changed
