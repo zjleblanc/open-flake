@@ -20,5 +20,6 @@
     - name: Assert user found
       ansible.builtin.assert:
         that:
-          - user_info.records | length >= 1
-          - user_info.records[0].user_name == openflake_user
+          - user_info.record | length >= 1
+          - user_info.record[0].sys_id is defined
+          - user_info.record[0].active == "true"

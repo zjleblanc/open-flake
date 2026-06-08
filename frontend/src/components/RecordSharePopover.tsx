@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ShareIcon } from "./DetailIcons";
+import { Portal } from "./Portal";
 import { RecordSharePanel } from "./RecordSharePanel";
 import "./Layout.css";
 
@@ -12,31 +13,20 @@ interface RecordSharePopoverProps {
 
 export function RecordSharePopover({ resource, sysId, record, canWrite }: RecordSharePopoverProps) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
 
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleEscape);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
-    };
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [open]);
 
   return (
-    <div className="share-popover-root" ref={rootRef}>
+    <div className="share-popover-root">
       <button
         type="button"
         className={`share-popover-trigger${open ? " active" : ""}`}
@@ -49,25 +39,38 @@ export function RecordSharePopover({ resource, sysId, record, canWrite }: Record
       </button>
 
       {open && (
-        <div className="share-popover" role="dialog" aria-label="Share and access">
-          <div className="share-popover-header">
-            <h2>Share</h2>
-            <button
-              type="button"
-              className="share-popover-close"
-              aria-label="Close"
-              onClick={() => setOpen(false)}
+        <Portal>
+          <div
+            className="share-popover-overlay"
+            role="presentation"
+            onClick={() => setOpen(false)}
+          >
+            <div
+              className="share-popover"
+              role="dialog"
+              aria-label="Share and access"
+              onClick={(event) => event.stopPropagation()}
             >
-              ×
-            </button>
+              <div className="share-popover-header">
+                <h2>Share</h2>
+                <button
+                  type="button"
+                  className="share-popover-close"
+                  aria-label="Close"
+                  onClick={() => setOpen(false)}
+                >
+                  ×
+                </button>
+              </div>
+              <RecordSharePanel
+                resource={resource}
+                sysId={sysId}
+                record={record}
+                canWrite={canWrite}
+              />
+            </div>
           </div>
-          <RecordSharePanel
-            resource={resource}
-            sysId={sysId}
-            record={record}
-            canWrite={canWrite}
-          />
-        </div>
+        </Portal>
       )}
     </div>
   );

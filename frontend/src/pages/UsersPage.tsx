@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { usePageHeader } from "../components/PageHeaderContext";
+import { EmptyValue, isEmptyDisplayValue } from "../components/EmptyValue";
 
 export function UsersPage() {
   const { hasPermission } = useAuth();
@@ -128,7 +129,15 @@ export function UsersPage() {
                 <tr key={g.sys_id}>
                   <td>{g.name}</td>
                   <td>{g.description}</td>
-                  <td>{typeof g.owner === "object" ? (g.owner as { value?: string }).value : g.owner || "—"}</td>
+                  <td>
+                    {isEmptyDisplayValue(g.owner) ? (
+                      <EmptyValue />
+                    ) : typeof g.owner === "object" ? (
+                      (g.owner as { value?: string }).value
+                    ) : (
+                      g.owner
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -25,10 +25,13 @@
           password: "{{ openflake_pass }}"
         table_name: incident
         table_sys_id: "{{ incident.record.sys_id }}"
-        path: "{{ playbook_dir }}/sample-attachment.txt"
+        attachments:
+          - name: sample-attachment
+            path: "{{ playbook_dir }}/sample-attachment.txt"
       register: attachment
 
     - name: Assert attachment uploaded
       ansible.builtin.assert:
         that:
-          - attachment.record.sys_id is defined
+          - attachment.records | length >= 1
+          - attachment.records[0].sys_id is defined

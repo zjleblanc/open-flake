@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-07 — Add record delete, list filtering, and table UI polish
+
+### Added
+
+- Record delete on detail views (RBAC-gated via `_permissions.delete`) with confirmation dialog and redirect to the list.
+- Bulk delete on list views: checkbox column, header select-all for deletable rows, and confirmed multi-record delete.
+- Column filter on list views: choose a table column, then search with case-insensitive contains matching (state matches labels and raw values).
+- Shared UI components: `ConfirmDialog`, `Portal`, `RecordDeleteButton`, `RecordDetailHeaderActions`, and `EmptyValue` for consistent empty placeholders.
+
+### Changed
+
+- Share popover renders as a centered modal via `document.body` portal so it is not clipped by the sticky navbar `backdrop-filter`.
+- Delete confirmation dialog uses the same portal pattern for correct viewport centering.
+- Table header rows use a purple gradient theme across all tables.
+- Empty state and priority fields show a muted em dash instead of a purple state badge when unset.
+- Configuration Items list labels the first column "Name" and filters across `name` and `number`.
+- Filter column select uses a custom chevron with proper right padding.
+
+## 2026-06-07 — Improve attachment upload API and Ansible examples
+
+### Added
+
+- Attachment upload responses include a SHA-256 `hash` field; new uploads store the hash in `other`.
+- Raw-body attachment upload via query parameters (`table_name`, `table_sys_id`, optional `file_name`, `content_type`) for non-multipart clients.
+
+### Changed
+
+- Attachment upload endpoint accepts both `multipart/form-data` and raw request bodies through a shared parser and save path.
+- `docs/ansible-examples/attachment_upload.yml` uses the `attachments` list parameter and asserts on `attachment.records`.
+- `docs/ansible-examples/sys_user_lookup.yml` asserts on `user_info.record` and checks `active`.
+
 ## 2026-06-07 — Fix lab seed --env-file database targeting
 
 ### Fixed

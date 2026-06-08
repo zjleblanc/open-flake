@@ -126,6 +126,12 @@ export function App() {
               resource="configuration-items"
               title="Configuration Items"
               basePath="/configuration-items"
+              columns={[
+                { key: "number", label: "Name", filterKeys: ["number", "name"] },
+                { key: "short_description", label: "Short Description" },
+                { key: "state", label: "State" },
+                { key: "priority", label: "Priority" },
+              ]}
               createFields={[
                 { key: "name", label: "Name" },
                 { key: "short_description", label: "Short Description" },

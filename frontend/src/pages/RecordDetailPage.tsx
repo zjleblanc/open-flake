@@ -10,7 +10,8 @@ import {
   ReadOnlyFieldInput,
 } from "../components/DetailFieldControls";
 import { RecordCommentsSection } from "../components/RecordCommentsSection";
-import { RecordSharePopover } from "../components/RecordSharePopover";
+import { RecordDetailHeaderActions } from "../components/RecordDetailHeaderActions";
+import { EmptyValue } from "../components/EmptyValue";
 import "../components/Layout.css";
 
 export interface DetailFieldConfig {
@@ -107,25 +108,30 @@ export function RecordDetailPage({
     [title, listPath, isLoading, data, recordTitle]
   );
   const headerBadge = useMemo(
-    () =>
-      !isLoading && data ? (
-        <span className={`badge ${stateBadge(data.state || "1")}`}>
-          {STATE_LABELS[data.state] || data.state || "—"}
+    () => {
+      if (isLoading || !data) return undefined;
+      if (!data.state) return <EmptyValue />;
+      return (
+        <span className={`badge ${stateBadge(data.state)}`}>
+          {STATE_LABELS[data.state] || data.state}
         </span>
-      ) : undefined,
+      );
+    },
     [isLoading, data]
   );
   const headerActions = useMemo(
     () =>
-      !isLoading && data && permissions?.read && sysId ? (
-        <RecordSharePopover
+      !isLoading && data && sysId ? (
+        <RecordDetailHeaderActions
           resource={resource}
           sysId={sysId}
           record={data}
+          recordLabel={recordTitle}
+          listPath={listPath}
           canWrite={canWrite}
         />
       ) : undefined,
-    [isLoading, data, permissions?.read, sysId, resource, canWrite]
+    [isLoading, data, sysId, resource, recordTitle, listPath, canWrite]
   );
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });

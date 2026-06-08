@@ -24,6 +24,12 @@
   --of-sidebar-text: var(--of-primary-light);
   --of-sidebar-active-bg: color-mix(in srgb, var(--of-primary) 35%, transparent);
   --of-row-hover: color-mix(in srgb, var(--of-primary) 5%, transparent);
+  --of-table-header-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--of-primary) 32%, var(--of-surface)) 0%,
+    color-mix(in srgb, var(--of-primary-dark) 38%, var(--of-surface)) 100%
+  );
+  --of-table-header-border: color-mix(in srgb, var(--of-primary) 55%, var(--of-border));
 }
 
 * {
@@ -80,6 +86,10 @@ h3,
 }
 
 .text-muted {
+  color: var(--of-text-muted);
+}
+
+.empty-value {
   color: var(--of-text-muted);
 }
 
@@ -217,12 +227,18 @@ td {
 }
 
 th {
-  color: var(--of-text-muted);
+  color: var(--of-text);
   font-family: var(--of-font-ui);
   font-weight: 600;
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+thead th {
+  background: var(--of-table-header-bg);
+  color: var(--of-primary-light);
+  border-bottom: 1px solid var(--of-table-header-border);
 }
 
 tr:hover td {

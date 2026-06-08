@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getRecordPermissions, type RecordPermissions } from "../api/client";
+import { EmptyValue, isEmptyDisplayValue } from "./EmptyValue";
 
 function refValue(field: unknown): string {
   if (!field) return "";
@@ -96,8 +97,10 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
       ? (users.data?.records || []).map((u) => ({ id: u.sys_id, label: u.user_name }))
       : (groups.data?.records || []).map((g) => ({ id: g.sys_id, label: g.name }));
 
-  const ownerLabel = userLabels[owner] || owner || "—";
-  const ownerGroupLabel = groupLabels[ownerGroup] || ownerGroup || "—";
+  const ownerLabel = isEmptyDisplayValue(owner) ? null : userLabels[owner] || owner;
+  const ownerGroupLabel = isEmptyDisplayValue(ownerGroup)
+    ? null
+    : groupLabels[ownerGroup] || ownerGroup;
   const permissionLabels = formatPermissions(permissions);
 
   return (
@@ -165,11 +168,11 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           <dl className="share-ownership-readonly">
             <div>
               <dt>Owner</dt>
-              <dd>{ownerLabel}</dd>
+              <dd>{ownerLabel ?? <EmptyValue />}</dd>
             </div>
             <div>
               <dt>Owner group</dt>
-              <dd>{ownerGroupLabel}</dd>
+              <dd>{ownerGroupLabel ?? <EmptyValue />}</dd>
             </div>
           </dl>
         )}

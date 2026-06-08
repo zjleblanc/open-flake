@@ -1,8 +1,8 @@
+import hashlib
 import os
-import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,19 @@ def _ensure_attach_dir() -> Path:
     return path
 
 
+def _sha256_hex(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
+
+
+def _attachment_hash(record: SysAttachment) -> str:
+    stored = (record.other or {}).get("hash")
+    if stored:
+        return stored
+    if record.storage_path and os.path.exists(record.storage_path):
+        return _sha256_hex(Path(record.storage_path).read_bytes())
+    return ""
+
+
 def _attachment_to_dict(record: SysAttachment) -> dict:
     return {
         "sys_id": record.sys_id,
@@ -33,12 +46,84 @@ def _attachment_to_dict(record: SysAttachment) -> dict:
         "table_sys_id": record.table_sys_id,
         "size_bytes": str(record.size_bytes),
         "content_type": record.content_type,
+        "hash": _attachment_hash(record),
         "download_link": f"{settings.base_url}/api/now/attachment/{record.sys_id}/file",
         "sys_created_on": record.sys_created_on.isoformat() if record.sys_created_on else "",
         "sys_updated_on": record.sys_updated_on.isoformat() if record.sys_updated_on else "",
         "sys_created_by": record.sys_created_by or "",
         "sys_updated_by": record.sys_updated_by or "",
     }
+
+
+async def _parse_upload_request(
+    request: Request,
+) -> tuple[str, str, str, str, bytes]:
+    content_type_header = request.headers.get("content-type", "")
+
+    if content_type_header.startswith("multipart/form-data"):
+        form = await request.form()
+        table_name = form.get("table_name")
+        table_sys_id = form.get("table_sys_id")
+        upload = form.get("file")
+        if not table_name or not table_sys_id or not upload:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "table_name, table_sys_id, and file are required",
+            )
+        content = await upload.read()
+        file_name = upload.filename or "file"
+        mime_type = upload.content_type or "application/octet-stream"
+        return str(table_name), str(table_sys_id), file_name, mime_type, content
+
+    params = request.query_params
+    table_name = params.get("table_name")
+    table_sys_id = params.get("table_sys_id")
+    if not table_name or not table_sys_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "table_name and table_sys_id query parameters are required",
+        )
+    file_name = params.get("file_name") or "file"
+    mime_type = (
+        params.get("content_type")
+        or content_type_header.split(";", 1)[0].strip()
+        or "application/octet-stream"
+    )
+    content = await request.body()
+    return str(table_name), str(table_sys_id), file_name, mime_type, content
+
+
+async def _save_attachment(
+    db: AsyncSession,
+    auth: AuthContext,
+    table_name: str,
+    table_sys_id: str,
+    file_name: str,
+    mime_type: str,
+    content: bytes,
+) -> SysAttachment:
+    attach_dir = _ensure_attach_dir()
+    sys_id = new_sys_id()
+    ext = Path(file_name).suffix
+    storage_name = f"{sys_id}{ext}"
+    storage_path = attach_dir / storage_name
+    storage_path.write_bytes(content)
+
+    record = SysAttachment(
+        sys_id=sys_id,
+        table_name=table_name,
+        table_sys_id=table_sys_id,
+        file_name=file_name,
+        content_type=mime_type,
+        size_bytes=len(content),
+        storage_path=str(storage_path),
+        sys_created_by=auth.user_sys_id,
+        sys_updated_by=auth.user_sys_id,
+        other={"hash": _sha256_hex(content)},
+    )
+    db.add(record)
+    await db.flush()
+    return record
 
 
 async def _assert_attachment_parent_access(
@@ -86,36 +171,18 @@ async def list_attachments(
 
 @router.post("/file", status_code=status.HTTP_201_CREATED)
 async def upload_attachment(
-    table_name: str = Form(...),
-    table_sys_id: str = Form(...),
-    file: UploadFile = File(...),
+    request: Request,
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    table_name, table_sys_id, file_name, mime_type, content = await _parse_upload_request(
+        request
+    )
     await _assert_attachment_parent_access(db, auth, table_name, table_sys_id, "write")
 
-    attach_dir = _ensure_attach_dir()
-    sys_id = new_sys_id()
-    ext = Path(file.filename or "file").suffix
-    storage_name = f"{sys_id}{ext}"
-    storage_path = attach_dir / storage_name
-
-    content = await file.read()
-    storage_path.write_bytes(content)
-
-    record = SysAttachment(
-        sys_id=sys_id,
-        table_name=table_name,
-        table_sys_id=table_sys_id,
-        file_name=file.filename or storage_name,
-        content_type=file.content_type or "application/octet-stream",
-        size_bytes=len(content),
-        storage_path=str(storage_path),
-        sys_created_by=auth.user_sys_id,
-        sys_updated_by=auth.user_sys_id,
+    record = await _save_attachment(
+        db, auth, table_name, table_sys_id, file_name, mime_type, content
     )
-    db.add(record)
-    await db.flush()
 
     return {
         "result": _attachment_to_dict(record)

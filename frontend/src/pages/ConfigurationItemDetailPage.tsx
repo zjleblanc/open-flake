@@ -12,7 +12,7 @@ import {
   ToggleSwitch,
 } from "../components/DetailFieldControls";
 import { RecordCommentsSection } from "../components/RecordCommentsSection";
-import { RecordSharePopover } from "../components/RecordSharePopover";
+import { RecordDetailHeaderActions } from "../components/RecordDetailHeaderActions";
 import { ToastBanner } from "../components/ToastBanner";
 import "../components/Layout.css";
 
@@ -238,15 +238,17 @@ export function ConfigurationItemDetailPage() {
   );
   const headerActions = useMemo(
     () =>
-      !isLoading && data && permissions?.read && sysId ? (
-        <RecordSharePopover
+      !isLoading && data && sysId ? (
+        <RecordDetailHeaderActions
           resource={resource}
           sysId={sysId}
           record={data}
+          recordLabel={itemTitle}
+          listPath="/configuration-items"
           canWrite={!!permissions?.write}
         />
       ) : undefined,
-    [isLoading, data, permissions?.read, permissions?.write, sysId, resource]
+    [isLoading, data, sysId, resource, itemTitle, permissions?.write]
   );
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
