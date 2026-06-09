@@ -23,43 +23,30 @@ interface ClassHierarchyPanelProps {
 }
 
 export function ClassHierarchyPanel({ className, sysClassPath }: ClassHierarchyPanelProps) {
-  const { data, isLoading, isError } = useQuery({
+  const { data } = useQuery({
     queryKey: ["cmdb-class-schema", className],
     queryFn: () => api.getCmdbClassSchema(className),
     enabled: !!className,
     retry: false,
+    throwOnError: false,
   });
 
   const schema = data?.result;
 
   const inheritancePath = useMemo(() => {
-    if (schema?.inheritance_path?.length) return schema.inheritance_path;
+    if (schema?.registered && schema.inheritance_path?.length) {
+      return schema.inheritance_path;
+    }
     const fromPath = parseClassPath(sysClassPath);
     if (fromPath.length) return fromPath;
+    if (schema?.inheritance_path?.length) return schema.inheritance_path;
     return fallbackPath(className);
   }, [schema, sysClassPath, className]);
-
-  const fieldStats = useMemo(() => {
-    if (!schema?.fields) return null;
-    let native = 0;
-    let inherited = 0;
-    for (const field of schema.fields) {
-      if (field.origin === "Native") native += 1;
-      else inherited += 1;
-    }
-    return { native, inherited };
-  }, [schema]);
 
   if (!className) return null;
 
   return (
     <div className="class-hierarchy-panel">
-      {isLoading && <p className="text-muted text-sm">Loading class schema…</p>}
-      {!isLoading && isError && (
-        <p className="class-hierarchy-notice text-muted text-sm">
-          Class is not registered in the schema registry. Showing path from the record.
-        </p>
-      )}
       <ol className="class-hierarchy-tree" aria-label="Class inheritance hierarchy">
         {inheritancePath.map((name, index) => {
           const isCurrent = name === className;
@@ -80,11 +67,6 @@ export function ClassHierarchyPanel({ className, sysClassPath }: ClassHierarchyP
           );
         })}
       </ol>
-      {fieldStats && (
-        <p className="class-hierarchy-stats text-muted text-sm">
-          {fieldStats.native} native · {fieldStats.inherited} inherited fields
-        </p>
-      )}
     </div>
   );
 }

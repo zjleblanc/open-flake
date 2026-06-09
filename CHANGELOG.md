@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — Class hierarchy for unregistered CMDB classes without UI noise
+
+### Changed
+
+- CMDB class schema API returns a fallback inheritance path with `registered: false` instead of 404 for unregistered classes.
+- `ClassHierarchyPanel` always renders the hierarchy from the registry, record `sys_class_path`, or a fallback path; removed loading, registry-missing, and native/inherited field count messages.
+
+### Added
+
+- `fallback_inheritance_path()` in the CMDB registry for best-effort ancestry when a class is not registered.
+- `test_fallback_inheritance_path_for_unregistered_class` in `backend/tests/test_cmdb_classes.py`.
+
 ## 2026-06-09 — Fix fresh database startup when cmdb_ci.other is absent
 
 ### Fixed

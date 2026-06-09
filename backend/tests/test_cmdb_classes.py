@@ -8,6 +8,7 @@ from app.domain.cmdb.registry import (
     FieldMeta,
     _RegistrySnapshot,
     compute_class_path,
+    fallback_inheritance_path,
     get_descendants,
     get_merged_fields,
 )
@@ -163,3 +164,8 @@ def test_merged_fields_include_ancestors():
     assert "name" in merged
     assert "host_name" in merged
     assert "kernel_release" in merged
+
+
+def test_fallback_inheritance_path_for_unregistered_class():
+    path = fallback_inheritance_path("cmdb_ci_custom_app")
+    assert path == ["cmdb", "cmdb_ci", "cmdb_ci_custom_app"]

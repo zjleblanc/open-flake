@@ -128,6 +128,19 @@ def compute_class_path(class_name: str) -> str:
     return "/" + "/".join(ancestors)
 
 
+def fallback_inheritance_path(class_name: str) -> list[str]:
+    """Best-effort ancestry when a class is not in the registry."""
+    if not class_name:
+        return []
+    if class_name == LOGICAL_ROOT:
+        return [LOGICAL_ROOT]
+    if class_name == CMDB_ROOT:
+        return [LOGICAL_ROOT, CMDB_ROOT]
+    if class_name.startswith("cmdb_ci_"):
+        return [LOGICAL_ROOT, CMDB_ROOT, class_name]
+    return [LOGICAL_ROOT, class_name]
+
+
 def field_origin(class_name: str, field: FieldMeta) -> str:
     return "Native" if field.defined_on == class_name else "Inherited"
 
