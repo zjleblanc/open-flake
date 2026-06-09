@@ -1,6 +1,8 @@
-# OpenFlake
+# <img src="frontend/src/assets/images/open_flake_sm.png" alt="OpenFlake" width="28" height="28" align="center"> OpenFlake
 
 OpenFlake is an open-source, lightweight ITSM platform with a ServiceNow-compatible REST API. It is designed to work with Ansible playbooks using the [servicenow.itsm](https://github.com/ansible-collections/servicenow.itsm) collection.
+
+![OpenFlake web UI](.attachments/web_preview.png)
 
 ## Architecture
 

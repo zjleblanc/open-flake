@@ -1,5 +1,6 @@
 .git
 .gitignore
+.attachments/
 **/.ansible
 **/.venv
 **/.env
