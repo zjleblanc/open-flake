@@ -36,6 +36,9 @@ keyed_groups:
 groups:
   sn_ec2_instances: name.startswith("ec2-") or fqdn.startswith("ec2-")
 
+# Filter inventory by creator (ServiceNow-compatible username):
+sysparm_query: "sys_created_by=admin"
+
 # Use the fqdn (instead of name) as the inventory_hostname
 # inventory_hostname_source: fqdn
 

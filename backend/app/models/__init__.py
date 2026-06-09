@@ -21,8 +21,8 @@ class TimestampMixin:
         onupdate=utcnow,
         server_default=func.now(),
     )
-    sys_created_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    sys_updated_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sys_created_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sys_updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 class OwnershipMixin:

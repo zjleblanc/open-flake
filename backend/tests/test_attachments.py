@@ -64,7 +64,7 @@ async def test_remove_attachment_deletes_db_row_and_file():
 @pytest.mark.asyncio
 async def test_save_attachment_replaces_existing_file_name():
     db = AsyncMock()
-    auth = MagicMock(user_sys_id="user1")
+    auth = MagicMock(user_sys_id="user1", user_name="admin")
     existing = SysAttachment(
         sys_id="old1",
         table_name="incident",

@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — Store audit fields as usernames for ServiceNow API compatibility
+
+### Changed
+
+- `sys_created_by` and `sys_updated_by` now store usernames (for example `admin`) instead of sys_ids on all `TimestampMixin` tables, matching ServiceNow Table API behavior and enabling filters such as `sysparm_query=sys_created_by=admin`.
+- Audit columns widened to `VARCHAR(128)`; startup migration alters column types and backfills existing rows from sys_id to username.
+- Owner backfill resolves `owner` via `sys_user.user_name == sys_created_by` after audit username migration.
+- Attachment uploads set audit fields from `auth.user_name`.
+- Configuration item detail page shows audit fields as plain text rather than user-reference lookups.
+
+### Added
+
+- `backend/tests/test_audit_fields.py` — audit username resolution, create/update writes, and owner backfill behavior.
+- Audit fields section in `docs/api-compatibility.md` and bundled `docs/README.md`.
+- Active `sysparm_query: "sys_created_by=admin"` example in `docs/ansible-examples/inventory/now.yml`.
+
 ## 2026-06-09 — ServiceNow standard fields, Ansible inventory example, and idempotent seeding
 
 ### Added

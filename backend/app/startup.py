@@ -13,7 +13,7 @@ from app.api.flake.attachment import (
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
-from app.domain.schema_migrations import SCHEMA_COLUMN_MIGRATIONS
+from app.domain.schema_migrations import AUDIT_USERNAME_TABLES, SCHEMA_COLUMN_MIGRATIONS
 from app.models import (
     ChangeRequest,
     ChangeTask,
@@ -66,6 +66,26 @@ async def run_migrations():
             await conn.execute(
                 text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {col_type}')
             )
+        for table in AUDIT_USERNAME_TABLES:
+            for column in ("sys_created_by", "sys_updated_by"):
+                await conn.execute(
+                    text(
+                        f'ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE VARCHAR(128)'
+                    )
+                )
+
+
+async def backfill_audit_usernames():
+    async with db.engine.begin() as conn:
+        for table in AUDIT_USERNAME_TABLES:
+            for column in ("sys_created_by", "sys_updated_by"):
+                await conn.execute(
+                    text(
+                        f'UPDATE "{table}" AS t SET "{column}" = u.user_name '
+                        f'FROM sys_user AS u WHERE t."{column}" = u.sys_id'
+                    )
+                )
+    logger.info("Backfilled audit usernames on timestamped tables")
 
 
 async def backfill_owners():
@@ -73,10 +93,12 @@ async def backfill_owners():
         updated = False
         for table, model in RBAC_BACKFILL_MODELS.items():
             result = await session.execute(
-                select(model).where(model.owner.is_(None), model.sys_created_by.isnot(None))
+                select(model, SysUser.sys_id)
+                .join(SysUser, SysUser.user_name == model.sys_created_by)
+                .where(model.owner.is_(None), model.sys_created_by.isnot(None))
             )
-            for record in result.scalars().all():
-                record.owner = record.sys_created_by
+            for record, owner_sys_id in result.all():
+                record.owner = owner_sys_id
                 updated = True
         if updated:
             await session.commit()
@@ -237,6 +259,7 @@ async def seed_data():
         result = await session.execute(select(SysUser).where(SysUser.user_name == settings.admin_username))
         if result.scalar_one_or_none():
             await ensure_rbac_roles()
+            await backfill_audit_usernames()
             await backfill_owners()
             await ensure_reference_data()
             return
@@ -349,6 +372,7 @@ async def seed_data():
 async def lifespan(app):
     resolve_attachments_path().mkdir(parents=True, exist_ok=True)
     await run_migrations()
+    await backfill_audit_usernames()
     await seed_data()
     async with db.async_session_factory() as session:
         orphans = await purge_orphan_attachments(session)

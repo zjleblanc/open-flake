@@ -78,7 +78,7 @@ const EDITABLE_FIELDS: { key: string; label: string }[] = [
 
 const EDITABLE_FIELD_KEYS = new Set(EDITABLE_FIELDS.map((f) => f.key));
 
-const USER_REFERENCE_FIELDS = new Set(["assigned_to", "sys_created_by", "sys_updated_by"]);
+const USER_REFERENCE_FIELDS = new Set(["assigned_to"]);
 
 const RBAC_FIELD_KEYS = new Set(["owner", "owner_group", "_permissions"]);
 

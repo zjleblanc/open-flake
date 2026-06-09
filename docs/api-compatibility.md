@@ -18,6 +18,10 @@
 
 Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Complex operators and dot-walking are deferred to Phase 2.
 
+## Audit fields
+
+`sys_created_by` and `sys_updated_by` store the creator/updater **username** (for example `admin`), matching ServiceNow. Filter with encoded queries such as `sysparm_query=sys_created_by=admin`.
+
 ## Deferred (Phase 2)
 
 - Problem scoped state API (`/api/x_rhtpp_ansible/problem/...`)

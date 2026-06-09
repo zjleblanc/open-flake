@@ -142,8 +142,8 @@ async def _save_attachment(
         content_type=mime_type,
         size_bytes=len(content),
         storage_path=str(storage_path),
-        sys_created_by=auth.user_sys_id,
-        sys_updated_by=auth.user_sys_id,
+        sys_created_by=auth.user_name,
+        sys_updated_by=auth.user_name,
         other={"hash": _sha256_hex(content)},
     )
     db.add(record)

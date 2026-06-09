@@ -26,7 +26,7 @@ from app.api.flake.attachment import (
     remove_attachment,
 )
 from app.events.bus import RecordEvent, emit
-from app.models import NumberSequence
+from app.models import NumberSequence, SysUser
 from app.query.parser import QueryCondition
 from app.utils.ids import new_sys_id
 
@@ -282,6 +282,19 @@ async def get_record_by_sys_id(
     return await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
 
 
+async def _resolve_audit_username(
+    db: AsyncSession,
+    user_sys_id: str | None,
+    auth: AuthContext | None,
+) -> str | None:
+    if auth:
+        return auth.user_name
+    if user_sys_id:
+        user = await db.get(SysUser, user_sys_id)
+        return user.user_name if user else None
+    return None
+
+
 async def create_record(
     db: AsyncSession,
     table: str,
@@ -325,9 +338,10 @@ async def create_record(
             flat["user_password"] = hash_password(pwd)
     sys_id = flat.pop("sys_id", None) or new_sys_id()
     flat["sys_id"] = sys_id
-    if user_sys_id:
-        flat["sys_created_by"] = user_sys_id
-        flat["sys_updated_by"] = user_sys_id
+    audit_username = await _resolve_audit_username(db, user_sys_id, auth)
+    if audit_username:
+        flat["sys_created_by"] = audit_username
+        flat["sys_updated_by"] = audit_username
 
     if table in RBAC_RECORD_TABLES and user_sys_id and not flat.get("owner"):
         flat["owner"] = user_sys_id
@@ -393,8 +407,9 @@ async def update_record(
         if not pwd.startswith("$2"):
             flat["user_password"] = hash_password(pwd)
     flat.pop("sys_id", None)
-    if user_sys_id:
-        flat["sys_updated_by"] = user_sys_id
+    audit_username = await _resolve_audit_username(db, user_sys_id, auth)
+    if audit_username:
+        flat["sys_updated_by"] = audit_username
 
     other_update = flat.pop("other", None)
     for key, value in flat.items():

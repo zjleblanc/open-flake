@@ -172,3 +172,22 @@ SCHEMA_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     # cmdb_rel_ci
     ("cmdb_rel_ci", "connection_strength", "VARCHAR(64)"),
 ]
+
+# Tables using TimestampMixin — widen audit columns to store usernames (ServiceNow-compatible).
+AUDIT_USERNAME_TABLES = [
+    "sys_user",
+    "sys_user_group",
+    "record_access_grant",
+    "sys_comment",
+    "sys_user_grmember",
+    "incident",
+    "problem",
+    "problem_task",
+    "change_request",
+    "change_task",
+    "cmdb_ci",
+    "cmdb_rel_ci",
+    "sc_request",
+    "sc_task",
+    "sys_attachment",
+]
