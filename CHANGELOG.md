@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — Fix fresh database startup when cmdb_ci.other is absent
+
+### Fixed
+
+- Skip legacy `cmdb_ci.other` → `attributes` backfill when the column does not exist, so fresh Postgres volumes no longer abort the migration transaction and block backend startup on Quadlet and compose deployments.
+- `backend/tests/test_startup_migrations.py` — unit tests for the column-existence guard.
+
 ## 2026-06-09 — CI detail sections, collapsible sidebar, and Quadlet startup fix
 
 ### Added

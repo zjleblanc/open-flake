@@ -64,6 +64,28 @@ RBAC_BACKFILL_MODELS = {
 }
 
 
+async def _migrate_cmdb_other_to_attributes(conn) -> None:
+    """Copy legacy cmdb_ci.other JSON into attributes when upgrading older databases."""
+    result = await conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' "
+            "AND table_name = 'cmdb_ci' "
+            "AND column_name = 'other'"
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        return
+
+    await conn.execute(
+        text(
+            "UPDATE cmdb_ci SET attributes = other "
+            "WHERE (attributes IS NULL OR attributes = '{}'::jsonb) "
+            "AND other IS NOT NULL AND other != '{}'::jsonb"
+        )
+    )
+
+
 async def run_migrations():
     async with db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -75,16 +97,7 @@ async def run_migrations():
             await conn.execute(
                 text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {col_type}')
             )
-        try:
-            await conn.execute(
-                text(
-                    "UPDATE cmdb_ci SET attributes = other "
-                    "WHERE (attributes IS NULL OR attributes = '{}'::jsonb) "
-                    "AND other IS NOT NULL AND other != '{}'::jsonb"
-                )
-            )
-        except Exception:
-            pass
+        await _migrate_cmdb_other_to_attributes(conn)
         for table in AUDIT_USERNAME_TABLES:
             for column in ("sys_created_by", "sys_updated_by"):
                 await conn.execute(
