@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -314,11 +314,38 @@ class ChangeTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
+class CmdbClass(Base):
+    __tablename__ = "cmdb_class"
+
+    name: Mapped[str] = mapped_column(String(128), primary_key=True)
+    super_class: Mapped[str | None] = mapped_column(
+        String(128), ForeignKey("cmdb_class.name"), nullable=True, index=True
+    )
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    is_logical: Mapped[bool] = mapped_column(default=False)
+
+
+class CmdbClassField(Base):
+    __tablename__ = "cmdb_class_field"
+    __table_args__ = (UniqueConstraint("class_name", "field_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    class_name: Mapped[str] = mapped_column(
+        String(128), ForeignKey("cmdb_class.name"), index=True
+    )
+    field_name: Mapped[str] = mapped_column(String(128))
+    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    sn_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    storage: Mapped[str] = mapped_column(String(16), default="attributes")
+
+
 class CmdbCi(Base, TimestampMixin, OwnershipMixin):
     __tablename__ = "cmdb_ci"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), index=True)
+    sys_class_name: Mapped[str] = mapped_column(String(128), default="cmdb_ci", index=True)
+    sys_class_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     host_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     fqdn: Mapped[str | None] = mapped_column(String(256), nullable=True)
     short_description: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -334,18 +361,8 @@ class CmdbCi(Base, TimestampMixin, OwnershipMixin):
     vendor: Mapped[str | None] = mapped_column(String(128), nullable=True)
     os: Mapped[str | None] = mapped_column(String(128), nullable=True)
     os_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    manufacturer: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    model_number: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    location: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    company: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    support_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    managed_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    discovered: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    last_discovered: Mapped[str | None] = mapped_column(String(64), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    sys_class_name: Mapped[str] = mapped_column(String(128), default="cmdb_ci", index=True)
-    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    attributes: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
 class CmdbRelType(Base):

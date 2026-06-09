@@ -5,32 +5,21 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
-from app.config import get_settings
 from app.db import get_db
-from app.domain.table_service import (
-    _model_to_dict,
-    create_record,
-    delete_record,
-    get_record_by_sys_id,
-    list_records,
-    update_record,
+from app.domain.cmdb.ci_service import (
+    class_filter_conditions,
+    create_cmdb_ci,
+    delete_cmdb_ci,
+    get_cmdb_ci,
+    list_cmdb_ci,
+    update_cmdb_ci,
 )
-from app.models import CmdbCi, CmdbRelCi
-from app.query.parser import QueryCondition, parse_sysparm_query
+from app.domain.table_service import create_record, delete_record
+from app.models import CmdbRelCi
+from app.query.parser import parse_sysparm_query
 from app.utils.ids import new_sys_id
 
 router = APIRouter(prefix="/api/flake/cmdb/instance", tags=["cmdb-api"])
-settings = get_settings()
-
-
-def _ci_query_for_class(sys_class_name: str):
-    def _cond(model, conditions):
-        from app.domain.table_service import _apply_conditions
-
-        q = select(CmdbCi).where(CmdbCi.sys_class_name == sys_class_name)
-        return _apply_conditions(q, CmdbCi, conditions)
-
-    return _cond
 
 
 @router.get("/{sys_class_name}")
@@ -45,9 +34,15 @@ async def cmdb_list(
     db: AsyncSession = Depends(get_db),
 ):
     conditions = parse_sysparm_query(sysparm_query)
-    conditions.append(QueryCondition(field="sys_class_name", operator="=", value=sys_class_name))
-    records, total = await list_records(
-        db, "cmdb_ci", conditions, sysparm_limit, sysparm_offset, True, auth=auth
+    conditions = [*class_filter_conditions(sys_class_name), *conditions]
+    records, total = await list_cmdb_ci(
+        db,
+        conditions,
+        sysparm_limit,
+        sysparm_offset,
+        True,
+        auth=auth,
+        query_class=sys_class_name,
     )
     response.headers["x-total-count"] = str(total)
     return {"result": records}
@@ -60,8 +55,8 @@ async def cmdb_get(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    record = await get_record_by_sys_id(db, "cmdb_ci", sys_id, auth=auth)
-    if not record or record.get("sys_class_name") != sys_class_name:
+    record = await get_cmdb_ci(db, sys_id, auth=auth, query_class=sys_class_name)
+    if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     return {"result": record}
 
@@ -73,8 +68,13 @@ async def cmdb_create(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    payload["sys_class_name"] = sys_class_name
-    record = await create_record(db, "cmdb_ci", payload, auth.user_sys_id, auth=auth)
+    record = await create_cmdb_ci(
+        db,
+        payload,
+        class_name=sys_class_name,
+        user_sys_id=auth.user_sys_id,
+        auth=auth,
+    )
     return {"result": record}
 
 
@@ -86,10 +86,16 @@ async def cmdb_update(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await db.get(CmdbCi, sys_id)
-    if not existing or existing.sys_class_name != sys_class_name:
+    record = await update_cmdb_ci(
+        db,
+        sys_id,
+        payload,
+        user_sys_id=auth.user_sys_id,
+        auth=auth,
+        query_class=sys_class_name,
+    )
+    if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
-    record = await update_record(db, "cmdb_ci", sys_id, payload, auth.user_sys_id, auth=auth)
     return {"result": record}
 
 
@@ -100,10 +106,9 @@ async def cmdb_delete(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await db.get(CmdbCi, sys_id)
-    if not existing or existing.sys_class_name != sys_class_name:
+    deleted = await delete_cmdb_ci(db, sys_id, auth=auth, query_class=sys_class_name)
+    if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
-    await delete_record(db, "cmdb_ci", sys_id, auth=auth)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -114,6 +119,9 @@ async def cmdb_list_relations(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    record = await get_cmdb_ci(db, sys_id, auth=auth, query_class=sys_class_name)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     result = await db.execute(
         select(CmdbRelCi).where(
             (CmdbRelCi.parent == sys_id) | (CmdbRelCi.child == sys_id)
@@ -141,6 +149,9 @@ async def cmdb_create_relation(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    record = await get_cmdb_ci(db, sys_id, auth=auth, query_class=sys_class_name)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     rel_payload = {
         "parent": payload.get("parent", sys_id),
         "child": payload.get("child") or payload.get("target"),
@@ -150,8 +161,8 @@ async def cmdb_create_relation(
         rel_payload["child"] = rel_payload["child"].get("value")
     if isinstance(rel_payload["type"], dict):
         rel_payload["type"] = rel_payload["type"].get("value")
-    record = await create_record(db, "cmdb_rel_ci", rel_payload, auth.user_sys_id)
-    return {"result": record}
+    rel_record = await create_record(db, "cmdb_rel_ci", rel_payload, auth.user_sys_id)
+    return {"result": rel_record}
 
 
 @router.delete("/{sys_class_name}/{sys_id}/relation/{rel_sys_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -162,5 +173,8 @@ async def cmdb_delete_relation(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    record = await get_cmdb_ci(db, sys_id, auth=auth, query_class=sys_class_name)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     await delete_record(db, "cmdb_rel_ci", rel_sys_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

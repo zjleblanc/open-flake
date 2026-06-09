@@ -8,6 +8,7 @@
 | [SSL / HTTPS](ssl-https.md) | TLS for Podman, Kubernetes, local dev, and Ansible |
 | [Ansible integration](ansible-integration.md) | servicenow.itsm collection setup and examples |
 | [API compatibility](api-compatibility.md) | Supported APIs, tables, and Phase 1 limitations |
+| [CMDB class hierarchy](cmdb-class-hierarchy.md) | CI class inheritance, field validation, unregistered classes |
 | [RBAC](rbac.md) | Record ownership, grants, and platform roles |
 | [Development](development.md) | Local backend, frontend, lab seed, and tests |
 | [Configuration](configuration.md) | Environment variables |
@@ -15,12 +16,15 @@
 
 **Example playbooks:** [`ansible-examples/`](ansible-examples/)
 
+**Class hierarchy exports:** [`class-hierarchy/`](class-hierarchy/)
+
 ## On this page
 
 - [Installation](#installation)
 - [SSL / HTTPS](#ssl-https)
 - [Ansible Integration](#ansible-integration)
 - [API Compatibility (Phase 1)](#api-compatibility-phase-1)
+- [CMDB class hierarchy](#cmdb-class-hierarchy)
 - [Role-Based Access Control (RBAC)](#role-based-access-control-rbac)
 - [Development](#development)
 - [Configuration](#configuration)
@@ -410,6 +414,15 @@ Ready-to-run examples live in [`ansible-examples/`](ansible-examples/):
 
 `incident`, `problem`, `problem_task`, `change_request`, `change_task`, `cmdb_ci`, `sys_user`, `sys_user_group`, `sys_user_grmember`, `sc_request`, `sc_task`, `cmdb_rel_type`, `cmdb_rel_ci`, `std_change_producer_version`, `sys_attachment`, `record_access_grant`, `sys_comment`, `sys_role`, `sys_group_role`
 
+Subclass table URLs such as `cmdb_ci_server` or `cmdb_ci_linux_server` resolve to the physical `cmdb_ci` table with class-aware filtering. See [CMDB class hierarchy](#cmdb-class-hierarchy).
+
+### CMDB schema API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/now/schema/cmdb/classes` | Class tree |
+| `GET /api/now/schema/cmdb/{class}` | Merged field definitions for a registered class |
+
 ### Query Limitations
 
 Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Complex operators and dot-walking are deferred to Phase 2.
@@ -426,8 +439,101 @@ Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Com
 
 ### See also
 
+- [CMDB class hierarchy](#cmdb-class-hierarchy) — class inheritance, field validation, unregistered classes
 - [Ansible integration](#ansible-integration) — collection setup and examples
 - [RBAC](#role-based-access-control-rbac) — permissions for Table API and UI API
+
+---
+
+## CMDB class hierarchy
+
+OpenFlake models configuration items (CIs) with a **class hierarchy**: each CI belongs to a leaf class (for example `cmdb_ci_linux_server`) and inherits field definitions from its ancestor classes.
+
+### Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Class** | A named type in the hierarchy (stored in `cmdb_class`). |
+| **Field definition** | A field declared on a specific class (stored in `cmdb_class_field`). |
+| **Record** | A CI row in `cmdb_ci` with `sys_class_name` set to its leaf class. |
+| **Promoted column** | Common fields stored as typed SQL columns (`host_name`, `fqdn`, `os`, …). |
+| **Attributes** | Extension fields stored in JSONB, validated when the class is registered. |
+| **Class path** | `sys_class_path` — full ancestry path computed on write (e.g. `/cmdb/cmdb_ci/cmdb_ci_server/cmdb_ci_linux_server`). |
+
+All field values for a record live on **one row**. Inherited fields are not stored on separate parent records — the hierarchy defines which fields are allowed, not where data is split.
+
+### Registered vs unregistered classes
+
+OpenFlake supports two modes:
+
+#### Registered classes
+
+Classes loaded from JSON exports under [`class-hierarchy/`](class-hierarchy/) (or seeded at startup) have:
+
+- A defined position in the class tree
+- Field definitions with labels and types
+- **Strict validation** on create/update — unknown fields are rejected
+- **Descendant queries** — listing `/api/now/table/cmdb_ci_server` returns records whose class is `cmdb_ci_server` or any subclass
+
+#### Unregistered classes
+
+When a CI is created with a class that is not yet in the registry (via Table API or CMDB Instance API):
+
+1. OpenFlake **auto-registers** the class with **`cmdb_ci` as the default parent**
+2. Writes use **permissive validation** — promoted columns plus any snake_case keys in `attributes`
+3. Queries against that class URL match **exact class only** until the class is added to the hierarchy with a proper parent chain
+4. `sys_class_path` is computed as `/cmdb/cmdb_ci/{class_name}`
+
+To upgrade an auto-registered class to strict mode, add a JSON export (or insert rows in `cmdb_class` / `cmdb_class_field`) and restart the backend to re-import.
+
+### Class hierarchy exports
+
+Place one JSON file per leaf class in [`docs/class-hierarchy/`](class-hierarchy/). Each file includes:
+
+- `target_table` — leaf class name
+- `inheritance_path` — ordered list from root to leaf (including intermediate classes)
+- `fields` — merged field list with `name`, `label`, `type`, `source_table` (defining class), and `origin` (`Native` / `Inherited`)
+
+Example paths:
+
+```
+cmdb → cmdb_ci → cmdb_ci_hardware → cmdb_ci_computer → cmdb_ci_server → cmdb_ci_linux_server
+cmdb → cmdb_ci → cmdb_ci_vm_object → cmdb_ci_vm_instance
+```
+
+The backend imports all `*.json` files on startup.
+
+### API behavior
+
+| Endpoint | Behavior |
+|----------|----------|
+| `GET /api/now/table/cmdb_ci` | All CIs |
+| `GET /api/now/table/cmdb_ci_server` | CIs whose class is `cmdb_ci_server` or any registered descendant |
+| `POST /api/now/table/cmdb_ci_linux_server` | Creates a CI; forces `sys_class_name`; validates against merged schema |
+| `GET /api/now/cmdb/instance/{class}/...` | Same class filtering as Table API |
+| `GET /api/now/schema/cmdb/classes` | Full class tree |
+| `GET /api/now/schema/cmdb/{class}` | Merged field schema for a registered class |
+
+### Storage layout
+
+The physical `cmdb_ci` table holds:
+
+- Identity: `sys_id`, `name`, `sys_class_name`, `sys_class_path`
+- Promoted columns for inventory and query (`host_name`, `fqdn`, `ip_address`, `os`, …)
+- `attributes` JSONB for all other class fields
+- Audit and ownership columns
+
+Class metadata lives in `cmdb_class` and `cmdb_class_field`. CI-to-CI relationships use `cmdb_rel_ci` (separate from class inheritance).
+
+### Ansible inventory
+
+Dynamic inventory against a **parent** class (e.g. `table: cmdb_ci_server`) returns child-class records such as `cmdb_ci_linux_server` when those classes are registered in the hierarchy under that parent.
+
+### See also
+
+- [API compatibility](#api-compatibility-phase-1)
+- [Ansible integration](#ansible-integration)
+- Example exports: [`class-hierarchy/cmdb_ci_server.json`](class-hierarchy/cmdb_ci_server.json), [`class-hierarchy/cmdb_ci_vm_instance.json`](class-hierarchy/cmdb_ci_vm_instance.json)
 
 ---
 

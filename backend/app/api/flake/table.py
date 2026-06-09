@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
 from app.db import get_db
+from app.domain.cmdb.ci_service import class_filter_conditions
 from app.domain.registry import resolve_table_name
 from app.domain.table_service import (
     create_record,
@@ -25,31 +26,12 @@ def _resolve_table(table: str) -> tuple[str, str | None]:
     return resolved
 
 
-def _with_class_filter(
-    conditions: list[QueryCondition], sys_class_name: str | None
-) -> list[QueryCondition]:
-    if not sys_class_name:
-        return conditions
-    return [
-        *conditions,
-        QueryCondition(field="sys_class_name", operator="=", value=sys_class_name),
-    ]
-
-
-def _matches_class(record: dict | None, sys_class_name: str | None) -> bool:
-    if not record or not sys_class_name:
-        return bool(record)
-    return record.get("sys_class_name") == sys_class_name
-
-
 def _exclude_links(request: Request) -> bool:
     val = request.query_params.get("sysparm_exclude_reference_link", "true")
     return val.lower() != "false"
 
 
-def _query_params_to_conditions(request: Request, sysparm_query: str | None) -> list:
-    from app.query.parser import QueryCondition, parse_sysparm_query
-
+def _query_params_to_conditions(request: Request, sysparm_query: str | None) -> list[QueryCondition]:
     conditions = parse_sysparm_query(sysparm_query)
     reserved = {
         "sysparm_query",
@@ -66,6 +48,14 @@ def _query_params_to_conditions(request: Request, sysparm_query: str | None) -> 
     return conditions
 
 
+def _merge_class_conditions(
+    conditions: list[QueryCondition], query_class: str | None
+) -> list[QueryCondition]:
+    if not query_class:
+        return conditions
+    return [*class_filter_conditions(query_class), *conditions]
+
+
 @router.get("/{table}")
 async def table_list(
     table: str,
@@ -77,13 +67,20 @@ async def table_list(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    internal_table, sys_class_name = _resolve_table(table)
-    conditions = _with_class_filter(
-        _query_params_to_conditions(request, sysparm_query), sys_class_name
+    internal_table, query_class = _resolve_table(table)
+    conditions = _merge_class_conditions(
+        _query_params_to_conditions(request, sysparm_query), query_class
     )
     exclude = _exclude_links(request)
     records, total = await list_records(
-        db, internal_table, conditions, sysparm_limit, sysparm_offset, exclude, auth=auth
+        db,
+        internal_table,
+        conditions,
+        sysparm_limit,
+        sysparm_offset,
+        exclude,
+        auth=auth,
+        query_class=query_class,
     )
     response.headers["x-total-count"] = str(total)
     return {"result": records}
@@ -97,10 +94,12 @@ async def table_get(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    internal_table, sys_class_name = _resolve_table(table)
+    internal_table, query_class = _resolve_table(table)
     exclude = _exclude_links(request)
-    record = await get_record_by_sys_id(db, internal_table, sys_id, exclude, auth=auth)
-    if not _matches_class(record, sys_class_name):
+    record = await get_record_by_sys_id(
+        db, internal_table, sys_id, exclude, auth=auth, query_class=query_class
+    )
+    if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     return {"result": record}
 
@@ -113,11 +112,19 @@ async def table_create(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    internal_table, sys_class_name = _resolve_table(table)
-    if sys_class_name:
-        payload = {**payload, "sys_class_name": sys_class_name}
+    internal_table, query_class = _resolve_table(table)
+    if query_class:
+        payload = {**payload, "sys_class_name": query_class}
     exclude = _exclude_links(request)
-    record = await create_record(db, internal_table, payload, auth.user_sys_id, exclude, auth=auth)
+    record = await create_record(
+        db,
+        internal_table,
+        payload,
+        auth.user_sys_id,
+        exclude,
+        auth=auth,
+        class_name=query_class,
+    )
     return {"result": record}
 
 
@@ -130,15 +137,28 @@ async def table_update(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    internal_table, sys_class_name = _resolve_table(table)
+    internal_table, query_class = _resolve_table(table)
     existing = await get_record_by_sys_id(
-        db, internal_table, sys_id, exclude_links=False, auth=auth, skip_auth=True
+        db,
+        internal_table,
+        sys_id,
+        exclude_links=False,
+        auth=auth,
+        skip_auth=True,
+        query_class=query_class,
     )
-    if not _matches_class(existing, sys_class_name):
+    if not existing:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     exclude = _exclude_links(request)
     record = await update_record(
-        db, internal_table, sys_id, payload, auth.user_sys_id, exclude, auth=auth
+        db,
+        internal_table,
+        sys_id,
+        payload,
+        auth.user_sys_id,
+        exclude,
+        auth=auth,
+        query_class=query_class,
     )
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
@@ -152,13 +172,21 @@ async def table_delete(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    internal_table, sys_class_name = _resolve_table(table)
+    internal_table, query_class = _resolve_table(table)
     existing = await get_record_by_sys_id(
-        db, internal_table, sys_id, exclude_links=False, auth=auth, skip_auth=True
+        db,
+        internal_table,
+        sys_id,
+        exclude_links=False,
+        auth=auth,
+        skip_auth=True,
+        query_class=query_class,
     )
-    if not _matches_class(existing, sys_class_name):
+    if not existing:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
-    deleted = await delete_record(db, internal_table, sys_id, auth=auth)
+    deleted = await delete_record(
+        db, internal_table, sys_id, auth=auth, query_class=query_class
+    )
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

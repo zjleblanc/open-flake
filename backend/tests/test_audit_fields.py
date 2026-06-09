@@ -54,6 +54,25 @@ async def test_create_record_sets_username_audit_fields():
             "app.domain.table_service.assert_can_create_record",
             AsyncMock(),
         )
+        mp.setattr(
+            "app.domain.cmdb.ci_service._ensure_class_for_write",
+            AsyncMock(),
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.split_payload",
+            lambda _class, payload: (
+                {k: v for k, v in payload.items() if k != "sys_class_name"},
+                {},
+            ),
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.compute_class_path",
+            lambda _class: "/cmdb/cmdb_ci/cmdb_ci_linux_server",
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.refresh_cache",
+            AsyncMock(),
+        )
         result = await create_record(
             db,
             "cmdb_ci",
@@ -91,8 +110,12 @@ async def test_update_record_sets_username_sys_updated_by():
         )
         mp.setattr("app.domain.table_service.emit", AsyncMock())
         mp.setattr(
-            "app.domain.table_service.assert_record_action",
+            "app.domain.cmdb.ci_service.assert_record_action",
             AsyncMock(),
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.split_payload",
+            lambda _class, payload: (payload, {}),
         )
         result = await update_record(
             db,

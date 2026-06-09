@@ -12,6 +12,7 @@ from app.api.flake.attachment import router as attachment_router
 from app.api.flake.catalog import router as catalog_router
 from app.api.flake.cmdb import router as cmdb_router
 from app.api.flake.oauth import router as oauth_router
+from app.api.flake.schema import router as schema_router
 from app.api.flake.table import router as table_router
 from app.api.v1.router import router as v1_router
 from app.config import get_settings
@@ -71,6 +72,7 @@ def create_app() -> FastAPI:
     app.include_router(table_router)
     app.include_router(attachment_router)
     app.include_router(cmdb_router)
+    app.include_router(schema_router)
     app.include_router(catalog_router)
     app.include_router(v1_router)
 

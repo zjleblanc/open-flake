@@ -47,6 +47,11 @@ RBAC_COLUMN_MIGRATIONS = [
     *[(table, "owner_group", "VARCHAR(32)") for table in RBAC_RECORD_TABLES],
 ]
 
+CMDB_COLUMN_MIGRATIONS = [
+    ("cmdb_ci", "sys_class_path", "VARCHAR(512)"),
+    ("cmdb_ci", "attributes", "JSONB DEFAULT '{}'::jsonb"),
+]
+
 RBAC_BACKFILL_MODELS = {
     "incident": Incident,
     "problem": Problem,
@@ -62,10 +67,24 @@ RBAC_BACKFILL_MODELS = {
 async def run_migrations():
     async with db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        for table, column, col_type in [*RBAC_COLUMN_MIGRATIONS, *SCHEMA_COLUMN_MIGRATIONS]:
+        for table, column, col_type in [
+            *RBAC_COLUMN_MIGRATIONS,
+            *CMDB_COLUMN_MIGRATIONS,
+            *SCHEMA_COLUMN_MIGRATIONS,
+        ]:
             await conn.execute(
                 text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {col_type}')
             )
+        try:
+            await conn.execute(
+                text(
+                    "UPDATE cmdb_ci SET attributes = other "
+                    "WHERE (attributes IS NULL OR attributes = '{}'::jsonb) "
+                    "AND other IS NOT NULL AND other != '{}'::jsonb"
+                )
+            )
+        except Exception:
+            pass
         for table in AUDIT_USERNAME_TABLES:
             for column in ("sys_created_by", "sys_updated_by"):
                 await conn.execute(
@@ -368,10 +387,19 @@ async def seed_data():
         logger.info("Seeded default admin user and reference data")
 
 
+async def ensure_cmdb_class_metadata():
+    from app.domain.cmdb.importer import ensure_cmdb_hierarchy
+
+    async with db.async_session_factory() as session:
+        await ensure_cmdb_hierarchy(session)
+    logger.info("CMDB class hierarchy loaded")
+
+
 @asynccontextmanager
 async def lifespan(app):
     resolve_attachments_path().mkdir(parents=True, exist_ok=True)
     await run_migrations()
+    await ensure_cmdb_class_metadata()
     await backfill_audit_usernames()
     await seed_data()
     async with db.async_session_factory() as session:

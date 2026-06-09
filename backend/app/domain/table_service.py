@@ -44,6 +44,10 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             if isinstance(val, dict):
                 data.update(val)
             continue
+        if col.name == "attributes" and table == "cmdb_ci":
+            if isinstance(val, dict):
+                data.update(val)
+            continue
         if col.name == "key_hash":
             continue
         if col.name == "storage_path":
@@ -190,6 +194,10 @@ def _apply_conditions(query, model, conditions: list[QueryCondition]):
             continue
         if cond.operator == "=":
             query = query.where(col == cond.value)
+        elif cond.operator == "IN":
+            values = [part.strip() for part in cond.value.split(",") if part.strip()]
+            if values:
+                query = query.where(col.in_(values))
         elif cond.operator == "LIKE":
             query = query.where(col.ilike(f"%{cond.value}%"))
     return query
@@ -204,7 +212,22 @@ async def list_records(
     exclude_links: bool = True,
     auth: AuthContext | None = None,
     include_permissions: bool = False,
+    query_class: str | None = None,
 ) -> tuple[list[dict], int]:
+    if table == "cmdb_ci":
+        from app.domain.cmdb.ci_service import list_cmdb_ci
+
+        return await list_cmdb_ci(
+            db,
+            conditions,
+            limit,
+            offset,
+            exclude_links,
+            auth=auth,
+            include_permissions=include_permissions,
+            query_class=query_class,
+        )
+
     model = TABLE_MODELS.get(table)
     if not model:
         return [], 0
@@ -246,7 +269,21 @@ async def get_record_by_sys_id(
     auth: AuthContext | None = None,
     include_permissions: bool = False,
     skip_auth: bool = False,
+    query_class: str | None = None,
 ) -> dict | None:
+    if table == "cmdb_ci":
+        from app.domain.cmdb.ci_service import get_cmdb_ci
+
+        return await get_cmdb_ci(
+            db,
+            sys_id,
+            exclude_links,
+            auth=auth,
+            include_permissions=include_permissions,
+            skip_auth=skip_auth,
+            query_class=query_class,
+        )
+
     model = TABLE_MODELS.get(table)
     if not model:
         return None
@@ -302,7 +339,20 @@ async def create_record(
     user_sys_id: str | None = None,
     exclude_links: bool = True,
     auth: AuthContext | None = None,
+    class_name: str | None = None,
 ) -> dict:
+    if table == "cmdb_ci":
+        from app.domain.cmdb.ci_service import create_cmdb_ci
+
+        return await create_cmdb_ci(
+            db,
+            payload,
+            class_name=class_name or payload.get("sys_class_name"),
+            user_sys_id=user_sys_id,
+            exclude_links=exclude_links,
+            auth=auth,
+        )
+
     from app.auth.security import hash_password
 
     if auth:
@@ -376,7 +426,21 @@ async def update_record(
     user_sys_id: str | None = None,
     exclude_links: bool = True,
     auth: AuthContext | None = None,
+    query_class: str | None = None,
 ) -> dict | None:
+    if table == "cmdb_ci":
+        from app.domain.cmdb.ci_service import update_cmdb_ci
+
+        return await update_cmdb_ci(
+            db,
+            sys_id,
+            payload,
+            user_sys_id=user_sys_id,
+            exclude_links=exclude_links,
+            auth=auth,
+            query_class=query_class,
+        )
+
     from app.auth.security import hash_password
 
     model = TABLE_MODELS[table]
@@ -431,7 +495,13 @@ async def delete_record(
     table: str,
     sys_id: str,
     auth: AuthContext | None = None,
+    query_class: str | None = None,
 ) -> bool:
+    if table == "cmdb_ci":
+        from app.domain.cmdb.ci_service import delete_cmdb_ci
+
+        return await delete_cmdb_ci(db, sys_id, auth=auth, query_class=query_class)
+
     model = TABLE_MODELS[table]
     record = await db.get(model, sys_id)
     if not record:

@@ -1,7 +1,7 @@
 plugin: servicenow.itsm.now
 
 # Lab seed data uses cmdb_ci_linux_server; override table for your CMDB class.
-table: cmdb_ci_linux_server
+table: cmdb_ci_server
 
 # Environment variables for connection details
 # SN_HOST="https://openflake.example.com:8000"

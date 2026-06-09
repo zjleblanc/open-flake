@@ -93,13 +93,22 @@ NUMBER_PREFIXES: dict[str, str] = {
     "sc_task": "SCTASK",
 }
 
+from app.domain.cmdb.registry import is_cmdb_class_name, is_registered
+
+
 def resolve_table_name(table: str) -> tuple[str, str | None] | None:
-    """Map a ServiceNow table name to an internal table and optional CMDB class filter."""
+    """Map a table URL name to an internal table and optional CMDB class filter."""
     if table in TABLE_MODELS:
         return table, None
-    if table.startswith("cmdb_ci_") and table not in {"cmdb_rel_ci", "cmdb_rel_type"}:
+    if is_cmdb_class_name(table):
         return "cmdb_ci", table
     return None
+
+
+def is_known_cmdb_class(table: str) -> bool:
+    if table == "cmdb_ci":
+        return True
+    return is_cmdb_class_name(table) and (is_registered(table) or table.startswith("cmdb_ci_"))
 
 
 REFERENCE_FIELDS: dict[str, set[str]] = {

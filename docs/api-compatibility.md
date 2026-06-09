@@ -14,6 +14,15 @@
 
 `incident`, `problem`, `problem_task`, `change_request`, `change_task`, `cmdb_ci`, `sys_user`, `sys_user_group`, `sys_user_grmember`, `sc_request`, `sc_task`, `cmdb_rel_type`, `cmdb_rel_ci`, `std_change_producer_version`, `sys_attachment`, `record_access_grant`, `sys_comment`, `sys_role`, `sys_group_role`
 
+Subclass table URLs such as `cmdb_ci_server` or `cmdb_ci_linux_server` resolve to the physical `cmdb_ci` table with class-aware filtering. See [CMDB class hierarchy](cmdb-class-hierarchy.md).
+
+## CMDB schema API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/now/schema/cmdb/classes` | Class tree |
+| `GET /api/now/schema/cmdb/{class}` | Merged field definitions for a registered class |
+
 ## Query Limitations
 
 Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Complex operators and dot-walking are deferred to Phase 2.
@@ -30,5 +39,6 @@ Phase 1 supports `sysparm_query` with field equality, `LIKE`, and `^` (AND). Com
 
 ## See also
 
+- [CMDB class hierarchy](cmdb-class-hierarchy.md) — class inheritance, field validation, unregistered classes
 - [Ansible integration](ansible-integration.md) — collection setup and examples
 - [RBAC](rbac.md) — permissions for Table API and UI API

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — CMDB class hierarchy with descendant queries and schema API
+
+### Added
+
+- CMDB class metadata tables (`cmdb_class`, `cmdb_class_field`) seeded at startup from JSON exports in `docs/class-hierarchy/`.
+- Dedicated CMDB service layer (`backend/app/domain/cmdb/`) for class-aware CRUD, payload validation, and descendant query filters on Table and CMDB Instance APIs.
+- Schema introspection endpoints: `GET /api/now/schema/cmdb/classes` and `GET /api/now/schema/cmdb/{class}`.
+- `attributes` JSONB and `sys_class_path` on `cmdb_ci`; promoted columns for inventory fields; legacy `other` values migrated on startup when present.
+- Auto-registration of unknown CI classes with `cmdb_ci` as the default parent and permissive field validation until a hierarchy export is added.
+- `docs/cmdb-class-hierarchy.md` — class inheritance model, registered vs unregistered classes, and storage layout.
+- `backend/tests/test_cmdb_classes.py` — hierarchy parsing, descendant filters, payload validation, and permissive unregistered-class writes.
+
+### Changed
+
+- Table and CMDB Instance APIs list parent classes with all registered descendants (e.g. `cmdb_ci_server` includes `cmdb_ci_linux_server`).
+- `table_service` delegates `cmdb_ci` operations to the CMDB service; generic ITSM tables unchanged.
+- Ansible inventory example uses `table: cmdb_ci_server` to demonstrate parent-class descendant queries against lab seed data.
+- `docs/api-compatibility.md` and bundled `docs/README.md` document subclass table URLs and the schema API.
+
 ## 2026-06-09 — Store audit fields as usernames for ServiceNow API compatibility
 
 ### Changed
