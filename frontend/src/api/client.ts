@@ -46,6 +46,22 @@ export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+export interface CmdbClassFieldSchema {
+  name: string;
+  label: string | null;
+  type: string | null;
+  defined_on: string;
+  origin: string;
+  storage: string;
+}
+
+export interface CmdbClassSchema {
+  class_name: string;
+  inheritance_path: string[];
+  fields: CmdbClassFieldSchema[];
+  registered: boolean;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -253,6 +269,11 @@ export const api = {
     }
     return res.blob();
   },
+
+  getCmdbClassSchema: (className: string) =>
+    request<{ result: CmdbClassSchema }>(
+      `/api/flake/schema/cmdb/${encodeURIComponent(className)}`
+    ),
 };
 
 export const STATE_LABELS: Record<string, string> = {

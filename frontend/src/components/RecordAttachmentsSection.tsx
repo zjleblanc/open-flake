@@ -8,12 +8,13 @@ import {
   type PreviewKind,
 } from "../utils/attachmentUtils";
 import { AttachmentsIcon } from "./DetailIcons";
-import { DetailSection } from "./DetailSection";
+import { ExpandableDetailSection } from "./ExpandableDetailSection";
 
 interface RecordAttachmentsSectionProps {
   resource: string;
   sysId: string;
   canManageAttachments: boolean;
+  sectionId?: string;
 }
 
 interface AttachmentPreviewProps {
@@ -111,6 +112,7 @@ export function RecordAttachmentsSection({
   resource,
   sysId,
   canManageAttachments,
+  sectionId = "ci-section-attachments",
 }: RecordAttachmentsSectionProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,12 +153,12 @@ export function RecordAttachmentsSection({
   const countLabel = isLoading ? "…" : String(attachments.length);
 
   return (
-    <DetailSection
+    <ExpandableDetailSection
+      id={sectionId}
       title="Attachments"
-      icon={<AttachmentsIcon />}
+      icon={<AttachmentsIcon size={14} />}
       accent="info"
-      style={{ marginTop: "1rem" }}
-      headerActions={<span className="attachment-count-badge">{countLabel}</span>}
+      count={countLabel}
     >
       {isLoading && <p className="text-muted text-sm">Loading attachments…</p>}
       {!isLoading && attachments.length === 0 && (
@@ -250,6 +252,6 @@ export function RecordAttachmentsSection({
           )}
         </div>
       )}
-    </DetailSection>
+    </ExpandableDetailSection>
   );
 }

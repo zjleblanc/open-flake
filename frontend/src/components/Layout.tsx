@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import openFlakeSm from "../assets/images/open_flake_sm.png";
@@ -25,15 +25,65 @@ const NAV: { to: string; label: string; icon: ReactNode; permission?: string }[]
   { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
+const SIDEBAR_EXPANDED_KEY = "openflake.sidebar.expanded";
+
+function readStoredSidebarExpanded(defaultOpen: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
+    if (stored === "true") return true;
+    if (stored === "false") return false;
+  } catch {
+    // localStorage unavailable
+  }
+  return defaultOpen;
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M15 18l-6-6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M9 18l6-6-6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function Layout() {
   const { hasPermission } = useAuth();
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => readStoredSidebarExpanded(true));
 
   const visibleNav = NAV.filter((item) => !item.permission || hasPermission(item.permission));
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_EXPANDED_KEY, String(sidebarExpanded));
+    } catch {
+      // localStorage unavailable
+    }
+  }, [sidebarExpanded]);
+
   return (
     <PageHeaderProvider>
-      <div className="layout">
-        <aside className="sidebar">
+      <div className={`layout${sidebarExpanded ? "" : " layout--sidebar-collapsed"}`}>
+        <aside className={`sidebar${sidebarExpanded ? "" : " sidebar--collapsed"}`}>
           <div className="sidebar-brand">
             <img src={openFlakeSm} alt="OpenFlake" width={32} height={32} />
             <span className="brand-text">OpenFlake</span>
@@ -44,6 +94,7 @@ export function Layout() {
                 key={item.to}
                 to={item.to}
                 end={item.to === "/"}
+                title={item.label}
                 className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
               >
                 <span className="nav-link-icon">{item.icon}</span>
@@ -51,10 +102,24 @@ export function Layout() {
               </NavLink>
             ))}
           </nav>
+          <div className="sidebar-footer">
+            <button
+              type="button"
+              className="nav-link sidebar-nav-toggle"
+              onClick={() => setSidebarExpanded((value) => !value)}
+              aria-label={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+              aria-expanded={sidebarExpanded}
+            >
+              <span className="nav-link-icon">
+                {sidebarExpanded ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+              </span>
+              {sidebarExpanded ? <span className="nav-link-label">Collapse</span> : null}
+            </button>
+          </div>
         </aside>
         <div className="main-column">
+          <TopNavbar />
           <main className="content">
-            <TopNavbar />
             <div className="content-body">
               <Outlet />
             </div>

@@ -2,15 +2,21 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { CommentsIcon } from "./DetailIcons";
-import { DetailSection } from "./DetailSection";
+import { ExpandableDetailSection } from "./ExpandableDetailSection";
 
 interface RecordCommentsSectionProps {
   resource: string;
   sysId: string;
   canComment: boolean;
+  sectionId?: string;
 }
 
-export function RecordCommentsSection({ resource, sysId, canComment }: RecordCommentsSectionProps) {
+export function RecordCommentsSection({
+  resource,
+  sysId,
+  canComment,
+  sectionId = "ci-section-comments",
+}: RecordCommentsSectionProps) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
 
@@ -28,7 +34,13 @@ export function RecordCommentsSection({ resource, sysId, canComment }: RecordCom
   });
 
   return (
-    <DetailSection title="Comments" icon={<CommentsIcon />} accent="accent" style={{ marginTop: "1rem" }}>
+    <ExpandableDetailSection
+      id={sectionId}
+      title="Comments"
+      icon={<CommentsIcon size={14} />}
+      accent="accent"
+      count={comments.length}
+    >
       {comments.length === 0 && <p className="text-muted text-sm">No comments yet.</p>}
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {comments.map((c) => (
@@ -67,6 +79,6 @@ export function RecordCommentsSection({ resource, sysId, canComment }: RecordCom
           </button>
         </div>
       )}
-    </DetailSection>
+    </ExpandableDetailSection>
   );
 }

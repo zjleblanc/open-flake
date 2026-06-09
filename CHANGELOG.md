@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — CI detail sections, collapsible sidebar, and Quadlet startup fix
+
+### Added
+
+- Expandable configuration-item detail sections: System (with class hierarchy tree), General, Governance, Additional Properties, Attachments, and Comments.
+- Sticky section navigation rail on the CI detail page with icon-only collapse; preference stored in `localStorage`.
+- `ClassHierarchyPanel`, `ExpandableDetailSection`, and `DetailSectionNav` components; `getCmdbClassSchema` on the frontend API client.
+- Collapsible full-height sidebar with logo branding, icon-only collapsed mode, and `localStorage` preference.
+
+### Changed
+
+- App shell layout: sidebar spans the full viewport height; the top navbar covers the main content column only.
+- Attachments and Comments sections use the same expandable panel pattern as CI property sections.
+
+### Fixed
+
+- Configuration item detail header badge shows `sys_class_name` instead of status field values.
+- Quadlet install starts Podman network and data-volume units before Postgres and application containers, preventing Postgres restart loops when `openflake-net` is missing.
+
 ## 2026-06-09 — CMDB class hierarchy with descendant queries and schema API
 
 ### Added

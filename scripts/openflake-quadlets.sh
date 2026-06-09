@@ -241,8 +241,9 @@ cmd_generate() {
   {
     echo "[Unit]"
     echo "Description=OpenFlake PostgreSQL"
-    echo "After=network-online.target"
-    echo "Wants=network-online.target"
+    echo "After=network-online.target $(quadlet_network_unit openflake-net.network) $(quadlet_volume_unit openflake-pg-data.volume)"
+    echo "Wants=network-online.target $(quadlet_network_unit openflake-net.network) $(quadlet_volume_unit openflake-pg-data.volume)"
+    echo "Requires=$(quadlet_network_unit openflake-net.network) $(quadlet_volume_unit openflake-pg-data.volume)"
     echo ""
     echo "[Container]"
     echo "Image=docker.io/library/postgres:16-alpine"
@@ -270,8 +271,8 @@ cmd_generate() {
   {
     echo "[Unit]"
     echo "Description=OpenFlake backend API"
-    echo "After=network-online.target openflake-postgres.service"
-    echo "Wants=network-online.target openflake-postgres.service"
+    echo "After=network-online.target $(quadlet_network_unit openflake-net.network) openflake-postgres.service"
+    echo "Wants=network-online.target $(quadlet_network_unit openflake-net.network) openflake-postgres.service"
     echo ""
     echo "[Container]"
     echo "Image=${REGISTRY}/openflake-backend:${IMAGE_TAG}"
@@ -294,8 +295,8 @@ cmd_generate() {
   {
     echo "[Unit]"
     echo "Description=OpenFlake frontend UI"
-    echo "After=network-online.target openflake-backend.service"
-    echo "Wants=network-online.target openflake-backend.service"
+    echo "After=network-online.target $(quadlet_network_unit openflake-net.network) openflake-backend.service"
+    echo "Wants=network-online.target $(quadlet_network_unit openflake-net.network) openflake-backend.service"
     echo ""
     echo "[Container]"
     echo "Image=${REGISTRY}/openflake-frontend:${IMAGE_TAG}"
@@ -313,6 +314,41 @@ cmd_generate() {
     echo "[Install]"
     echo "WantedBy=${wanted_by}"
   } > "${QUADLET_SRC}/openflake-frontend.container"
+}
+
+# Podman Quadlet unit names derived from source filenames (see podman-systemd.unit.5).
+quadlet_network_unit() {
+  echo "${1%.network}-network.service"
+}
+
+quadlet_volume_unit() {
+  echo "${1%.volume}-volume.service"
+}
+
+ensure_quadlet_infrastructure() {
+  detect_systemd_scope
+  local unit failed=0
+  local -a units=(
+    "$(quadlet_network_unit openflake-net.network)"
+    "$(quadlet_volume_unit openflake-pg-data.volume)"
+  )
+  if [[ -z "${ATTACHMENTS_DIR:-}" ]]; then
+    units+=("$(quadlet_volume_unit openflake-attachments.volume)")
+  fi
+  for unit in "${units[@]}"; do
+    if ! run_as_systemd start "${unit}"; then
+      echo "Failed to start ${unit}" >&2
+      show_unit_failure "${unit}"
+      failed=1
+    fi
+  done
+  if ! podman network exists openflake-net 2>/dev/null; then
+    echo "Creating openflake-net network (fallback)..." >&2
+    podman network create openflake-net
+  fi
+  if [[ "${failed}" -ne 0 ]]; then
+    exit 1
+  fi
 }
 
 run_as_systemd() {
@@ -420,7 +456,12 @@ diagnose_quadlet_failures() {
 
 require_quadlet_services() {
   local unit missing=()
-  for unit in openflake-postgres.service openflake-backend.service openflake-frontend.service; do
+  for unit in \
+    "$(quadlet_network_unit openflake-net.network)" \
+    "$(quadlet_volume_unit openflake-pg-data.volume)" \
+    openflake-postgres.service \
+    openflake-backend.service \
+    openflake-frontend.service; do
     if ! run_as_systemd show "${unit}" --property=LoadState --value 2>/dev/null | grep -qx loaded; then
       missing+=("${unit}")
     fi
@@ -551,8 +592,14 @@ show_unit_failure() {
 
 start_stack_units() {
   detect_systemd_scope
+  load_env
+  ensure_quadlet_infrastructure
   run_as_systemd reset-failed openflake-postgres.service openflake-backend.service openflake-frontend.service 2>/dev/null || true
-  run_as_systemd start openflake-postgres.service
+  if ! run_as_systemd start openflake-postgres.service; then
+    show_unit_failure openflake-postgres.service
+    podman logs openflake-postgres 2>&1 | tail -n 40 >&2 || true
+    exit 1
+  fi
   wait_for_postgres
   run_as_systemd start openflake-backend.service
   wait_for_backend
@@ -569,7 +616,6 @@ start_stack_units() {
     exit 1
   fi
   echo "Frontend is running."
-  load_env
   verify_running_health_checks || true
 }
 
