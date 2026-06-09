@@ -62,19 +62,29 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             if field in data and data[field]:
                 sys_id = data[field]
                 data[field] = {
-                    "link": f"{settings.base_url}/api/flake/table/{_ref_table(field)}/{sys_id}",
+                    "link": f"{settings.base_url}/api/flake/table/{_ref_table(field, table)}/{sys_id}",
                     "value": sys_id,
                 }
     return data
 
 
-def _ref_table(field: str) -> str:
+def _ref_table(field: str, table: str | None = None) -> str:
+    if table == "sys_user_group" and field == "parent":
+        return "sys_user_group"
+    if table == "cmdb_rel_ci" and field in {"parent", "child"}:
+        return "cmdb_ci"
     mapping = {
         "caller_id": "sys_user",
         "assigned_to": "sys_user",
         "requested_by": "sys_user",
         "requested_for": "sys_user",
+        "opened_by": "sys_user",
+        "resolved_by": "sys_user",
+        "closed_by": "sys_user",
+        "managed_by": "sys_user",
+        "manager": "sys_user",
         "assignment_group": "sys_user_group",
+        "support_group": "sys_user_group",
         "owner": "sys_user",
         "owner_group": "sys_user_group",
         "granted_by": "sys_user",
@@ -82,12 +92,13 @@ def _ref_table(field: str) -> str:
         "problem": "problem",
         "request": "sc_request",
         "cmdb_ci": "cmdb_ci",
+        "business_service": "cmdb_ci",
         "duplicate_of": "problem",
+        "parent_incident": "incident",
+        "first_reported_by_task": "problem_task",
         "std_change_producer_version": "std_change_producer_version",
         "user_sys_id": "sys_user",
         "group_sys_id": "sys_user_group",
-        "parent": "cmdb_ci",
-        "child": "cmdb_ci",
         "type": "cmdb_rel_type",
     }
     return mapping.get(field, "sys_user")

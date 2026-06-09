@@ -19,16 +19,29 @@ import "../components/Layout.css";
 
 const CMDB_CI_FIELDS: { key: string; label: string }[] = [
   { key: "name", label: "Name" },
+  { key: "host_name", label: "Host Name" },
+  { key: "fqdn", label: "FQDN" },
   { key: "short_description", label: "Short Description" },
   { key: "sys_class_name", label: "Class" },
   { key: "asset_tag", label: "Asset Tag" },
   { key: "serial_number", label: "Serial Number" },
   { key: "install_status", label: "Install Status" },
   { key: "operational_status", label: "Operational Status" },
+  { key: "classification", label: "Classification" },
   { key: "environment", label: "Environment" },
   { key: "ip_address", label: "IP Address" },
   { key: "mac_address", label: "MAC Address" },
   { key: "category", label: "Category" },
+  { key: "vendor", label: "Vendor" },
+  { key: "os", label: "OS" },
+  { key: "os_version", label: "OS Version" },
+  { key: "manufacturer", label: "Manufacturer" },
+  { key: "model_number", label: "Model Number" },
+  { key: "location", label: "Location" },
+  { key: "company", label: "Company" },
+  { key: "support_group", label: "Support Group" },
+  { key: "managed_by", label: "Managed By" },
+  { key: "assignment_group", label: "Assignment Group" },
   { key: "assigned_to", label: "Assigned To" },
 ];
 
@@ -42,15 +55,25 @@ const CMDB_CI_SYSTEM_FIELDS: { key: string; label: string }[] = [
 
 const EDITABLE_FIELDS: { key: string; label: string }[] = [
   { key: "name", label: "Name" },
+  { key: "host_name", label: "Host Name" },
+  { key: "fqdn", label: "FQDN" },
   { key: "short_description", label: "Short Description" },
   { key: "asset_tag", label: "Asset Tag" },
   { key: "serial_number", label: "Serial Number" },
   { key: "install_status", label: "Install Status" },
   { key: "operational_status", label: "Operational Status" },
+  { key: "classification", label: "Classification" },
   { key: "environment", label: "Environment" },
   { key: "ip_address", label: "IP Address" },
   { key: "mac_address", label: "MAC Address" },
   { key: "category", label: "Category" },
+  { key: "vendor", label: "Vendor" },
+  { key: "os", label: "OS" },
+  { key: "os_version", label: "OS Version" },
+  { key: "manufacturer", label: "Manufacturer" },
+  { key: "model_number", label: "Model Number" },
+  { key: "location", label: "Location" },
+  { key: "company", label: "Company" },
 ];
 
 const EDITABLE_FIELD_KEYS = new Set(EDITABLE_FIELDS.map((f) => f.key));

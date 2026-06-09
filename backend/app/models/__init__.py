@@ -30,6 +30,20 @@ class OwnershipMixin:
     owner_group: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
 
+class TaskFieldsMixin:
+    """Common ServiceNow task table fields shared by ITSM record types."""
+
+    active: Mapped[str] = mapped_column(String(8), default="true")
+    work_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    comments: Mapped[str | None] = mapped_column(Text, nullable=True)
+    opened_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    closed_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    resolved_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    due_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    business_service: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    escalation: Mapped[str | None] = mapped_column(String(8), nullable=True)
+
+
 class NumberSequence(Base):
     __tablename__ = "number_sequence"
 
@@ -46,6 +60,16 @@ class SysUser(Base, TimestampMixin):
     first_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    mobile_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    manager: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    vip: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    employee_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     active: Mapped[str] = mapped_column(String(8), default="true")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
@@ -56,6 +80,11 @@ class SysUserGroup(Base, TimestampMixin):
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    active: Mapped[str] = mapped_column(String(8), default="true")
+    email: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    manager: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    parent: Mapped[str | None] = mapped_column(String(32), nullable=True)
     owner: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
@@ -65,6 +94,8 @@ class SysRole(Base):
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    suffix: Mapped[str | None] = mapped_column(String(64), nullable=True)
     permissions: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
 
 
@@ -141,7 +172,7 @@ class ApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Incident(Base, TimestampMixin, OwnershipMixin):
+class Incident(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "incident"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -158,11 +189,20 @@ class Incident(Base, TimestampMixin, OwnershipMixin):
     hold_reason: Mapped[str | None] = mapped_column(String(8), nullable=True)
     close_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     close_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    notify: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    subcategory: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    opened_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    closed_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    parent_incident: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="incident")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class Problem(Base, TimestampMixin, OwnershipMixin):
+class Problem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "problem"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -180,11 +220,15 @@ class Problem(Base, TimestampMixin, OwnershipMixin):
     fix_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     close_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     duplicate_of: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    subcategory: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    first_reported_by_task: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="problem")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ProblemTask(Base, TimestampMixin, OwnershipMixin):
+class ProblemTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "problem_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -198,11 +242,15 @@ class ProblemTask(Base, TimestampMixin, OwnershipMixin):
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
     priority: Mapped[str] = mapped_column(String(8), default="4")
+    impact: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    close_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    close_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="problem_task")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeRequest(Base, TimestampMixin, OwnershipMixin):
+class ChangeRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "change_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -225,11 +273,22 @@ class ChangeRequest(Base, TimestampMixin, OwnershipMixin):
     close_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
     close_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     std_change_producer_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    work_start: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    work_end: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    justification: Mapped[str | None] = mapped_column(Text, nullable=True)
+    implementation_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    backout_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    test_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_date: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approval: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="change_request")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeTask(Base, TimestampMixin, OwnershipMixin):
+class ChangeTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "change_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -242,6 +301,9 @@ class ChangeTask(Base, TimestampMixin, OwnershipMixin):
     cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    impact: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(8), nullable=True)
     on_hold: Mapped[str] = mapped_column(String(8), default="false")
     hold_reason: Mapped[str | None] = mapped_column(String(8), nullable=True)
     close_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -257,15 +319,30 @@ class CmdbCi(Base, TimestampMixin, OwnershipMixin):
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), index=True)
+    host_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    fqdn: Mapped[str | None] = mapped_column(String(256), nullable=True)
     short_description: Mapped[str | None] = mapped_column(String(512), nullable=True)
     asset_tag: Mapped[str | None] = mapped_column(String(128), nullable=True)
     serial_number: Mapped[str | None] = mapped_column(String(128), nullable=True)
     install_status: Mapped[str | None] = mapped_column(String(8), nullable=True)
     operational_status: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    classification: Mapped[str | None] = mapped_column(String(128), nullable=True)
     environment: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mac_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
     category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    vendor: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    os: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    os_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    manufacturer: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    model_number: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    company: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    support_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    managed_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    discovered: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_discovered: Mapped[str | None] = mapped_column(String(64), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(128), default="cmdb_ci", index=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
@@ -286,10 +363,11 @@ class CmdbRelCi(Base, TimestampMixin):
     parent: Mapped[str] = mapped_column(String(32), index=True)
     child: Mapped[str] = mapped_column(String(32), index=True)
     type: Mapped[str] = mapped_column(String(32))
+    connection_strength: Mapped[str | None] = mapped_column(String(64), nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScRequest(Base, TimestampMixin, OwnershipMixin):
+class ScRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "sc_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -297,15 +375,27 @@ class ScRequest(Base, TimestampMixin, OwnershipMixin):
     short_description: Mapped[str] = mapped_column(String(512), default="")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(8), default="1")
+    request_state: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    impact: Mapped[str | None] = mapped_column(String(8), nullable=True)
     requested_for: Mapped[str | None] = mapped_column(String(32), nullable=True)
     requested_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    opened_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    subcategory: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    delivery_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_task: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    stage: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approval: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="sc_request")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScTask(Base, TimestampMixin, OwnershipMixin):
+class ScTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "sc_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -316,6 +406,14 @@ class ScTask(Base, TimestampMixin, OwnershipMixin):
     request: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    impact: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cat_item: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    request_item: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    stage: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approval: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sys_class_name: Mapped[str] = mapped_column(String(64), default="sc_task")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
@@ -326,6 +424,11 @@ class StdChangeProducerVersion(Base):
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), unique=True)
     short_description: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[str] = mapped_column(String(8), default="true")
+    template: Mapped[str | None] = mapped_column(Text, nullable=True)
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
@@ -339,6 +442,9 @@ class SysAttachment(Base, TimestampMixin):
     content_type: Mapped[str] = mapped_column(String(128), default="application/octet-stream")
     size_bytes: Mapped[int] = mapped_column(Integer, default=0)
     storage_path: Mapped[str] = mapped_column(String(1024))
+    hash: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sys_mod_count: Mapped[str | None] = mapped_column(String(16), nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 

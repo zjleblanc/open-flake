@@ -16,6 +16,7 @@
 data/
 docs/
 scripts/
+backend/app/seed/
 deploy/certs/*
 !deploy/certs/.gitkeep
 !scripts/ensure-postgres.sh

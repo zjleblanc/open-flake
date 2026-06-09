@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-09 — ServiceNow standard fields, Ansible inventory example, and idempotent seeding
+
+### Added
+
+- Standard ServiceNow fields on all supported Table API record types: shared task fields (`work_notes`, `comments`, `opened_at`, etc.) on ITSM tables; CMDB columns for Ansible inventory (`host_name`, `fqdn`, `os`, `vendor`, …); user, group, catalog, attachment, and role fields aligned with the `servicenow.itsm` collection.
+- `backend/app/domain/schema_migrations.py` — incremental `ADD COLUMN IF NOT EXISTS` migrations applied at startup for new fields.
+- `docs/ansible-examples/inventory/now.yml` — example `servicenow.itsm.now` dynamic inventory (defaults to `cmdb_ci_linux_server` for lab seed data).
+- `backend/tests/test_standard_fields.py` — verifies new fields serialize in API responses and reference link resolution.
+
+### Changed
+
+- Lab seed is idempotent: `ensure_record` get-or-create by natural keys; `--force` fills gaps without duplicate-key errors; completion check requires both the Service Desk group and the `jsmith` user.
+- Base `seed_data()` ensures reference rows (number sequences, CMDB rel types, std change template, catalog, OAuth client) even when the admin user already exists.
+- Production backend image excludes `backend/app/seed/` via `.dockerignore` and setuptools `exclude`; removed `openflake-seed-lab` console entry (dev: `python -m app.seed.lab`).
+- Configuration item detail page lists and edits the expanded CMDB field set; lab seed populates ansible-relevant CMDB attributes.
+- Reference API links resolve `parent` per table (`sys_user_group` vs `cmdb_rel_ci`).
+
+### Fixed
+
+- Ansible dynamic inventory failed when configured CMDB columns were absent from Table API responses.
+
 ## 2026-06-08 — Fix attachment duplicates, orphans, and assigned-user access
 
 ### Fixed

@@ -11,7 +11,8 @@ from sqlalchemy import select
 
 from app import db, startup
 from app.config import DEFAULT_LAB_ENV_FILE, Settings, resolve_env_file, settings_from_env_file
-from app.domain.table_service import create_record
+from app.domain.registry import TABLE_MODELS
+from app.domain.table_service import _model_to_dict, create_record
 from app.models import CmdbRelType, StdChangeProducerVersion, SysUser, SysUserGroup
 from app.startup import run_migrations, seed_data
 
@@ -37,11 +38,33 @@ class LabContext:
 
 
 async def is_lab_seeded() -> bool:
+    """True when the full lab dataset (marker group + sample user) is present."""
     async with db.async_session_factory() as session:
-        result = await session.execute(
+        group = await session.execute(
             select(SysUserGroup).where(SysUserGroup.name == LAB_MARKER_GROUP)
         )
-        return result.scalar_one_or_none() is not None
+        if group.scalar_one_or_none() is None:
+            return False
+        user = await session.execute(select(SysUser).where(SysUser.user_name == "jsmith"))
+        return user.scalar_one_or_none() is not None
+
+
+async def ensure_record(
+    session,
+    table: str,
+    lookup: dict[str, str],
+    payload: dict,
+    admin_id: str,
+) -> dict:
+    """Return an existing row matching lookup or create it from payload."""
+    model = TABLE_MODELS[table]
+    query = select(model)
+    for key, value in lookup.items():
+        query = query.where(getattr(model, key) == value)
+    existing = (await session.execute(query)).scalar_one_or_none()
+    if existing:
+        return _model_to_dict(existing, table, exclude_links=False)
+    return await create_record(session, table, {**payload, **lookup}, admin_id)
 
 
 async def _require_admin(session) -> str:
@@ -83,9 +106,10 @@ async def _seed_groups(session, ctx: LabContext) -> None:
         ("Security Operations", "Security monitoring and incident response"),
     ]
     for name, description in groups:
-        record = await create_record(
+        record = await ensure_record(
             session,
             "sys_user_group",
+            {"name": name},
             {"name": name, "description": description},
             ctx.admin_id,
         )
@@ -102,9 +126,10 @@ async def _seed_users(session, ctx: LabContext) -> None:
         ("drossi", "Dana", "Rossi", "dana.rossi@acme.example", "Security Operations"),
     ]
     for user_name, first, last, email, group_name in users:
-        record = await create_record(
+        record = await ensure_record(
             session,
             "sys_user",
+            {"user_name": user_name},
             {
                 "user_name": user_name,
                 "user_password": LAB_USER_PASSWORD,
@@ -116,9 +141,13 @@ async def _seed_users(session, ctx: LabContext) -> None:
             ctx.admin_id,
         )
         ctx.users[user_name] = record["sys_id"]
-        await create_record(
+        await ensure_record(
             session,
             "sys_user_grmember",
+            {
+                "user_sys_id": record["sys_id"],
+                "group_sys_id": ctx.groups[group_name],
+            },
             {
                 "user_sys_id": record["sys_id"],
                 "group_sys_id": ctx.groups[group_name],
@@ -126,9 +155,13 @@ async def _seed_users(session, ctx: LabContext) -> None:
             ctx.admin_id,
         )
 
-    await create_record(
+    await ensure_record(
         session,
         "sys_user_grmember",
+        {
+            "user_sys_id": ctx.admin_id,
+            "group_sys_id": ctx.groups["Change Advisory Board"],
+        },
         {
             "user_sys_id": ctx.admin_id,
             "group_sys_id": ctx.groups["Change Advisory Board"],
@@ -138,11 +171,29 @@ async def _seed_users(session, ctx: LabContext) -> None:
 
 
 async def _seed_cmdb(session, ctx: LabContext) -> None:
+    def ci_fields(
+        name: str,
+        *,
+        os: str = "",
+        os_version: str = "",
+        vendor: str = "",
+        classification: str = "Production",
+    ) -> dict[str, str]:
+        return {
+            "host_name": name,
+            "fqdn": f"{name}.lab.example.com",
+            "classification": classification,
+            "vendor": vendor,
+            "os": os,
+            "os_version": os_version,
+        }
+
     cis = [
         {
             "key": "lab-web-01",
             "name": "lab-web-01",
             "sys_class_name": "cmdb_ci_linux_server",
+            **ci_fields("lab-web-01", os="Linux", os_version="RHEL 9", vendor="Dell Inc."),
             "short_description": "RHEL 9 public web tier",
             "asset_tag": "SRV-LNX-001",
             "serial_number": "LNX9-WEB-88421",
@@ -158,6 +209,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-app-01",
             "name": "lab-app-01",
             "sys_class_name": "cmdb_ci_linux_server",
+            **ci_fields("lab-app-01", os="Linux", os_version="Ubuntu 22.04", vendor="HPE"),
             "short_description": "Ubuntu 22.04 application server",
             "asset_tag": "SRV-LNX-002",
             "serial_number": "UBT-APP-55210",
@@ -173,6 +225,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-db-01",
             "name": "lab-db-01",
             "sys_class_name": "cmdb_ci_linux_server",
+            **ci_fields("lab-db-01", os="Linux", os_version="RHEL 9", vendor="Dell Inc."),
             "short_description": "RHEL 9 PostgreSQL database server",
             "asset_tag": "SRV-LNX-003",
             "serial_number": "LNX9-DB-33109",
@@ -188,6 +241,12 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-win-dc-01",
             "name": "lab-win-dc-01",
             "sys_class_name": "cmdb_ci_win_server",
+            **ci_fields(
+                "lab-win-dc-01",
+                os="Windows",
+                os_version="Windows Server 2022",
+                vendor="Microsoft",
+            ),
             "short_description": "Windows Server 2022 domain controller",
             "asset_tag": "SRV-WIN-001",
             "serial_number": "WIN-DC-90214",
@@ -203,6 +262,12 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-win-file-01",
             "name": "lab-win-file-01",
             "sys_class_name": "cmdb_ci_win_server",
+            **ci_fields(
+                "lab-win-file-01",
+                os="Windows",
+                os_version="Windows Server 2019",
+                vendor="Microsoft",
+            ),
             "short_description": "Windows Server 2019 file and print server",
             "asset_tag": "SRV-WIN-002",
             "serial_number": "WIN-FILE-44102",
@@ -218,6 +283,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-router-edge-01",
             "name": "lab-router-edge-01",
             "sys_class_name": "cmdb_ci_ip_router",
+            **ci_fields("lab-router-edge-01", os="IOS", os_version="17.3", vendor="Cisco"),
             "short_description": "Cisco ISR edge router",
             "asset_tag": "NET-RTR-001",
             "serial_number": "CISCO-ISR-7781",
@@ -232,6 +298,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-sw-core-01",
             "name": "lab-sw-core-01",
             "sys_class_name": "cmdb_ci_ip_switch",
+            **ci_fields("lab-sw-core-01", os="IOS-XE", os_version="17.9", vendor="Cisco"),
             "short_description": "Core datacenter switch stack",
             "asset_tag": "NET-SW-001",
             "serial_number": "CISCO-C9300-2201",
@@ -246,6 +313,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-fw-01",
             "name": "lab-fw-01",
             "sys_class_name": "cmdb_ci_ip_firewall",
+            **ci_fields("lab-fw-01", os="PAN-OS", os_version="11.1", vendor="Palo Alto Networks"),
             "short_description": "Perimeter firewall — HQ datacenter",
             "asset_tag": "NET-FW-001",
             "serial_number": "PA-5220-1104",
@@ -260,6 +328,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
             "key": "lab-sw-access-02",
             "name": "lab-sw-access-02",
             "sys_class_name": "cmdb_ci_ip_switch",
+            **ci_fields("lab-sw-access-02", os="IOS-XE", os_version="17.6", vendor="Cisco"),
             "short_description": "Access layer switch — Building B",
             "asset_tag": "NET-SW-002",
             "serial_number": "CISCO-C9200-8840",
@@ -273,7 +342,14 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
     ]
     for ci in cis:
         key = ci.pop("key")
-        record = await create_record(session, "cmdb_ci", ci, ctx.admin_id)
+        name = ci["name"]
+        record = await ensure_record(
+            session,
+            "cmdb_ci",
+            {"name": name},
+            ci,
+            ctx.admin_id,
+        )
         ctx.cis[key] = record["sys_id"]
 
 
@@ -296,9 +372,10 @@ async def _seed_cmdb_relationships(session, ctx: LabContext) -> None:
         (ctx.cis["lab-sw-core-01"], ctx.cis["lab-app-01"], contains),
     ]
     for parent, child, rel_type in relationships:
-        await create_record(
+        await ensure_record(
             session,
             "cmdb_rel_ci",
+            {"parent": parent, "child": child, "type": rel_type},
             {"parent": parent, "child": child, "type": rel_type},
             ctx.admin_id,
         )
@@ -395,16 +472,23 @@ async def _seed_incidents(session, ctx: LabContext) -> None:
         },
     ]
     for incident in incidents:
-        await create_record(session, "incident", incident, ctx.admin_id)
+        await ensure_record(
+            session,
+            "incident",
+            {"short_description": incident["short_description"]},
+            incident,
+            ctx.admin_id,
+        )
 
 
 async def _seed_problems(session, ctx: LabContext) -> None:
     network = ctx.groups["Network Operations"]
     server = ctx.groups["Server Engineering"]
 
-    vpn_problem = await create_record(
+    vpn_problem = await ensure_record(
         session,
         "problem",
+        {"short_description": f"{LAB_PREFIX} Recurring VPN session drops"},
         {
             "short_description": f"{LAB_PREFIX} Recurring VPN session drops",
             "description": "Pattern of VPN disconnects correlates with firewall failover events on lab-fw-01.",
@@ -419,9 +503,10 @@ async def _seed_problems(session, ctx: LabContext) -> None:
     )
     ctx.problems["vpn"] = vpn_problem["sys_id"]
 
-    disk_problem = await create_record(
+    disk_problem = await ensure_record(
         session,
         "problem",
+        {"short_description": f"{LAB_PREFIX} Disk space exhaustion on application servers"},
         {
             "short_description": f"{LAB_PREFIX} Disk space exhaustion on application servers",
             "description": "Log rotation misconfiguration caused /var/log to fill on Linux app tier.",
@@ -440,9 +525,10 @@ async def _seed_problems(session, ctx: LabContext) -> None:
     )
     ctx.problems["disk"] = disk_problem["sys_id"]
 
-    await create_record(
+    await ensure_record(
         session,
         "problem_task",
+        {"short_description": f"{LAB_PREFIX} Capture firewall logs during VPN failover"},
         {
             "short_description": f"{LAB_PREFIX} Capture firewall logs during VPN failover",
             "description": "Enable verbose logging on lab-fw-01 and collect 48h of session data.",
@@ -456,9 +542,10 @@ async def _seed_problems(session, ctx: LabContext) -> None:
         },
         ctx.admin_id,
     )
-    await create_record(
+    await ensure_record(
         session,
         "problem_task",
+        {"short_description": f"{LAB_PREFIX} Audit logrotate configs on Linux fleet"},
         {
             "short_description": f"{LAB_PREFIX} Audit logrotate configs on Linux fleet",
             "description": "Review logrotate on lab-app-01, lab-web-01, and lab-db-01.",
@@ -479,9 +566,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
     network = ctx.groups["Network Operations"]
     cab = ctx.groups["Change Advisory Board"]
 
-    patch_change = await create_record(
+    patch_change = await ensure_record(
         session,
         "change_request",
+        {"short_description": f"{LAB_PREFIX} Monthly Linux security patching — production"},
         {
             "short_description": f"{LAB_PREFIX} Monthly Linux security patching — production",
             "description": "Apply vendor security updates to lab-web-01, lab-app-01, and lab-db-01.",
@@ -502,9 +590,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
     )
     ctx.changes["patch"] = patch_change["sys_id"]
 
-    await create_record(
+    await ensure_record(
         session,
         "change_task",
+        {"short_description": f"{LAB_PREFIX} Patch lab-web-01"},
         {
             "short_description": f"{LAB_PREFIX} Patch lab-web-01",
             "description": "Apply updates and reboot during maintenance window.",
@@ -519,9 +608,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
         },
         ctx.admin_id,
     )
-    await create_record(
+    await ensure_record(
         session,
         "change_task",
+        {"short_description": f"{LAB_PREFIX} Patch lab-app-01 and lab-db-01"},
         {
             "short_description": f"{LAB_PREFIX} Patch lab-app-01 and lab-db-01",
             "description": "Rolling patch sequence for application tier.",
@@ -537,9 +627,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
         ctx.admin_id,
     )
 
-    fw_change = await create_record(
+    fw_change = await ensure_record(
         session,
         "change_request",
+        {"short_description": f"{LAB_PREFIX} Emergency firewall rule — vendor support access"},
         {
             "short_description": f"{LAB_PREFIX} Emergency firewall rule — vendor support access",
             "description": "Temporary allow rule for vendor IP to access lab-fw-01 management interface.",
@@ -558,9 +649,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
     )
     ctx.changes["firewall"] = fw_change["sys_id"]
 
-    await create_record(
+    await ensure_record(
         session,
         "change_request",
+        {"short_description": f"{LAB_PREFIX} Replace failed access switch in Building B"},
         {
             "short_description": f"{LAB_PREFIX} Replace failed access switch in Building B",
             "description": "RMA replacement for lab-sw-access-02. Completed during weekend maintenance.",
@@ -580,9 +672,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
         ctx.admin_id,
     )
 
-    await create_record(
+    await ensure_record(
         session,
         "change_request",
+        {"short_description": f"{LAB_PREFIX} CAB review — datacenter network core upgrade"},
         {
             "short_description": f"{LAB_PREFIX} CAB review — datacenter network core upgrade",
             "description": "Proposal to upgrade lab-sw-core-01 firmware during Q3 maintenance window.",
@@ -604,9 +697,10 @@ async def _seed_changes(session, ctx: LabContext) -> None:
 async def _seed_service_requests(session, ctx: LabContext) -> None:
     desk = ctx.groups[LAB_MARKER_GROUP]
 
-    laptop_req = await create_record(
+    laptop_req = await ensure_record(
         session,
         "sc_request",
+        {"short_description": f"{LAB_PREFIX} New laptop for sales hire"},
         {
             "short_description": f"{LAB_PREFIX} New laptop for sales hire",
             "description": "MacBook Pro 14\" for regional sales representative starting next week.",
@@ -618,9 +712,10 @@ async def _seed_service_requests(session, ctx: LabContext) -> None:
         },
         ctx.admin_id,
     )
-    await create_record(
+    await ensure_record(
         session,
         "sc_task",
+        {"short_description": f"{LAB_PREFIX} Procure and image laptop"},
         {
             "short_description": f"{LAB_PREFIX} Procure and image laptop",
             "description": "Order hardware, enroll in MDM, install sales tooling.",
@@ -632,9 +727,10 @@ async def _seed_service_requests(session, ctx: LabContext) -> None:
         ctx.admin_id,
     )
 
-    vpn_req = await create_record(
+    vpn_req = await ensure_record(
         session,
         "sc_request",
+        {"short_description": f"{LAB_PREFIX} VPN access for contractor"},
         {
             "short_description": f"{LAB_PREFIX} VPN access for contractor",
             "description": "90-day VPN access for external audit contractor.",
@@ -645,9 +741,10 @@ async def _seed_service_requests(session, ctx: LabContext) -> None:
         },
         ctx.admin_id,
     )
-    await create_record(
+    await ensure_record(
         session,
         "sc_task",
+        {"short_description": f"{LAB_PREFIX} Provision VPN profile"},
         {
             "short_description": f"{LAB_PREFIX} Provision VPN profile",
             "description": "Create contractor AD account and distribute VPN client profile.",
@@ -675,13 +772,13 @@ def _active_settings() -> Settings:
 
 
 async def seed_lab(*, ensure_base: bool = True, force: bool = False) -> bool:
-    """Seed a realistic lab IT environment. Returns True if data was created."""
+    """Seed a realistic lab IT environment. Returns True if seeding ran."""
     if ensure_base:
         await run_migrations()
         await seed_data()
 
     if not force and await is_lab_seeded():
-        logger.info("Lab environment already seeded (group %r exists); skipping", LAB_MARKER_GROUP)
+        logger.info("Lab environment already seeded; skipping")
         return False
 
     async with db.async_session_factory() as session:
@@ -712,7 +809,7 @@ def main() -> None:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Seed even if lab data appears to exist (may create duplicates)",
+        help="Run lab seed even when it appears complete (idempotent — fills gaps, no duplicates)",
     )
     parser.add_argument(
         "--skip-base",
@@ -752,7 +849,7 @@ def main() -> None:
         print("  Sample users: jsmith, mwilson, lchen, rpatel")
         print(f"  Records prefixed with: {LAB_PREFIX}")
     else:
-        print("Lab seed skipped — data already present. Use --force to seed again.")
+        print("Lab seed skipped — data already present. Use --force to re-run idempotent seed.")
 
 
 if __name__ == "__main__":

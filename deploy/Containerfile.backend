@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends gosu && \
 WORKDIR /app
 
 COPY --from=builder /install /usr/local
+# Lab seed (backend/app/seed/) is excluded via .dockerignore — not shipped in production.
 COPY backend/app ./app
 COPY backend/pyproject.toml .
 COPY deploy/backend-entrypoint.sh /app/entrypoint.sh

@@ -1,0 +1,45 @@
+plugin: servicenow.itsm.now
+
+# Lab seed data uses cmdb_ci_linux_server; override table for your CMDB class.
+table: cmdb_ci_linux_server
+
+# Environment variables for connection details
+# SN_HOST="https://openflake.example.com:8000"
+# SN_USERNAME="admin"
+# SN_PASSWORD="password"
+
+# No expressions here, 1:1 mapping between
+# column value and hostvar
+columns:
+  - host_name
+  - fqdn
+  - ip_address
+  - sys_class_name
+  - install_status
+  - classification
+  - vendor
+  - os
+  - os_version
+  - serial_number
+
+query_additional_columns:
+  - sys_created_by
+
+keyed_groups:
+    # example: sn_class_windows_server
+  - key: sys_class_name.replace(" ", "_").lower()
+    prefix: sn_class
+    # example: sn_os_aix
+  - key: os.replace(" ", "_").lower()
+    prefix: sn_os
+
+groups:
+  sn_ec2_instances: name.startswith("ec2-") or fqdn.startswith("ec2-")
+
+# Use the fqdn (instead of name) as the inventory_hostname
+# inventory_hostname_source: fqdn
+
+compose:
+  ansible_host: fqdn | ternary(fqdn, ip_address) | ternary(ip_address, name) # precedence fqdn -> ip_adress -> name
+  ci_name: name
+  classification: classification | lower

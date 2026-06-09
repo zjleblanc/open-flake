@@ -13,10 +13,12 @@ from app.api.flake.attachment import (
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
+from app.domain.schema_migrations import SCHEMA_COLUMN_MIGRATIONS
 from app.models import (
     ChangeRequest,
     ChangeTask,
     CmdbCi,
+    CmdbRelCi,
     CmdbRelType,
     Incident,
     NumberSequence,
@@ -60,7 +62,7 @@ RBAC_BACKFILL_MODELS = {
 async def run_migrations():
     async with db.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        for table, column, col_type in RBAC_COLUMN_MIGRATIONS:
+        for table, column, col_type in [*RBAC_COLUMN_MIGRATIONS, *SCHEMA_COLUMN_MIGRATIONS]:
             await conn.execute(
                 text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {col_type}')
             )
@@ -126,12 +128,117 @@ async def ensure_rbac_roles():
         await session.commit()
 
 
+async def _ensure_number_sequences(session) -> None:
+    for prefix in ["INC", "PRB", "PTASK", "CHG", "CTASK", "REQ", "SCTASK"]:
+        existing = await session.execute(
+            select(NumberSequence).where(NumberSequence.prefix == prefix)
+        )
+        if not existing.scalar_one_or_none():
+            session.add(NumberSequence(prefix=prefix, last_value=0))
+
+
+async def _ensure_cmdb_rel_types(session) -> None:
+    rel_types = [
+        ("Runs on::Runs", "Runs on"),
+        ("Depends on::Used by", "Depends on"),
+        ("Contains::Contained by", "Contains"),
+    ]
+    for sys_name, name in rel_types:
+        existing = await session.execute(
+            select(CmdbRelType).where(CmdbRelType.sys_name == sys_name)
+        )
+        if not existing.scalar_one_or_none():
+            session.add(CmdbRelType(sys_id=new_sys_id(), sys_name=sys_name, name=name))
+
+
+async def _ensure_std_change_template(session) -> None:
+    existing = await session.execute(
+        select(StdChangeProducerVersion).where(
+            StdChangeProducerVersion.name == "Standard Server Patch"
+        )
+    )
+    if not existing.scalar_one_or_none():
+        session.add(
+            StdChangeProducerVersion(
+                sys_id=new_sys_id(),
+                name="Standard Server Patch",
+                short_description="Apply standard OS patches",
+            )
+        )
+
+
+async def _ensure_service_catalog(session) -> None:
+    existing = await session.execute(
+        select(ServiceCatalog).where(ServiceCatalog.title == "IT Services")
+    )
+    catalog = existing.scalar_one_or_none()
+    if not catalog:
+        catalog_id = new_sys_id()
+        session.add(
+            ServiceCatalog(
+                sys_id=catalog_id,
+                title="IT Services",
+                description="Standard IT service catalog",
+            )
+        )
+    else:
+        catalog_id = catalog.sys_id
+
+    for item_name, short_desc in (
+        ("New Laptop Request", "Request a new laptop"),
+        ("VPN Access", "Request VPN access"),
+    ):
+        existing_item = await session.execute(
+            select(ServiceCatalogItem).where(
+                ServiceCatalogItem.catalog_sys_id == catalog_id,
+                ServiceCatalogItem.name == item_name,
+            )
+        )
+        if not existing_item.scalar_one_or_none():
+            session.add(
+                ServiceCatalogItem(
+                    sys_id=new_sys_id(),
+                    catalog_sys_id=catalog_id,
+                    name=item_name,
+                    short_description=short_desc,
+                    price="0",
+                )
+            )
+
+
+async def _ensure_oauth_client(session) -> None:
+    existing = await session.execute(
+        select(OAuthClient).where(OAuthClient.client_id == "openflake")
+    )
+    if not existing.scalar_one_or_none():
+        session.add(
+            OAuthClient(
+                sys_id=new_sys_id(),
+                client_id="openflake",
+                client_secret="openflake-secret",
+                name="Default OAuth Client",
+            )
+        )
+
+
+async def ensure_reference_data():
+    """Create reference rows that may be missing on upgraded or partial databases."""
+    async with db.async_session_factory() as session:
+        await _ensure_number_sequences(session)
+        await _ensure_cmdb_rel_types(session)
+        await _ensure_std_change_template(session)
+        await _ensure_service_catalog(session)
+        await _ensure_oauth_client(session)
+        await session.commit()
+
+
 async def seed_data():
     async with db.async_session_factory() as session:
         result = await session.execute(select(SysUser).where(SysUser.user_name == settings.admin_username))
         if result.scalar_one_or_none():
             await ensure_rbac_roles()
             await backfill_owners()
+            await ensure_reference_data()
             return
 
         admin_id = new_sys_id()
