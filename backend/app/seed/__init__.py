@@ -1,5 +1,3 @@
 """Optional database seed data for development and demos."""
 
-from app.seed.lab import seed_lab
-
-__all__ = ["seed_lab"]
+# Do not import app.seed.lab here — eager import breaks `python -m app.seed.lab`.
