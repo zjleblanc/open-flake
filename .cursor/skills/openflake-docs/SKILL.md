@@ -6,6 +6,7 @@ description: >-
   bundled view. Use when creating or updating documentation, README files,
   guides under docs/, script references under scripts/docs/, or when the user
   asks to document features, scripts, installation, or development workflows.
+  Never link to or cite gitignored paths in consumer-facing docs.
 ---
 
 # OpenFlake documentation
@@ -50,12 +51,66 @@ Demote every heading from the source file by one level when copying into an inde
 - Cross-references between guides/scripts in the same README → `#anchor` links (not `guide.md`)
 - Links to files outside the bundle (deploy paths, root README, other README) → keep as normal relative links
 - Script detail in application guides → link to `scripts/docs/<name>.md` or `scripts/README.md`; do not paste full script docs into `docs/`
+- **Never link to gitignored paths** — see [Gitignored paths](#gitignored-paths) below
+
+### Gitignored paths
+
+Consumer-facing docs (`README.md`, `docs/*.md`, `docs/README.md`, `scripts/README.md`) must **not** link to, cite as paths, or tell readers to open files that are not in the public repo.
+
+**Do not:**
+
+- Add markdown links `[label](path)` where `git check-ignore -q path` succeeds
+- Mention gitignored directories as navigable locations (no `` `docs/class-hierarchy/` ``, no “place files in …”)
+- List example filenames from gitignored trees as things readers can open
+
+**Do instead:**
+
+- Describe behavior through **tracked** artifacts: API endpoints, database tables (`cmdb_class`, `cmdb_class_field`), env vars, `.example` templates
+- Link only to committed files (guides, `*.example`, scripts, ansible-examples)
+- For maintainer-only or local-only assets, omit path references entirely — document the outcome (what gets registered, what the schema API returns)
+
+**Known gitignored paths in this repo** (verify with `git check-ignore -v <path>` before adding doc references):
+
+| Path | Notes |
+|------|--------|
+| `docs/class-hierarchy/` | ServiceNow JSON exports; listed in `docs/.gitignore`. Class registry behavior belongs in [cmdb-class-hierarchy.md](../../docs/cmdb-class-hierarchy.md) without citing this directory. |
+| `*.env`, `openflake.env` | Secrets and local config. Link `*.env.example` / `deploy/openflake.env.example` instead; mention runtime `.env` in prose only. |
+| `deploy/certs/*` | Generated TLS material (except `deploy/certs/.gitkeep`). Document cert generation via `generate-dev-certs.sh`, not cert file paths as repo links. |
+| `data/`, `.venv/`, `node_modules/`, `dist/` | Build/runtime artifacts — never link from docs |
+
+**Verification before finishing doc edits:**
+
+```bash
+# From repo root — flag any markdown link target that is gitignored
+python3 - <<'PY'
+import re, subprocess
+from pathlib import Path
+ROOT = Path(".").resolve()
+for md in [ROOT/"README.md", ROOT/"docs/README.md", ROOT/"scripts/README.md", *ROOT.glob("docs/*.md")]:
+    if not md.exists(): continue
+    base = md.parent
+    for m in re.finditer(r'!?\[[^\]]*\]\(([^)#\s]+)\)', md.read_text()):
+        t = m.group(1)
+        if t.startswith(("http://", "https://", "mailto:")): continue
+        try:
+            rel = str((base / t).resolve().relative_to(ROOT))
+        except ValueError: continue
+        if subprocess.run(["git", "check-ignore", "-q", rel], cwd=ROOT).returncode == 0:
+            print(f"GITIGNORED LINK: {md.relative_to(ROOT)} -> {rel}")
+PY
+```
+
+Also grep prose for gitignored path strings when adding CMDB, env, or cert documentation:
+
+```bash
+rg 'docs/class-hierarchy|class-hierarchy/' docs/ README.md scripts/README.md
+```
 
 ### Section order
 
 **docs/README.md** (after `## On this page`):
 
-`installation` → `ssl-https` → `ansible-integration` → `api-compatibility` → `rbac` → `development` → `configuration` → `release-tagging`
+`installation` → `ssl-https` → `ansible-integration` → `api-compatibility` → `cmdb-class-hierarchy` → `rbac` → `development` → `configuration` → `release-tagging`
 
 **scripts/README.md**:
 
@@ -71,6 +126,7 @@ Demote every heading from the source file by one level when copying into an inde
 4. Update the index table row if the one-line description changed
 5. Update cross-links in other guides or bundled sections if needed
 6. If the guide mentions a script, ensure `scripts/docs/` and `scripts/README.md` stay aligned
+7. Confirm no links or path citations point at gitignored files (see [Gitignored paths](#gitignored-paths))
 
 ### Create an application guide
 
@@ -109,6 +165,7 @@ Demote every heading from the source file by one level when copying into an inde
 | Image publish | [installation.md](../../docs/installation.md) | publish-images |
 | TLS / certs | [ssl-https.md](../../docs/ssl-https.md) | generate-dev-certs |
 | Local dev | [development.md](../../docs/development.md) | ensure-postgres, start-backend, stop-backend |
+| CMDB class hierarchy | [cmdb-class-hierarchy.md](../../docs/cmdb-class-hierarchy.md) | — (no public export path; document tables and API only) |
 | Release tagging | [release-tagging.md](../../docs/release-tagging.md) | publish-images |
 
 ## Root README
@@ -126,6 +183,7 @@ Keep the root README short. It should not duplicate full guide content — only:
 - [ ] Matching bundled section in docs/README.md or scripts/README.md synced
 - [ ] Index table and ## On this page TOC current
 - [ ] Cross-links use #anchors inside index READMEs, file links elsewhere
+- [ ] No links or path citations to gitignored files (run verification snippet in Gitignored paths)
 - [ ] No utility script table in docs/README.md
 - [ ] Root README tables/descriptions still accurate
 ```

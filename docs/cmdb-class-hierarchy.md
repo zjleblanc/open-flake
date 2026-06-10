@@ -21,7 +21,7 @@ OpenFlake supports two modes:
 
 ### Registered classes
 
-Classes loaded from JSON exports under [`class-hierarchy/`](class-hierarchy/) (or seeded at startup) have:
+Classes registered in `cmdb_class` and `cmdb_class_field` at startup have:
 
 - A defined position in the class tree
 - Field definitions with labels and types
@@ -37,24 +37,18 @@ When a CI is created with a class that is not yet in the registry (via Table API
 3. Queries against that class URL match **exact class only** until the class is added to the hierarchy with a proper parent chain
 4. `sys_class_path` is computed as `/cmdb/cmdb_ci/{class_name}`
 
-To upgrade an auto-registered class to strict mode, add a JSON export (or insert rows in `cmdb_class` / `cmdb_class_field`) and restart the backend to re-import.
+To upgrade an auto-registered class to strict mode, register a proper parent chain and field definitions in `cmdb_class` / `cmdb_class_field`, then restart the backend.
 
-## Class hierarchy exports
+## Registered class metadata
 
-Place one JSON file per leaf class in [`docs/class-hierarchy/`](class-hierarchy/). Each file includes:
-
-- `target_table` — leaf class name
-- `inheritance_path` — ordered list from root to leaf (including intermediate classes)
-- `fields` — merged field list with `name`, `label`, `type`, `source_table` (defining class), and `origin` (`Native` / `Inherited`)
-
-Example paths:
+Each registered class has a position in the inheritance tree and field definitions (label, type, and defining class). Example inheritance paths:
 
 ```
 cmdb → cmdb_ci → cmdb_ci_hardware → cmdb_ci_computer → cmdb_ci_server → cmdb_ci_linux_server
 cmdb → cmdb_ci → cmdb_ci_vm_object → cmdb_ci_vm_instance
 ```
 
-The backend imports all `*.json` files on startup.
+Class metadata is loaded into `cmdb_class` and `cmdb_class_field` at backend startup.
 
 ## API behavior
 
@@ -86,4 +80,3 @@ Dynamic inventory against a **parent** class (e.g. `table: cmdb_ci_server`) retu
 
 - [API compatibility](api-compatibility.md)
 - [Ansible integration](ansible-integration.md)
-- Example exports: [`class-hierarchy/cmdb_ci_server.json`](class-hierarchy/cmdb_ci_server.json), [`class-hierarchy/cmdb_ci_vm_instance.json`](class-hierarchy/cmdb_ci_vm_instance.json)
