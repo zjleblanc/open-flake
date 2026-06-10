@@ -284,9 +284,9 @@ def schema_for_class(class_name: str) -> dict[str, Any]:
 
 
 def _ancestors_for_schema(class_name: str) -> list[str]:
-    from app.domain.cmdb.registry import get_ancestors
+    from app.domain.cmdb.registry import resolve_inheritance_path
 
-    return get_ancestors(class_name)
+    return resolve_inheritance_path(class_name)
 
 
 def class_tree() -> list[dict[str, Any]]:

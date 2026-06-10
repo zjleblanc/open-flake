@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
+import { formatDetailValue } from "../utils/formatDisplayValue";
 import { LockIcon } from "./DetailIcons";
 
 interface ToggleSwitchProps {
@@ -28,15 +30,7 @@ export function ToggleSwitch({ id, checked, onChange, label, icon }: ToggleSwitc
   );
 }
 
-export function formatDetailValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "object") {
-    const ref = value as { value?: string; link?: string };
-    if (ref.value) return ref.value;
-    return JSON.stringify(value, null, 2);
-  }
-  return String(value);
-}
+export { formatDetailValue } from "../utils/formatDisplayValue";
 
 interface ReadOnlyFieldInputProps {
   id: string;
@@ -44,6 +38,7 @@ interface ReadOnlyFieldInputProps {
   value: unknown;
   multiline?: boolean;
   gridColumn?: string;
+  fieldKey?: string;
 }
 
 export function ReadOnlyFieldInput({
@@ -52,8 +47,10 @@ export function ReadOnlyFieldInput({
   value,
   multiline = false,
   gridColumn,
+  fieldKey,
 }: ReadOnlyFieldInputProps) {
-  const display = formatDetailValue(value);
+  const { dateDisplayFormat } = useUserPreferences();
+  const display = formatDetailValue(value, { fieldKey, dateDisplayFormat });
 
   return (
     <div

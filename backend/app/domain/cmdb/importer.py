@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.cmdb.constants import CMDB_ROOT, LAB_CLASS_PARENTS, LOGICAL_ROOT, PROMOTED_COLUMNS
-from app.domain.cmdb.registry import ensure_class, refresh_cache
+from app.domain.cmdb.registry import ensure_class, refresh_cache, register_export_inheritance_path
 from app.models import CmdbClassField
 
 logger = logging.getLogger(__name__)
@@ -65,6 +65,8 @@ async def _import_export(db: AsyncSession, export: dict) -> None:
     target_table = export["target_table"]
     inheritance_path: list[str] = export["inheritance_path"]
     fields: list[dict] = export.get("fields", [])
+
+    register_export_inheritance_path(target_table, inheritance_path)
 
     for index, class_name in enumerate(inheritance_path):
         super_class = inheritance_path[index - 1] if index > 0 else None

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
 import {
   formatFileSize,
   getPreviewKind,
   type AttachmentRecord,
   type PreviewKind,
 } from "../utils/attachmentUtils";
+import { formatDateValue } from "../utils/formatDisplayValue";
 import { AttachmentsIcon } from "./DetailIcons";
 import { ExpandableDetailSection } from "./ExpandableDetailSection";
 
@@ -115,6 +117,7 @@ export function RecordAttachmentsSection({
   sectionId = "ci-section-attachments",
 }: RecordAttachmentsSectionProps) {
   const queryClient = useQueryClient();
+  const { dateDisplayFormat } = useUserPreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedPreviewId, setExpandedPreviewId] = useState<string | null>(null);
 
@@ -179,7 +182,7 @@ export function RecordAttachmentsSection({
                   <span className="attachment-file-details text-muted text-sm">
                     {formatFileSize(attachment.size_bytes)}
                     {attachment.sys_created_on
-                      ? ` · ${new Date(attachment.sys_created_on).toLocaleString()}`
+                      ? ` · ${formatDateValue(attachment.sys_created_on, dateDisplayFormat)}`
                       : ""}
                   </span>
                 </div>

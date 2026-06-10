@@ -423,16 +423,20 @@ export function ConfigurationItemDetailPage() {
               accent="primary"
             >
           <DetailFieldGroup>
-            <ReadOnlyFieldInput id="ci-sys_class_name" label="Class" value={data.sys_class_name} />
-            {className && (
-              <div className="detail-grid-span">
-                <ClassHierarchyPanel className={className} sysClassPath={data.sys_class_path} />
-              </div>
-            )}
+            <div className="detail-grid-stack">
+              <ReadOnlyFieldInput id="ci-sys_class_name" label="Class" value={data.sys_class_name} />
+              {className && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label htmlFor="ci-class-hierarchy">Inheritance</label>
+                  <ClassHierarchyPanel className={className} sysClassPath={data.sys_class_path} />
+                </div>
+              )}
+            </div>
             {CMDB_CI_SYSTEM_FIELDS.map((field) => (
               <ReadOnlyFieldInput
                 key={field.key}
                 id={`ci-${field.key}`}
+                fieldKey={field.key}
                 label={field.label}
                 value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
               />
@@ -454,6 +458,7 @@ export function ConfigurationItemDetailPage() {
                   <ReadOnlyFieldInput
                     key={field.key}
                     id={`ci-${field.key}`}
+                    fieldKey={field.key}
                     label={field.label}
                     value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
                   />
@@ -502,6 +507,7 @@ export function ConfigurationItemDetailPage() {
               <ReadOnlyFieldInput
                 key={field.key}
                 id={`ci-${field.key}`}
+                fieldKey={field.key}
                 label={field.label}
                 value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
               />
@@ -536,6 +542,7 @@ export function ConfigurationItemDetailPage() {
                   <ReadOnlyFieldInput
                     key={key}
                     id={`ci-other-${key}`}
+                    fieldKey={key}
                     label={humanizeFieldKey(key)}
                     value={data[key]}
                   />

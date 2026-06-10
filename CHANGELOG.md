@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-10 — Local Dates preference and full CMDB class inheritance in the UI
+
+### Added
+
+- Browser-local **Local Dates** display preference (`raw` vs localized) in Settings and the user menu, with a live preview on the Preferences card.
+- `UserPreferencesProvider` and `userPreferences` localStorage helpers in the frontend.
+- `formatDisplayValue.ts` and `resolveInheritancePath.ts` utilities for date formatting and class path merging.
+- `resolve_inheritance_path()` and export-path cache in the CMDB registry; hierarchy JSON imports register full `inheritance_path` for schema responses.
+- `test_resolve_inheritance_path_prefers_export_when_registry_chain_is_flat` in `backend/tests/test_cmdb_classes.py`.
+
+### Changed
+
+- CMDB schema API and `ClassHierarchyPanel` merge registry, export, and record paths so registered classes show the complete inheritance chain (e.g. through `cmdb_ci_hardware` and `cmdb_ci_computer`).
+- CI detail System section stacks Class and Inheritance in one grid column; the implied `cmdb` root is omitted from the hierarchy display.
+- Detail fields, comments, and attachments respect the Local Dates preference for timestamp fields.
+
 ## 2026-06-10 — Register CMDB hierarchy exports fully and add hard lab re-seed
 
 ### Added

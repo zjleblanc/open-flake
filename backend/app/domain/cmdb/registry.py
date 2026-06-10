@@ -28,11 +28,22 @@ class _RegistrySnapshot:
 
 
 _snapshot: _RegistrySnapshot | None = None
+_EXPORT_INHERITANCE_PATHS: dict[str, list[str]] = {}
 
 
 def clear_cache() -> None:
     global _snapshot
     _snapshot = None
+    _EXPORT_INHERITANCE_PATHS.clear()
+
+
+def register_export_inheritance_path(class_name: str, path: list[str]) -> None:
+    """Remember the full path from a hierarchy JSON export."""
+    if not class_name or not path:
+        return
+    existing = _EXPORT_INHERITANCE_PATHS.get(class_name)
+    if not existing or len(path) > len(existing):
+        _EXPORT_INHERITANCE_PATHS[class_name] = list(path)
 
 
 async def refresh_cache(db: AsyncSession) -> None:
@@ -97,6 +108,47 @@ def get_ancestors(class_name: str) -> list[str]:
         current = cls.super_class if cls else None
     chain.reverse()
     return chain
+
+
+def _is_ordered_subsequence(shorter: list[str], longer: list[str]) -> bool:
+    if not shorter:
+        return True
+    index = 0
+    for item in longer:
+        if item == shorter[index]:
+            index += 1
+        if index == len(shorter):
+            return True
+    return index == len(shorter)
+
+
+def _pick_longest_compatible_path(paths: list[list[str]]) -> list[str]:
+    valid = [path for path in paths if path]
+    if not valid:
+        return []
+    valid.sort(key=len, reverse=True)
+    for candidate in valid:
+        if all(
+            path is candidate
+            or _is_ordered_subsequence(path, candidate)
+            or _is_ordered_subsequence(candidate, path)
+            for path in valid
+        ):
+            return candidate
+    return valid[0]
+
+
+def resolve_inheritance_path(class_name: str) -> list[str]:
+    """Return the most complete known inheritance path for a class."""
+    candidates: list[list[str]] = []
+    if is_registered(class_name):
+        candidates.append(get_ancestors(class_name))
+    export_path = _EXPORT_INHERITANCE_PATHS.get(class_name)
+    if export_path:
+        candidates.append(export_path)
+    if candidates:
+        return _pick_longest_compatible_path(candidates)
+    return fallback_inheritance_path(class_name)
 
 
 def get_descendants(class_name: str) -> list[str]:

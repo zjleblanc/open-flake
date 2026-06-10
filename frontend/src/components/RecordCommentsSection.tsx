@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
+import { formatDateValue } from "../utils/formatDisplayValue";
 import { CommentsIcon } from "./DetailIcons";
 import { ExpandableDetailSection } from "./ExpandableDetailSection";
 
@@ -19,6 +21,7 @@ export function RecordCommentsSection({
 }: RecordCommentsSectionProps) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState("");
+  const { dateDisplayFormat } = useUserPreferences();
 
   const { data: comments = [] } = useQuery({
     queryKey: ["comments", resource, sysId],
@@ -54,7 +57,7 @@ export function RecordCommentsSection({
           >
             <p style={{ margin: 0 }}>{c.comment}</p>
             <p className="text-muted text-sm" style={{ margin: "0.25rem 0 0" }}>
-              {c.sys_created_on ? new Date(c.sys_created_on).toLocaleString() : ""}
+              {c.sys_created_on ? formatDateValue(c.sys_created_on, dateDisplayFormat) : ""}
             </p>
           </li>
         ))}

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { ToggleSwitch } from "./DetailFieldControls";
 import { SignOutIcon } from "./NavIcons";
 import { usePageHeaderContext } from "./PageHeaderContext";
 
@@ -16,6 +18,7 @@ function userInitials(userName: string): string {
 export function TopNavbar() {
   const { header } = usePageHeaderContext();
   const { user, logout: authLogout } = useAuth();
+  const { dateDisplayFormat, setDateDisplayFormat } = useUserPreferences();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,14 @@ export function TopNavbar() {
               <div className="user-menu-dropdown" role="menu">
                 <div className="user-menu-dropdown-header">
                   <span className="user-menu-dropdown-name">{user.user_name}</span>
+                </div>
+                <div className="user-menu-preference">
+                  <ToggleSwitch
+                    id="user-menu-date-local"
+                    checked={dateDisplayFormat === "local"}
+                    onChange={(checked) => setDateDisplayFormat(checked ? "local" : "raw")}
+                    label="Local Dates"
+                  />
                 </div>
                 <button type="button" className="user-menu-item" role="menuitem" onClick={logout}>
                   <SignOutIcon size={16} />

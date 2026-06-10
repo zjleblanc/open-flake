@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.auth.deps import AuthContext, authenticate_request
 from app.domain.cmdb.ci_service import class_tree, schema_for_class
-from app.domain.cmdb.registry import fallback_inheritance_path, is_registered
+from app.domain.cmdb.registry import is_registered, resolve_inheritance_path
 
 router = APIRouter(prefix="/api/flake/schema/cmdb", tags=["cmdb-schema-api"])
 
@@ -23,7 +23,7 @@ async def get_class_schema(
         return {
             "result": {
                 "class_name": class_name,
-                "inheritance_path": fallback_inheritance_path(class_name),
+                "inheritance_path": resolve_inheritance_path(class_name),
                 "fields": [],
                 "registered": False,
             }

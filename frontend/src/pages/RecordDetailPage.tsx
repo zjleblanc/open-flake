@@ -158,6 +158,7 @@ export function RecordDetailPage({
                   <ReadOnlyFieldInput
                     key={field.key}
                     id={`field-${field.key}`}
+                    fieldKey={field.key}
                     label={field.label}
                     value={display}
                     multiline={field.type === "textarea"}

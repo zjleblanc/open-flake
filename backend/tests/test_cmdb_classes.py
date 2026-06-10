@@ -205,6 +205,24 @@ def test_fallback_inheritance_path_for_unregistered_class():
     assert path == ["cmdb", "cmdb_ci", "cmdb_ci_custom_app"]
 
 
+def test_resolve_inheritance_path_prefers_export_when_registry_chain_is_flat():
+    from app.domain.cmdb import registry
+
+    full_path = [
+        "cmdb",
+        "cmdb_ci",
+        "cmdb_ci_hardware",
+        "cmdb_ci_computer",
+        "cmdb_ci_server",
+        "cmdb_ci_linux_server",
+    ]
+    registry.register_export_inheritance_path("cmdb_ci_linux_server", full_path)
+    registry._snapshot.classes["cmdb_ci_linux_server"].super_class = "cmdb_ci"
+
+    path = registry.resolve_inheritance_path("cmdb_ci_linux_server")
+    assert path == full_path
+
+
 @pytest.mark.asyncio
 async def test_ensure_class_updates_super_class_when_requested():
     from unittest.mock import AsyncMock

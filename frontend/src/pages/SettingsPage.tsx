@@ -1,12 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { ToggleSwitch } from "../components/DetailFieldControls";
 import { usePageHeader } from "../components/PageHeaderContext";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
+import { formatDateValue } from "../utils/formatDisplayValue";
+import "../components/Layout.css";
 
 const SETTINGS_BREADCRUMBS = [{ label: "Settings" }];
 
 export function SettingsPage() {
   usePageHeader({ breadcrumbs: SETTINGS_BREADCRUMBS });
+  const { dateDisplayFormat, setDateDisplayFormat } = useUserPreferences();
   const [apiKeyName, setApiKeyName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [oauthForm, setOauthForm] = useState({ name: "", client_id: "", client_secret: "" });
@@ -32,8 +37,32 @@ export function SettingsPage() {
     },
   });
 
+  const sampleDate = useMemo(() => new Date().toISOString(), []);
+  const datePreview = formatDateValue(sampleDate, dateDisplayFormat);
+
   return (
     <div>
+      <div className="card" style={{ marginBottom: "1.5rem" }}>
+        <h2 className="section-title">Preferences</h2>
+        <p className="text-body" style={{ marginBottom: "1rem" }}>
+          Display preferences are saved in this browser.
+        </p>
+        <div className="preferences-date-row">
+          <div className="preferences-toggle-row">
+            <ToggleSwitch
+              id="date-display-local"
+              checked={dateDisplayFormat === "local"}
+              onChange={(checked) => setDateDisplayFormat(checked ? "local" : "raw")}
+              label="Local Dates"
+            />
+          </div>
+          <div className="preferences-date-preview">
+            <span className="preferences-date-preview-label">Preview</span>
+            <code className="preferences-date-preview-value">{datePreview}</code>
+          </div>
+        </div>
+      </div>
+
       <div className="card" style={{ marginBottom: "1.5rem" }}>
         <h2 className="section-title">API Keys</h2>
         <p className="text-body" style={{ marginBottom: "1rem" }}>
