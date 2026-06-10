@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-10 — Account-backed display preferences with themes and layout density
+
+### Added
+
+- `sys_user.preferences` JSONB column, `user_preferences` domain module, and `backend/tests/test_user_preferences.py`.
+- `GET` / `PATCH` `/api/v1/settings/preferences`; `/api/v1/auth/me` now includes normalized preferences.
+- Theme selector (dark, light, system) with a full light-mode token set in `global.css`.
+- Layout density selector (comfortable, compact) driven by density CSS variables across the shell and detail views.
+- Reusable segmented preference controls (`ColorSchemeSelector`, `LayoutDensitySelector`) in Settings and the user menu.
+
+### Changed
+
+- Display preferences (theme, layout density, sidebar collapse, local dates) persist to the signed-in user profile instead of browser `localStorage`.
+- `UserPreferencesProvider` loads from `/auth/me` and saves via the preferences API; legacy `localStorage` values migrate once on first authenticated session.
+- Preference controls ordered Theme → Layout → Local Dates in Settings and the user dropdown.
+
 ## 2026-06-10 — Local Dates preference and full CMDB class inheritance in the UI
 
 ### Added

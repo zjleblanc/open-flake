@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, clearToken, getToken } from "../api/client";
+import { api, clearToken, getToken, type UserPreferencesApi } from "../api/client";
 
 export interface AuthUser {
   sys_id: string;
   user_name: string;
   permissions: string[];
   group_ids: string[];
+  preferences: UserPreferencesApi;
 }
 
 interface AuthContextValue {

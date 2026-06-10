@@ -150,6 +150,7 @@ SCHEMA_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     ("sys_user", "time_zone", "VARCHAR(64)"),
     ("sys_user", "vip", "VARCHAR(8)"),
     ("sys_user", "employee_number", "VARCHAR(64)"),
+    ("sys_user", "preferences", "JSONB DEFAULT '{}'::jsonb"),
     # sys_user_group
     ("sys_user_group", "type", "VARCHAR(64)"),
     ("sys_user_group", "active", "VARCHAR(8)"),

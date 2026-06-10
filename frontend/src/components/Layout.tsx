@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useUserPreferences } from "../settings/UserPreferencesContext";
 import openFlakeSm from "../assets/images/open_flake_sm.png";
 import {
   ChangeIcon,
@@ -24,19 +25,6 @@ const NAV: { to: string; label: string; icon: ReactNode; permission?: string }[]
   { to: "/users", label: "Users & Groups", icon: <UsersIcon />, permission: "users.read" },
   { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
-
-const SIDEBAR_EXPANDED_KEY = "openflake.sidebar.expanded";
-
-function readStoredSidebarExpanded(defaultOpen: boolean): boolean {
-  try {
-    const stored = localStorage.getItem(SIDEBAR_EXPANDED_KEY);
-    if (stored === "true") return true;
-    if (stored === "false") return false;
-  } catch {
-    // localStorage unavailable
-  }
-  return defaultOpen;
-}
 
 function ChevronLeftIcon() {
   return (
@@ -68,17 +56,9 @@ function ChevronRightIcon() {
 
 export function Layout() {
   const { hasPermission } = useAuth();
-  const [sidebarExpanded, setSidebarExpanded] = useState(() => readStoredSidebarExpanded(true));
+  const { sidebarExpanded, setSidebarExpanded } = useUserPreferences();
 
   const visibleNav = NAV.filter((item) => !item.permission || hasPermission(item.permission));
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(SIDEBAR_EXPANDED_KEY, String(sidebarExpanded));
-    } catch {
-      // localStorage unavailable
-    }
-  }, [sidebarExpanded]);
 
   return (
     <PageHeaderProvider>
@@ -106,7 +86,7 @@ export function Layout() {
             <button
               type="button"
               className="nav-link sidebar-nav-toggle"
-              onClick={() => setSidebarExpanded((value) => !value)}
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
               aria-label={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
               aria-expanded={sidebarExpanded}
             >

@@ -149,9 +149,9 @@ button.nav-link {
   gap: 1rem;
   flex-shrink: 0;
   width: 100%;
-  min-height: 3.25rem;
+  min-height: var(--of-density-navbar-min-height);
   box-sizing: border-box;
-  padding: 0 2rem;
+  padding: 0 var(--of-density-navbar-padding-x);
   background: color-mix(in srgb, var(--of-bg) 28%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(1.25);
   backdrop-filter: blur(16px) saturate(1.25);
@@ -242,7 +242,7 @@ button.nav-link {
   top: calc(100% + 0.375rem);
   right: 0;
   z-index: 30;
-  min-width: 14rem;
+  min-width: 15.5rem;
   padding: 0.375rem;
   border: 1px solid var(--of-border);
   border-radius: var(--of-radius);
@@ -291,7 +291,7 @@ button.nav-link {
 }
 
 .user-menu-preference .toggle-switch-input:checked + .toggle-switch-track .toggle-switch-thumb {
-  background: #fff;
+  background: var(--of-on-primary);
 }
 
 .preferences-date-row {
@@ -299,6 +299,7 @@ button.nav-link {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .preferences-toggle-row {
@@ -348,7 +349,89 @@ button.nav-link {
 }
 
 .preferences-toggle-row .toggle-switch-input:checked + .toggle-switch-track .toggle-switch-thumb {
-  background: #fff;
+  background: var(--of-on-primary);
+}
+
+.preferences-layout-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.preferences-layout-control {
+  display: inline-flex;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-primary) 10%, var(--of-surface));
+  border: 1px solid color-mix(in srgb, var(--of-primary) 24%, var(--of-border));
+}
+
+.preferences-layout-control .layout-density-label {
+  color: var(--of-primary-light);
+}
+
+.layout-density-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.layout-density-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--of-text-muted);
+}
+
+.layout-density-selector {
+  display: inline-flex;
+  padding: 0.1875rem;
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 55%, var(--of-surface));
+  border: 1px solid var(--of-border);
+}
+
+.layout-density-option {
+  padding: 0.3125rem 0.625rem;
+  border: none;
+  border-radius: calc(var(--of-radius) - 2px);
+  background: transparent;
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.layout-density-option:hover {
+  color: var(--of-text);
+}
+
+.layout-density-option--active {
+  background: var(--of-primary);
+  color: var(--of-on-primary);
+}
+
+.layout-density-option--active:hover {
+  color: var(--of-on-primary);
+}
+
+.user-menu-preference .layout-density-control {
+  gap: 0.5rem;
+}
+
+.user-menu-preference .layout-density-label {
+  color: var(--of-primary-light);
+}
+
+.user-menu-preference .layout-density-selector {
+  width: 100%;
+}
+
+.user-menu-preference .layout-density-option {
+  flex: 1;
+  text-align: center;
 }
 
 .user-menu-item {
@@ -375,7 +458,7 @@ button.nav-link {
 }
 
 .content {
-  --content-padding: 2rem;
+  --content-padding: var(--of-density-content-padding);
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -385,7 +468,7 @@ button.nav-link {
 }
 
 .content-body {
-  padding: 1.25rem 0 var(--content-padding);
+  padding: var(--of-density-content-body-top) 0 var(--content-padding);
 }
 
 .breadcrumbs-list {
@@ -739,7 +822,7 @@ button.nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1.25rem;
+  padding: var(--of-density-detail-section-header-y) var(--of-density-detail-section-header-x);
   border-bottom: 1px solid var(--of-border);
   background: color-mix(in srgb, var(--section-accent) 10%, var(--of-surface));
   border-left: 3px solid var(--section-accent);
@@ -843,13 +926,13 @@ button.nav-link {
 }
 
 .detail-section-body {
-  padding: 1.25rem;
+  padding: var(--of-density-detail-section-body);
 }
 
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  gap: var(--of-density-detail-grid-gap);
 }
 
 .detail-grid-span {
@@ -936,7 +1019,7 @@ button.nav-link {
 }
 
 .detail-field {
-  padding: 0.75rem;
+  padding: var(--of-density-detail-field);
   border-radius: var(--of-radius);
   background: color-mix(in srgb, var(--of-bg) 60%, transparent);
   border: 1px solid color-mix(in srgb, var(--of-border) 70%, transparent);
@@ -973,7 +1056,7 @@ button.nav-link {
 .detail-sections-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--of-density-detail-sections-gap);
 }
 
 .detail-page-layout {
@@ -1503,7 +1586,7 @@ button.nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.875rem 1rem;
+  padding: var(--of-density-record-list-filter-y) var(--of-density-record-list-filter-x);
   border-bottom: 1px solid var(--of-table-header-border);
   background: color-mix(in srgb, var(--of-primary) 8%, var(--of-surface));
 }
@@ -1522,10 +1605,18 @@ button.nav-link {
   appearance: none;
   -webkit-appearance: none;
   background-color: var(--of-bg);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 0.875rem;
+}
+
+:root .record-list-filter select,
+[data-theme="dark"] .record-list-filter select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] .record-list-filter select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2318181b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .record-list-filter input[type="search"] {

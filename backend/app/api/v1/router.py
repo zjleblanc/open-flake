@@ -18,6 +18,7 @@ from app.auth.security import create_access_token, hash_api_key, hash_password, 
 from app.config import get_settings
 from app.db import get_db
 from app.domain.registry import TABLE_MODELS
+from app.domain.user_preferences import merge_user_preferences_update, normalize_user_preferences
 from app.domain.table_service import (
     create_record,
     delete_record,
@@ -62,6 +63,30 @@ class LoginResponse(BaseModel):
     sys_id: str
 
 
+class UserPreferencesResponse(BaseModel):
+    date_display_format: str
+    layout_density: str
+    sidebar_expanded: bool
+    color_scheme: str
+
+
+class UpdateUserPreferencesRequest(BaseModel):
+    date_display_format: str | None = None
+    layout_density: str | None = None
+    sidebar_expanded: bool | None = None
+    color_scheme: str | None = None
+
+
+async def _load_user_preferences(
+    db: AsyncSession,
+    user_sys_id: str,
+) -> dict[str, Any]:
+    user = await db.get(SysUser, user_sys_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    return normalize_user_preferences(user.preferences)
+
+
 @router.post("/auth/login", response_model=LoginResponse)
 async def ui_login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(SysUser).where(SysUser.user_name == body.username))
@@ -79,11 +104,13 @@ async def auth_me(
 ):
     perms = await get_user_permissions(db, auth.user_sys_id)
     group_ids = list(await get_user_group_ids(db, auth.user_sys_id))
+    preferences = await _load_user_preferences(db, auth.user_sys_id)
     return {
         "sys_id": auth.user_sys_id,
         "user_name": auth.user_name,
         "permissions": sorted(perms),
         "group_ids": group_ids,
+        "preferences": preferences,
     }
 
 
@@ -489,6 +516,33 @@ async def delete_record_attachment(
     await _assert_attachment_parent_access(db, auth, table, sys_id, "write")
     await remove_attachment(db, record)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/settings/preferences", response_model=UserPreferencesResponse)
+async def get_user_preferences(
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _load_user_preferences(db, auth.user_sys_id)
+
+
+@router.patch("/settings/preferences", response_model=UserPreferencesResponse)
+async def update_user_preferences(
+    body: UpdateUserPreferencesRequest,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await db.get(SysUser, auth.user_sys_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+
+    patch = body.model_dump(exclude_unset=True)
+    if not patch:
+        return normalize_user_preferences(user.preferences)
+
+    user.preferences = merge_user_preferences_update(user.preferences, patch)
+    await db.flush()
+    return normalize_user_preferences(user.preferences)
 
 
 class CreateApiKeyRequest(BaseModel):

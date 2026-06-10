@@ -71,6 +71,7 @@ class SysUser(Base, TimestampMixin):
     vip: Mapped[str | None] = mapped_column(String(8), nullable=True)
     employee_number: Mapped[str | None] = mapped_column(String(64), nullable=True)
     active: Mapped[str] = mapped_column(String(8), default="true")
+    preferences: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 

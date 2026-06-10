@@ -1,3 +1,5 @@
+import type { UserPreferencesApi } from "../settings/userPreferences";
+
 const TOKEN_KEY = "openflake_token";
 
 export interface RecordPermissions {
@@ -7,11 +9,14 @@ export interface RecordPermissions {
   delete: boolean;
 }
 
+export type { UserPreferencesApi } from "../settings/userPreferences";
+
 export interface AuthMe {
   sys_id: string;
   user_name: string;
   permissions: string[];
   group_ids: string[];
+  preferences: UserPreferencesApi;
 }
 
 export function getRecordPermissions(record: Record<string, unknown>): RecordPermissions {
@@ -99,6 +104,14 @@ export const api = {
     ),
 
   me: () => request<AuthMe>("/api/v1/auth/me"),
+
+  getPreferences: () => request<UserPreferencesApi>("/api/v1/settings/preferences"),
+
+  updatePreferences: (preferences: Partial<UserPreferencesApi>) =>
+    request<UserPreferencesApi>("/api/v1/settings/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(preferences),
+    }),
 
   dashboard: () =>
     request<{

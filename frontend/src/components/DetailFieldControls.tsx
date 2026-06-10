@@ -1,7 +1,112 @@
 import type { ReactNode } from "react";
 import { useUserPreferences } from "../settings/UserPreferencesContext";
+import type { ColorScheme, LayoutDensity } from "../settings/userPreferences";
 import { formatDetailValue } from "../utils/formatDisplayValue";
 import { LockIcon } from "./DetailIcons";
+
+interface SegmentedPreferenceSelectorProps<T extends string> {
+  value: T;
+  onChange: (value: T) => void;
+  idPrefix: string;
+  label: string;
+  options: { value: T; label: string }[];
+}
+
+export function SegmentedPreferenceSelector<T extends string>({
+  value,
+  onChange,
+  idPrefix,
+  label,
+  options,
+}: SegmentedPreferenceSelectorProps<T>) {
+  return (
+    <div className="layout-density-control">
+      <span className="layout-density-label" id={`${idPrefix}-label`}>
+        {label}
+      </span>
+      <div
+        className="layout-density-selector"
+        role="radiogroup"
+        aria-labelledby={`${idPrefix}-label`}
+      >
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            id={`${idPrefix}-${option.value}`}
+            role="radio"
+            aria-checked={value === option.value}
+            className={`layout-density-option${
+              value === option.value ? " layout-density-option--active" : ""
+            }`}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const LAYOUT_DENSITY_OPTIONS: { value: LayoutDensity; label: string }[] = [
+  { value: "comfortable", label: "Comfortable" },
+  { value: "compact", label: "Compact" },
+];
+
+interface LayoutDensitySelectorProps {
+  value: LayoutDensity;
+  onChange: (density: LayoutDensity) => void;
+  idPrefix: string;
+  label?: string;
+}
+
+export function LayoutDensitySelector({
+  value,
+  onChange,
+  idPrefix,
+  label = "Layout",
+}: LayoutDensitySelectorProps) {
+  return (
+    <SegmentedPreferenceSelector
+      value={value}
+      onChange={onChange}
+      idPrefix={idPrefix}
+      label={label}
+      options={LAYOUT_DENSITY_OPTIONS}
+    />
+  );
+}
+
+const COLOR_SCHEME_OPTIONS: { value: ColorScheme; label: string }[] = [
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+  { value: "system", label: "System" },
+];
+
+interface ColorSchemeSelectorProps {
+  value: ColorScheme;
+  onChange: (scheme: ColorScheme) => void;
+  idPrefix: string;
+  label?: string;
+}
+
+export function ColorSchemeSelector({
+  value,
+  onChange,
+  idPrefix,
+  label = "Theme",
+}: ColorSchemeSelectorProps) {
+  return (
+    <SegmentedPreferenceSelector
+      value={value}
+      onChange={onChange}
+      idPrefix={idPrefix}
+      label={label}
+      options={COLOR_SCHEME_OPTIONS}
+    />
+  );
+}
 
 interface ToggleSwitchProps {
   id: string;
