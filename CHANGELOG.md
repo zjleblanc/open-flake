@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-06-10 — Register CMDB hierarchy exports fully and add hard lab re-seed
+
+### Added
+
+- `--hard` flag for lab seed (requires `--force`) to purge existing lab users, groups, CIs, tickets, and related records before re-seeding from scratch.
+- `_purge_lab_data()` in `backend/app/seed/lab.py` — deletes lab data identified by `[LAB]` ticket prefix, `lab-` CI names, and known lab user/group names.
+- `backend/tests/test_lab_seed.py` — validates `--hard` requires `--force` and lab identifier constants.
+- `test_hierarchy_exports_define_full_inheritance_paths` and `test_ensure_class_updates_super_class_when_requested` in `backend/tests/test_cmdb_classes.py`.
+
+### Changed
+
+- CMDB hierarchy import upserts parent links via `ensure_class(..., update=True)` so JSON exports correct auto-registered classes that were previously stuck under `cmdb_ci`.
+- Lab seed CLI runs `ensure_cmdb_class_metadata()` when `ensure_base` is enabled, matching normal backend startup.
+- Lab CMDB CIs use `cmdb_ci_router` and `cmdb_ci_switch` to align with `docs/class-hierarchy/` JSON exports.
+- Removed `cmdb_ci_win_server`, `cmdb_ci_ip_router`, and `cmdb_ci_ip_switch` from `LAB_CLASS_PARENTS` (now covered by hierarchy JSON); kept `cmdb_ci_ip_firewall` only.
+- `docs/development.md` and bundled `docs/README.md` document `--force --hard` re-seed behavior.
+
+### Fixed
+
+- CMDB class registry no longer retains flat parent chains after hierarchy JSON is added to an existing database.
+
 ## 2026-06-09 — Class hierarchy for unregistered CMDB classes without UI noise
 
 ### Changed

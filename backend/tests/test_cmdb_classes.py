@@ -94,11 +94,45 @@ def snapshot():
 
 
 def test_parse_linux_server_export():
-    raw = (HIERARCHY_DIR / "cmdb_ci_server.json").read_text(encoding="utf-8")
+    raw = (HIERARCHY_DIR / "cmdb_ci_linux_server.json").read_text(encoding="utf-8")
     export = parse_hierarchy_export(raw)
     assert export["target_table"] == "cmdb_ci_linux_server"
-    assert "cmdb_ci_server" in export["inheritance_path"]
+    assert export["inheritance_path"] == [
+        "cmdb",
+        "cmdb_ci",
+        "cmdb_ci_hardware",
+        "cmdb_ci_computer",
+        "cmdb_ci_server",
+        "cmdb_ci_linux_server",
+    ]
     assert any(field["name"] == "kernel_release" for field in export["fields"])
+
+
+def test_hierarchy_exports_define_full_inheritance_paths():
+    expected_paths = {
+        "cmdb_ci_linux_server.json": [
+            "cmdb",
+            "cmdb_ci",
+            "cmdb_ci_hardware",
+            "cmdb_ci_computer",
+            "cmdb_ci_server",
+            "cmdb_ci_linux_server",
+        ],
+        "cmdb_ci_win_server.json": [
+            "cmdb",
+            "cmdb_ci",
+            "cmdb_ci_hardware",
+            "cmdb_ci_computer",
+            "cmdb_ci_server",
+            "cmdb_ci_win_server",
+        ],
+        "cmdb_ci_router.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_router"],
+        "cmdb_ci_switch.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_switch"],
+        "cmdb_ci_vm_instance.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_vm_instance"],
+    }
+    for filename, path in expected_paths.items():
+        export = parse_hierarchy_export((HIERARCHY_DIR / filename).read_text(encoding="utf-8"))
+        assert export["inheritance_path"] == path
 
 
 def test_parse_vm_instance_export_with_wrapper():
@@ -169,3 +203,31 @@ def test_merged_fields_include_ancestors():
 def test_fallback_inheritance_path_for_unregistered_class():
     path = fallback_inheritance_path("cmdb_ci_custom_app")
     assert path == ["cmdb", "cmdb_ci", "cmdb_ci_custom_app"]
+
+
+@pytest.mark.asyncio
+async def test_ensure_class_updates_super_class_when_requested():
+    from unittest.mock import AsyncMock
+
+    from app.domain.cmdb.registry import ensure_class
+
+    existing = CmdbClass(
+        name="cmdb_ci_linux_server",
+        super_class="cmdb_ci",
+        label="cmdb_ci_linux_server",
+        is_logical=False,
+    )
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=existing)
+    db.flush = AsyncMock()
+
+    result = await ensure_class(
+        db,
+        "cmdb_ci_linux_server",
+        super_class="cmdb_ci_server",
+        update=True,
+    )
+
+    assert result is existing
+    assert existing.super_class == "cmdb_ci_server"
+    db.flush.assert_awaited_once()

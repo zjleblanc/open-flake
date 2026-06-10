@@ -44,8 +44,5 @@ SYSTEM_FIELDS = frozenset(
 
 # Lab seed classes not covered by JSON exports — registered under cmdb_ci.
 LAB_CLASS_PARENTS: dict[str, str] = {
-    "cmdb_ci_win_server": CMDB_ROOT,
-    "cmdb_ci_ip_router": CMDB_ROOT,
-    "cmdb_ci_ip_switch": CMDB_ROOT,
     "cmdb_ci_ip_firewall": CMDB_ROOT,
 }

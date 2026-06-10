@@ -631,7 +631,7 @@ openflake-seed-lab --env-file backend/.env
 ## or: python -m app.seed.lab --env-file backend/local.env
 ```
 
-Creates an **Acme Corp** lab with Linux/Windows servers, network devices, ITIL assignment groups, and mixed ticket states. Lab users share password `lab123` (e.g. `jsmith`, `mwilson`, `lchen`). Records are prefixed with `[LAB]` for easy identification. Re-running is skipped by default; use `--force` to seed again (creates duplicates).
+Creates an **Acme Corp** lab with Linux/Windows servers, network devices, ITIL assignment groups, and mixed ticket states. Lab users share password `lab123` (e.g. `jsmith`, `mwilson`, `lchen`). Records are prefixed with `[LAB]` for easy identification. Re-running is skipped by default; use `--force` to seed again (idempotent — fills gaps without updating existing rows). Use `--force --hard` to delete all lab seed data and re-seed from scratch.
 
 ### Frontend
 

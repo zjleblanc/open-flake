@@ -152,9 +152,18 @@ async def ensure_class(
     super_class: str | None = CMDB_ROOT,
     label: str | None = None,
     is_logical: bool = False,
+    update: bool = False,
 ) -> CmdbClass:
     existing = await db.get(CmdbClass, class_name)
     if existing:
+        if update:
+            if existing.super_class != super_class:
+                existing.super_class = super_class
+            if label is not None:
+                existing.label = label
+            if existing.is_logical != is_logical:
+                existing.is_logical = is_logical
+            await db.flush()
         return existing
 
     if super_class:

@@ -7,13 +7,31 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import delete, or_, select
 
 from app import db, startup
 from app.config import DEFAULT_LAB_ENV_FILE, Settings, resolve_env_file, settings_from_env_file
 from app.domain.registry import TABLE_MODELS
 from app.domain.table_service import _model_to_dict, create_record
-from app.models import CmdbRelType, StdChangeProducerVersion, SysUser, SysUserGroup
+from app.models import (
+    ChangeRequest,
+    ChangeTask,
+    CmdbCi,
+    CmdbRelCi,
+    CmdbRelType,
+    Incident,
+    Problem,
+    ProblemTask,
+    RecordAccessGrant,
+    ScRequest,
+    ScTask,
+    StdChangeProducerVersion,
+    SysAttachment,
+    SysComment,
+    SysUser,
+    SysUserGrMember,
+    SysUserGroup,
+)
 from app.startup import run_migrations, seed_data
 
 logger = logging.getLogger(__name__)
@@ -23,6 +41,40 @@ settings: Settings | None = None
 LAB_MARKER_GROUP = "Service Desk"
 LAB_USER_PASSWORD = "lab123"
 LAB_PREFIX = "[LAB]"
+LAB_CI_NAME_PREFIX = "lab-"
+
+LAB_GROUP_NAMES = frozenset(
+    {
+        LAB_MARKER_GROUP,
+        "Infrastructure & Operations",
+        "Network Operations",
+        "Server Engineering",
+        "Application Support",
+        "Change Advisory Board",
+        "Security Operations",
+    }
+)
+
+LAB_USER_NAMES = frozenset(
+    {
+        "jsmith",
+        "mwilson",
+        "lchen",
+        "rpatel",
+        "tchen",
+        "drossi",
+    }
+)
+
+_LAB_TICKET_MODELS: tuple[tuple[str, type], ...] = (
+    ("sc_task", ScTask),
+    ("sc_request", ScRequest),
+    ("change_task", ChangeTask),
+    ("change_request", ChangeRequest),
+    ("problem_task", ProblemTask),
+    ("problem", Problem),
+    ("incident", Incident),
+)
 
 
 @dataclass
@@ -48,6 +100,109 @@ async def is_lab_seeded() -> bool:
         user = await session.execute(select(SysUser).where(SysUser.user_name == "jsmith"))
         return user.scalar_one_or_none() is not None
 
+
+async def _purge_lab_data(session) -> None:
+    """Remove all records created by the lab seed (requires --force --hard)."""
+    lab_user_ids = set(
+        (
+            await session.execute(
+                select(SysUser.sys_id).where(SysUser.user_name.in_(LAB_USER_NAMES))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    lab_group_ids = set(
+        (
+            await session.execute(
+                select(SysUserGroup.sys_id).where(SysUserGroup.name.in_(LAB_GROUP_NAMES))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    lab_ci_ids = set(
+        (
+            await session.execute(
+                select(CmdbCi.sys_id).where(CmdbCi.name.like(f"{LAB_CI_NAME_PREFIX}%"))
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    records_by_table: dict[str, list[str]] = {}
+    if lab_ci_ids:
+        records_by_table["cmdb_ci"] = list(lab_ci_ids)
+
+    for table_name, model in _LAB_TICKET_MODELS:
+        sys_ids = (
+            (
+                await session.execute(
+                    select(model.sys_id).where(model.short_description.like(f"{LAB_PREFIX}%"))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if sys_ids:
+            records_by_table[table_name] = list(sys_ids)
+
+    for table_name, sys_ids in records_by_table.items():
+        await session.execute(
+            delete(SysComment).where(
+                SysComment.table_name == table_name,
+                SysComment.record_sys_id.in_(sys_ids),
+            )
+        )
+        await session.execute(
+            delete(SysAttachment).where(
+                SysAttachment.table_name == table_name,
+                SysAttachment.table_sys_id.in_(sys_ids),
+            )
+        )
+        await session.execute(
+            delete(RecordAccessGrant).where(
+                RecordAccessGrant.table_name == table_name,
+                RecordAccessGrant.record_sys_id.in_(sys_ids),
+            )
+        )
+
+    for table_name, model in _LAB_TICKET_MODELS:
+        await session.execute(
+            delete(model).where(model.short_description.like(f"{LAB_PREFIX}%"))
+        )
+
+    if lab_ci_ids:
+        await session.execute(
+            delete(CmdbRelCi).where(
+                or_(CmdbRelCi.parent.in_(lab_ci_ids), CmdbRelCi.child.in_(lab_ci_ids))
+            )
+        )
+        await session.execute(
+            delete(CmdbCi).where(CmdbCi.sys_id.in_(lab_ci_ids))
+        )
+
+    membership_filters = []
+    if lab_user_ids:
+        membership_filters.append(SysUserGrMember.user_sys_id.in_(lab_user_ids))
+    if lab_group_ids:
+        membership_filters.append(SysUserGrMember.group_sys_id.in_(lab_group_ids))
+    if membership_filters:
+        await session.execute(delete(SysUserGrMember).where(or_(*membership_filters)))
+
+    if lab_user_ids:
+        await session.execute(delete(SysUser).where(SysUser.sys_id.in_(lab_user_ids)))
+    if lab_group_ids:
+        await session.execute(delete(SysUserGroup).where(SysUserGroup.sys_id.in_(lab_group_ids)))
+
+    await session.flush()
+    logger.info(
+        "Purged lab seed data (%s CIs, %s users, %s groups)",
+        len(lab_ci_ids),
+        len(lab_user_ids),
+        len(lab_group_ids),
+    )
 
 async def ensure_record(
     session,
@@ -282,7 +437,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
         {
             "key": "lab-router-edge-01",
             "name": "lab-router-edge-01",
-            "sys_class_name": "cmdb_ci_ip_router",
+            "sys_class_name": "cmdb_ci_router",
             **ci_fields("lab-router-edge-01", os="IOS", os_version="17.3", vendor="Cisco"),
             "short_description": "Cisco ISR edge router",
             "asset_tag": "NET-RTR-001",
@@ -297,7 +452,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
         {
             "key": "lab-sw-core-01",
             "name": "lab-sw-core-01",
-            "sys_class_name": "cmdb_ci_ip_switch",
+            "sys_class_name": "cmdb_ci_switch",
             **ci_fields("lab-sw-core-01", os="IOS-XE", os_version="17.9", vendor="Cisco"),
             "short_description": "Core datacenter switch stack",
             "asset_tag": "NET-SW-001",
@@ -327,7 +482,7 @@ async def _seed_cmdb(session, ctx: LabContext) -> None:
         {
             "key": "lab-sw-access-02",
             "name": "lab-sw-access-02",
-            "sys_class_name": "cmdb_ci_ip_switch",
+            "sys_class_name": "cmdb_ci_switch",
             **ci_fields("lab-sw-access-02", os="IOS-XE", os_version="17.6", vendor="Cisco"),
             "short_description": "Access layer switch — Building B",
             "asset_tag": "NET-SW-002",
@@ -771,17 +926,24 @@ def _active_settings() -> Settings:
     return settings
 
 
-async def seed_lab(*, ensure_base: bool = True, force: bool = False) -> bool:
+async def seed_lab(*, ensure_base: bool = True, force: bool = False, hard: bool = False) -> bool:
     """Seed a realistic lab IT environment. Returns True if seeding ran."""
+    if hard and not force:
+        raise ValueError("--hard requires --force")
+
     if ensure_base:
         await run_migrations()
         await seed_data()
+        await startup.ensure_cmdb_class_metadata()
 
     if not force and await is_lab_seeded():
         logger.info("Lab environment already seeded; skipping")
         return False
 
     async with db.async_session_factory() as session:
+        if hard:
+            await _purge_lab_data(session)
+
         admin_id = await _require_admin(session)
         ctx = LabContext(admin_id=admin_id)
         ctx.rel_types = await _load_rel_types(session)
@@ -812,6 +974,11 @@ def main() -> None:
         help="Run lab seed even when it appears complete (idempotent — fills gaps, no duplicates)",
     )
     parser.add_argument(
+        "--hard",
+        action="store_true",
+        help="With --force, delete existing lab seed data before re-seeding from scratch",
+    )
+    parser.add_argument(
         "--skip-base",
         action="store_true",
         help="Do not run base migrations/seed; require admin user to already exist",
@@ -840,16 +1007,25 @@ def main() -> None:
     except FileNotFoundError as exc:
         parser.error(str(exc))
 
+    if args.hard and not args.force:
+        parser.error("--hard requires --force")
+
     logger.info("Using env file: %s", resolve_env_file(args.env_file))
 
-    created = asyncio.run(seed_lab(ensure_base=not args.skip_base, force=args.force))
+    created = asyncio.run(
+        seed_lab(ensure_base=not args.skip_base, force=args.force, hard=args.hard)
+    )
     if created:
         print("Lab environment seeded.")
+        if args.hard:
+            print("  Previous lab data was removed before seeding.")
         print(f"  Lab users password: {LAB_USER_PASSWORD}")
         print("  Sample users: jsmith, mwilson, lchen, rpatel")
         print(f"  Records prefixed with: {LAB_PREFIX}")
     else:
         print("Lab seed skipped — data already present. Use --force to re-run idempotent seed.")
+        if not args.force:
+            print("  Use --force --hard to wipe lab data and re-seed from scratch.")
 
 
 if __name__ == "__main__":

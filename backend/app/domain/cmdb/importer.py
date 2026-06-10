@@ -75,6 +75,7 @@ async def _import_export(db: AsyncSession, export: dict) -> None:
             super_class=super_class,
             label=class_name,
             is_logical=is_logical,
+            update=True,
         )
 
     for field in fields:
