@@ -1,6 +1,6 @@
-import type { UserPreferencesApi } from "../settings/userPreferences";
+import type { UserPreferencesApi } from '../settings/userPreferences';
 
-const TOKEN_KEY = "openflake_token";
+const TOKEN_KEY = 'openflake_token';
 
 export interface RecordPermissions {
   read: boolean;
@@ -9,7 +9,7 @@ export interface RecordPermissions {
   delete: boolean;
 }
 
-export type { UserPreferencesApi } from "../settings/userPreferences";
+export type { UserPreferencesApi } from '../settings/userPreferences';
 
 export interface AuthMe {
   sys_id: string;
@@ -21,7 +21,7 @@ export interface AuthMe {
 
 export function getRecordPermissions(record: Record<string, unknown>): RecordPermissions {
   const p = record._permissions;
-  if (p && typeof p === "object") {
+  if (p && typeof p === 'object') {
     const perms = p as Record<string, unknown>;
     return {
       read: coerceBool(perms.read),
@@ -34,8 +34,8 @@ export function getRecordPermissions(record: Record<string, unknown>): RecordPer
 }
 
 function coerceBool(value: unknown): boolean {
-  if (value === true || value === "true") return true;
-  if (value === false || value === "false") return false;
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
   return Boolean(value);
 }
 
@@ -70,7 +70,7 @@ export interface CmdbClassSchema {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
   if (token) {
@@ -80,36 +80,33 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(path, { ...options, headers });
   if (res.status === 401) {
     clearToken();
-    window.location.href = "/login";
-    throw new Error("Unauthorized");
+    window.location.href = '/login';
+    throw new Error('Unauthorized');
   }
   if (res.status === 204) {
     return undefined as T;
   }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    throw new Error(err.detail || 'Request failed');
   }
   return res.json();
 }
 
 export const api = {
   login: (username: string, password: string) =>
-    request<{ access_token: string; user_name: string; sys_id: string }>(
-      "/api/v1/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-      }
-    ),
+    request<{ access_token: string; user_name: string; sys_id: string }>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
 
-  me: () => request<AuthMe>("/api/v1/auth/me"),
+  me: () => request<AuthMe>('/api/v1/auth/me'),
 
-  getPreferences: () => request<UserPreferencesApi>("/api/v1/settings/preferences"),
+  getPreferences: () => request<UserPreferencesApi>('/api/v1/settings/preferences'),
 
   updatePreferences: (preferences: Partial<UserPreferencesApi>) =>
-    request<UserPreferencesApi>("/api/v1/settings/preferences", {
-      method: "PATCH",
+    request<UserPreferencesApi>('/api/v1/settings/preferences', {
+      method: 'PATCH',
       body: JSON.stringify(preferences),
     }),
 
@@ -119,13 +116,13 @@ export const api = {
       problems_open: number;
       changes_open: number;
       cis_total: number;
-    }>("/api/v1/dashboard"),
+    }>('/api/v1/dashboard'),
 
   listRecords: (resource: string, params?: { state?: string }) => {
     const qs = new URLSearchParams();
-    if (params?.state) qs.set("state", params.state);
+    if (params?.state) qs.set('state', params.state);
     return request<{ records: Record<string, string>[]; total: number }>(
-      `/api/v1/records/${resource}?${qs}`
+      `/api/v1/records/${resource}?${qs}`,
     );
   },
 
@@ -134,18 +131,18 @@ export const api = {
 
   createRecord: (resource: string, data: Record<string, unknown>) =>
     request<Record<string, string>>(`/api/v1/records/${resource}`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   updateRecord: (resource: string, sysId: string, data: Record<string, unknown>) =>
     request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   deleteRecord: (resource: string, sysId: string) =>
-    request<void>(`/api/v1/records/${resource}/${sysId}`, { method: "DELETE" }),
+    request<void>(`/api/v1/records/${resource}/${sysId}`, { method: 'DELETE' }),
 
   createUser: (data: {
     user_name: string;
@@ -154,30 +151,30 @@ export const api = {
     last_name?: string;
     email?: string;
   }) =>
-    request<Record<string, string>>("/api/v1/users", {
-      method: "POST",
+    request<Record<string, string>>('/api/v1/users', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   listApiKeys: () =>
-    request<{ sys_id: string; name: string; active: boolean }[]>("/api/v1/settings/api-keys"),
+    request<{ sys_id: string; name: string; active: boolean }[]>('/api/v1/settings/api-keys'),
 
   createApiKey: (name: string) =>
-    request<{ sys_id: string; name: string; api_key: string }>("/api/v1/settings/api-keys", {
-      method: "POST",
+    request<{ sys_id: string; name: string; api_key: string }>('/api/v1/settings/api-keys', {
+      method: 'POST',
       body: JSON.stringify({ name }),
     }),
 
   listOAuthClients: () =>
     request<{ sys_id: string; client_id: string; name: string; active: boolean }[]>(
-      "/api/v1/settings/oauth-clients"
+      '/api/v1/settings/oauth-clients',
     ),
 
   createOAuthClient: (data: { name: string; client_id: string; client_secret: string }) =>
-    request<{ sys_id: string; client_id: string; name: string }>(
-      "/api/v1/settings/oauth-clients",
-      { method: "POST", body: JSON.stringify(data) }
-    ),
+    request<{ sys_id: string; client_id: string; name: string }>('/api/v1/settings/oauth-clients', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   listGrants: (resource: string, sysId: string) =>
     request<
@@ -192,26 +189,26 @@ export const api = {
   createGrant: (
     resource: string,
     sysId: string,
-    data: { access_level: string; user_sys_id?: string; group_sys_id?: string }
+    data: { access_level: string; user_sys_id?: string; group_sys_id?: string },
   ) =>
     request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}/grants`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   deleteGrant: (resource: string, sysId: string, grantSysId: string) =>
     request<void>(`/api/v1/records/${resource}/${sysId}/grants/${grantSysId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
   listComments: (resource: string, sysId: string) =>
-    request<
-      { sys_id: string; comment: string; sys_created_by: string; sys_created_on: string }[]
-    >(`/api/v1/records/${resource}/${sysId}/comments`),
+    request<{ sys_id: string; comment: string; sys_created_by: string; sys_created_on: string }[]>(
+      `/api/v1/records/${resource}/${sysId}/comments`,
+    ),
 
   createComment: (resource: string, sysId: string, comment: string) =>
     request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}/comments`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({ comment }),
     }),
 
@@ -229,24 +226,24 @@ export const api = {
   uploadAttachment: async (resource: string, sysId: string, file: File) => {
     const token = getToken();
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
     const res = await fetch(`/api/v1/records/${resource}/${sysId}/attachments`, {
-      method: "POST",
+      method: 'POST',
       headers,
       body: formData,
     });
     if (res.status === 401) {
       clearToken();
-      window.location.href = "/login";
-      throw new Error("Unauthorized");
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
     }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(err.detail || "Upload failed");
+      throw new Error(err.detail || 'Upload failed');
     }
     return res.json() as Promise<{
       sys_id: string;
@@ -259,7 +256,7 @@ export const api = {
 
   deleteAttachment: (resource: string, sysId: string, attachmentSysId: string) =>
     request<void>(`/api/v1/records/${resource}/${sysId}/attachments/${attachmentSysId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
   fetchAttachmentBlob: async (resource: string, sysId: string, attachmentSysId: string) => {
@@ -270,26 +267,24 @@ export const api = {
     }
     const res = await fetch(
       `/api/v1/records/${resource}/${sysId}/attachments/${attachmentSysId}/file`,
-      { headers }
+      { headers },
     );
     if (res.status === 401) {
       clearToken();
-      window.location.href = "/login";
-      throw new Error("Unauthorized");
+      window.location.href = '/login';
+      throw new Error('Unauthorized');
     }
     if (!res.ok) {
-      throw new Error("Failed to load attachment");
+      throw new Error('Failed to load attachment');
     }
     return res.blob();
   },
 
   getCmdbClassSchema: (className: string) =>
-    request<{ result: CmdbClassSchema }>(
-      `/api/flake/schema/cmdb/${encodeURIComponent(className)}`
-    ),
+    request<{ result: CmdbClassSchema }>(`/api/flake/schema/cmdb/${encodeURIComponent(className)}`),
 
   listCatalogItems: () =>
-    request<{ result: CatalogItemSummary[] }>("/api/sn_sc/servicecatalog/items"),
+    request<{ result: CatalogItemSummary[] }>('/api/sn_sc/servicecatalog/items'),
 
   getCatalogItem: (itemId: string) =>
     request<{ result: CatalogItemDetail }>(`/api/sn_sc/servicecatalog/items/${itemId}`),
@@ -302,164 +297,161 @@ export const api = {
       requested_for?: string;
       cmdb_ci?: string;
       short_description?: string;
-    }
+    },
   ) =>
     request<{ result: Record<string, unknown> }>(
       `/api/sn_sc/servicecatalog/items/${itemId}/order_now`,
-      { method: "POST", body: JSON.stringify(data) }
+      { method: 'POST', body: JSON.stringify(data) },
     ),
 
   getVariableOptions: (itemId: string, varName: string, dependsOn?: string) => {
     const qs = new URLSearchParams();
-    if (dependsOn) qs.set("depends_on", dependsOn);
-    const suffix = qs.toString() ? `?${qs}` : "";
+    if (dependsOn) qs.set('depends_on', dependsOn);
+    const suffix = qs.toString() ? `?${qs}` : '';
     return request<{ result: { options: CatalogChoice[]; total: number } }>(
-      `/api/sn_sc/servicecatalog/items/${itemId}/variables/${encodeURIComponent(varName)}/options${suffix}`
+      `/api/sn_sc/servicecatalog/items/${itemId}/variables/${encodeURIComponent(varName)}/options${suffix}`,
     );
   },
 
   adminListCatalogItems: () =>
-    request<{ result: CatalogItemSummary[] }>("/api/flake/catalog/admin/items"),
+    request<{ result: CatalogItemSummary[] }>('/api/flake/catalog/admin/items'),
 
   adminGetCatalogItem: (itemId: string) =>
     request<{ result: CatalogItemSummary }>(`/api/flake/catalog/admin/items/${itemId}`),
 
   adminCreateCatalogItem: (data: Record<string, unknown>) =>
-    request<{ result: CatalogItemSummary }>("/api/flake/catalog/admin/items", {
-      method: "POST",
+    request<{ result: CatalogItemSummary }>('/api/flake/catalog/admin/items', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   adminUpdateCatalogItem: (itemId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogItemSummary }>(`/api/flake/catalog/admin/items/${itemId}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   adminListVariables: (itemId: string) =>
-    request<{ result: CatalogVariable[] }>(
-      `/api/flake/catalog/admin/items/${itemId}/variables`
-    ),
+    request<{ result: CatalogVariable[] }>(`/api/flake/catalog/admin/items/${itemId}/variables`),
 
   adminCreateVariable: (itemId: string, data: Record<string, unknown>) =>
-    request<{ result: CatalogVariable }>(
-      `/api/flake/catalog/admin/items/${itemId}/variables`,
-      { method: "POST", body: JSON.stringify(data) }
-    ),
+    request<{ result: CatalogVariable }>(`/api/flake/catalog/admin/items/${itemId}/variables`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   adminUpdateVariable: (itemId: string, varId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogVariable }>(
       `/api/flake/catalog/admin/items/${itemId}/variables/${varId}`,
-      { method: "PATCH", body: JSON.stringify(data) }
+      { method: 'PATCH', body: JSON.stringify(data) },
     ),
 
   adminDeleteVariable: (itemId: string, varId: string) =>
     request<void>(`/api/flake/catalog/admin/items/${itemId}/variables/${varId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
-  adminListTables: () =>
-    request<{ result: TableInfo[] }>("/api/flake/catalog/admin/tables"),
+  adminListTables: () => request<{ result: TableInfo[] }>('/api/flake/catalog/admin/tables'),
 
   adminListTableFields: (table: string) =>
     request<{ result: TableField[] }>(
-      `/api/flake/catalog/admin/tables/${encodeURIComponent(table)}/fields`
+      `/api/flake/catalog/admin/tables/${encodeURIComponent(table)}/fields`,
     ),
 
   adminListConditions: (itemId: string, varId: string) =>
     request<{ result: CatalogCondition[] }>(
-      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`,
     ),
 
   adminCreateCondition: (itemId: string, varId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogCondition }>(
       `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`,
-      { method: "POST", body: JSON.stringify(data) }
+      { method: 'POST', body: JSON.stringify(data) },
     ),
 
   adminUpdateCondition: (
     itemId: string,
     varId: string,
     condId: string,
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
   ) =>
     request<{ result: CatalogCondition }>(
       `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions/${condId}`,
-      { method: "PATCH", body: JSON.stringify(data) }
+      { method: 'PATCH', body: JSON.stringify(data) },
     ),
 
   adminDeleteCondition: (itemId: string, varId: string, condId: string) =>
     request<void>(
       `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions/${condId}`,
-      { method: "DELETE" }
+      { method: 'DELETE' },
     ),
 
   adminListWebhooks: () =>
-    request<{ result: CatalogWebhook[] }>("/api/flake/catalog/admin/webhooks"),
+    request<{ result: CatalogWebhook[] }>('/api/flake/catalog/admin/webhooks'),
 
   adminCreateWebhook: (data: Record<string, unknown>) =>
-    request<{ result: CatalogWebhook }>("/api/flake/catalog/admin/webhooks", {
-      method: "POST",
+    request<{ result: CatalogWebhook }>('/api/flake/catalog/admin/webhooks', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   adminUpdateWebhook: (webhookId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogWebhook }>(`/api/flake/catalog/admin/webhooks/${webhookId}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   adminDeleteWebhook: (webhookId: string) =>
     request<void>(`/api/flake/catalog/admin/webhooks/${webhookId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
   adminListSecrets: () =>
-    request<{ result: IntegrationSecret[] }>("/api/flake/catalog/admin/secrets"),
+    request<{ result: IntegrationSecret[] }>('/api/flake/catalog/admin/secrets'),
 
   adminCreateSecret: (data: Record<string, unknown>) =>
-    request<{ result: IntegrationSecret }>("/api/flake/catalog/admin/secrets", {
-      method: "POST",
+    request<{ result: IntegrationSecret }>('/api/flake/catalog/admin/secrets', {
+      method: 'POST',
       body: JSON.stringify(data),
     }),
 
   adminUpdateSecret: (secretId: string, data: Record<string, unknown>) =>
     request<{ result: IntegrationSecret }>(`/api/flake/catalog/admin/secrets/${secretId}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
   adminDeleteSecret: (secretId: string) =>
     request<void>(`/api/flake/catalog/admin/secrets/${secretId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
   adminListItemWebhooks: (itemId: string) =>
     request<{ result: CatalogWebhookAttachment[] }>(
-      `/api/flake/catalog/admin/items/${itemId}/webhooks`
+      `/api/flake/catalog/admin/items/${itemId}/webhooks`,
     ),
 
   adminAttachItemWebhook: (itemId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogWebhookAttachment }>(
       `/api/flake/catalog/admin/items/${itemId}/webhooks`,
-      { method: "POST", body: JSON.stringify(data) }
+      { method: 'POST', body: JSON.stringify(data) },
     ),
 
   adminUpdateItemWebhook: (itemId: string, attachmentId: string, data: Record<string, unknown>) =>
     request<{ result: CatalogWebhookAttachment }>(
       `/api/flake/catalog/admin/items/${itemId}/webhooks/${attachmentId}`,
-      { method: "PATCH", body: JSON.stringify(data) }
+      { method: 'PATCH', body: JSON.stringify(data) },
     ),
 
   adminDetachItemWebhook: (itemId: string, attachmentId: string) =>
     request<void>(`/api/flake/catalog/admin/items/${itemId}/webhooks/${attachmentId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     }),
 
   adminPayloadPreview: (template?: string) => {
     const qs = new URLSearchParams();
-    if (template) qs.set("template", template);
-    const suffix = qs.toString() ? `?${qs}` : "";
+    if (template) qs.set('template', template);
+    const suffix = qs.toString() ? `?${qs}` : '';
     return request<{
       result: {
         preview: Record<string, unknown> | string;
@@ -557,24 +549,24 @@ export type CatalogWebhookAttachment = {
 };
 
 export const STATE_LABELS: Record<string, string> = {
-  "1": "New",
-  "2": "In Progress",
-  "3": "On Hold",
-  "6": "Resolved",
-  "7": "Closed",
-  "8": "Canceled",
-  "-5": "New",
-  "-4": "Assess",
-  "-3": "Authorize",
-  "-2": "Scheduled",
-  "-1": "Implement",
-  "0": "Review",
+  '1': 'New',
+  '2': 'In Progress',
+  '3': 'On Hold',
+  '6': 'Resolved',
+  '7': 'Closed',
+  '8': 'Canceled',
+  '-5': 'New',
+  '-4': 'Assess',
+  '-3': 'Authorize',
+  '-2': 'Scheduled',
+  '-1': 'Implement',
+  '0': 'Review',
 };
 
 export function stateBadge(state: string): string {
-  if (state === "1" || state === "-5") return "badge-new";
-  if (state === "2" || state === "-4" || state === "-3") return "badge-progress";
-  if (state === "6" || state === "0") return "badge-resolved";
-  if (state === "7") return "badge-closed";
-  return "badge-new";
+  if (state === '1' || state === '-5') return 'badge-new';
+  if (state === '2' || state === '-4' || state === '-3') return 'badge-progress';
+  if (state === '6' || state === '0') return 'badge-resolved';
+  if (state === '7') return 'badge-closed';
+  return 'badge-new';
 }

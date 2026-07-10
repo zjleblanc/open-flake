@@ -8,8 +8,6 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import HTTPException
-
 from app.domain.catalog.ordering import validate_variables
 from app.domain.catalog.webhooks import (
     _render_payload,
@@ -19,6 +17,7 @@ from app.domain.catalog.webhooks import (
     preview_payload,
 )
 from app.models import ItemOptionNew, ScCatItemWebhook, ScWebhook, SysSecret
+from fastapi import HTTPException
 
 
 def _var(**kwargs) -> ItemOptionNew:
@@ -116,17 +115,14 @@ def test_render_payload_default_and_template():
     assert payload["request_item"]["number"] == "RITM0000001"
     assert payload["variables"]["sn_vm_name"] == "web01"
 
-    attachment.payload_template = (
-        '{"host":"$var_sn_vm_name","number":"$number","event":"$event"}'
-    )
-    rendered = _render_payload(
-        attachment, ritm=ritm, variables=variables, event="catalog_order"
-    )
+    attachment.payload_template = '{"host":"$var_sn_vm_name","number":"$number","event":"$event"}'
+    rendered = _render_payload(attachment, ritm=ritm, variables=variables, event="catalog_order")
     assert rendered == {
         "host": "web01",
         "number": "RITM0000001",
         "event": "catalog_order",
     }
+
 
 def test_preview_payload_defaults_to_ritm_shape():
     preview = preview_payload(None)
@@ -189,12 +185,15 @@ async def test_order_catalog_item_creates_request_and_ritm():
         created.append((table, record))
         return record
 
-    with patch(
-        "app.domain.catalog.ordering.load_active_variables",
-        new=AsyncMock(return_value=definitions),
-    ), patch(
-        "app.domain.catalog.ordering.create_record",
-        new=AsyncMock(side_effect=fake_create),
+    with (
+        patch(
+            "app.domain.catalog.ordering.load_active_variables",
+            new=AsyncMock(return_value=definitions),
+        ),
+        patch(
+            "app.domain.catalog.ordering.create_record",
+            new=AsyncMock(side_effect=fake_create),
+        ),
     ):
         result = await order_catalog_item(
             db,
@@ -209,7 +208,14 @@ async def test_order_catalog_item_creates_request_and_ritm():
         )
 
     tables = [table for table, _ in created]
-    assert tables == ["sc_request", "sc_req_item", "sc_item_option", "sc_item_option", "sc_item_option", "sc_task"]
+    assert tables == [
+        "sc_request",
+        "sc_req_item",
+        "sc_item_option",
+        "sc_item_option",
+        "sc_item_option",
+        "sc_task",
+    ]
     assert result["request_number"]
     assert result["variables"]["sn_vm_name"] == "lab-web-99"
     assert result["request_item"]["cat_item"] == "item1"
@@ -679,7 +685,9 @@ async def test_get_variable_options_condition_override():
             db=db,
         )
 
-    assert any(c.field == "department" and c.value == "engineering" for c in captured["conditions"])
+    assert any(
+        c.field == "department" and c.value == "engineering" for c in captured["conditions"]
+    )
     assert not any(c.field == "active" for c in captured["conditions"])
 
 
@@ -780,12 +788,15 @@ async def test_list_reference_tables():
     db = AsyncMock()
     auth = _auth()
 
-    with patch(
-        "app.api.flake.catalog_admin._require_catalog_admin",
-        new=AsyncMock(),
-    ), patch(
-        "app.api.flake.catalog_admin.can_read_table",
-        new=AsyncMock(return_value=True),
+    with (
+        patch(
+            "app.api.flake.catalog_admin._require_catalog_admin",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.api.flake.catalog_admin.can_read_table",
+            new=AsyncMock(return_value=True),
+        ),
     ):
         result = await admin_api.list_reference_tables(auth=auth, db=db)
 
@@ -802,12 +813,15 @@ async def test_list_table_fields():
     db = AsyncMock()
     auth = _auth()
 
-    with patch(
-        "app.api.flake.catalog_admin._require_catalog_admin",
-        new=AsyncMock(),
-    ), patch(
-        "app.api.flake.catalog_admin.can_read_table",
-        new=AsyncMock(return_value=True),
+    with (
+        patch(
+            "app.api.flake.catalog_admin._require_catalog_admin",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.api.flake.catalog_admin.can_read_table",
+            new=AsyncMock(return_value=True),
+        ),
     ):
         result = await admin_api.list_table_fields("sys_user", auth=auth, db=db)
 
@@ -824,12 +838,14 @@ async def test_list_table_fields_unknown_table():
     db = AsyncMock()
     auth = _auth()
 
-    with patch(
-        "app.api.flake.catalog_admin._require_catalog_admin",
-        new=AsyncMock(),
+    with (
+        patch(
+            "app.api.flake.catalog_admin._require_catalog_admin",
+            new=AsyncMock(),
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            await admin_api.list_table_fields("not_a_table", auth=auth, db=db)
+        await admin_api.list_table_fields("not_a_table", auth=auth, db=db)
     assert exc.value.status_code == 404
 
 
@@ -840,15 +856,18 @@ async def test_list_table_fields_forbidden_without_read():
     db = AsyncMock()
     auth = _auth("user1", "alice")
 
-    with patch(
-        "app.api.flake.catalog_admin._require_catalog_admin",
-        new=AsyncMock(),
-    ), patch(
-        "app.api.flake.catalog_admin.can_read_table",
-        new=AsyncMock(return_value=False),
+    with (
+        patch(
+            "app.api.flake.catalog_admin._require_catalog_admin",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.api.flake.catalog_admin.can_read_table",
+            new=AsyncMock(return_value=False),
+        ),
+        pytest.raises(HTTPException) as exc,
     ):
-        with pytest.raises(HTTPException) as exc:
-            await admin_api.list_table_fields("incident", auth=auth, db=db)
+        await admin_api.list_table_fields("incident", auth=auth, db=db)
     assert exc.value.status_code == 403
 
 
@@ -862,12 +881,15 @@ async def test_list_reference_tables_filters_by_rbac():
     async def fake_can_read(_db, _auth, table: str) -> bool:
         return table in {"sys_user", "sc_webhook"}
 
-    with patch(
-        "app.api.flake.catalog_admin._require_catalog_admin",
-        new=AsyncMock(),
-    ), patch(
-        "app.api.flake.catalog_admin.can_read_table",
-        new=AsyncMock(side_effect=fake_can_read),
+    with (
+        patch(
+            "app.api.flake.catalog_admin._require_catalog_admin",
+            new=AsyncMock(),
+        ),
+        patch(
+            "app.api.flake.catalog_admin.can_read_table",
+            new=AsyncMock(side_effect=fake_can_read),
+        ),
     ):
         result = await admin_api.list_reference_tables(auth=auth, db=db)
 

@@ -1,14 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { api } from "../api/client";
-import { usePageHeader } from "../components/PageHeaderContext";
-import { useAuth } from "../auth/AuthContext";
-import { useMemo } from "react";
-import "./CatalogPages.css";
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { api } from '../api/client';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { useAuth } from '../auth/AuthContext';
+import { useMemo } from 'react';
+import './CatalogPages.css';
 
 export function CatalogBrowsePage() {
   const { hasPermission } = useAuth();
-  const canAdmin = hasPermission("records.*.write");
+  const canAdmin = hasPermission('records.*.write');
 
   const headerActions = useMemo(
     () =>
@@ -17,16 +17,16 @@ export function CatalogBrowsePage() {
           Manage
         </Link>
       ) : null,
-    [canAdmin]
+    [canAdmin],
   );
 
   usePageHeader({
-    breadcrumbs: [{ label: "Service Catalog" }],
+    breadcrumbs: [{ label: 'Service Catalog' }],
     actions: headerActions,
   });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["catalog-items"],
+    queryKey: ['catalog-items'],
     queryFn: () => api.listCatalogItems(),
   });
 
@@ -38,14 +38,14 @@ export function CatalogBrowsePage() {
   return (
     <div className="catalog-browse">
       <p className="catalog-browse-intro">Browse available services and submit requests.</p>
-        {items.length === 0 ? (
-          <p className="empty-state">No catalog items yet</p>
-        ) : (
+      {items.length === 0 ? (
+        <p className="empty-state">No catalog items yet</p>
+      ) : (
         <div className="catalog-card-grid">
           {items.map((item) => (
             <Link key={item.sys_id} to={`/catalog/${item.sys_id}`} className="catalog-card">
               <h3>{item.name}</h3>
-              <p>{item.short_description || "No description"}</p>
+              <p>{item.short_description || 'No description'}</p>
               {item.category ? <span className="catalog-card-meta">{item.category}</span> : null}
             </Link>
           ))}

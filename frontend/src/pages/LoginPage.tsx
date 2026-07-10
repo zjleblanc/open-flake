@@ -1,29 +1,29 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { api, setToken } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
-import openFlakeSm from "../assets/images/open_flake_sm.png";
-import "../components/Layout.css";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { api, setToken } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
+import openFlakeSm from '../assets/images/open_flake_sm.png';
+import '../components/Layout.css';
 
 export function LoginPage() {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin");
-  const [error, setError] = useState("");
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('admin');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { refresh } = useAuth();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
     try {
       const res = await api.login(username, password);
       setToken(res.access_token);
       await refresh();
-      navigate("/");
+      navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -58,8 +58,13 @@ export function LoginPage() {
             />
           </div>
           {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: "100%" }} disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%' }}
+            disabled={loading}
+          >
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
       </div>

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -150,7 +150,7 @@ async def _get_item(db: AsyncSession, item_id: str) -> ServiceCatalogItem:
     item = await db.get(ServiceCatalogItem, item_id)
     if not item:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Catalog item not found")
-    return item
+    return cast(ServiceCatalogItem, item)
 
 
 @router.get("/tables")
@@ -352,6 +352,8 @@ async def create_variable(
         auth.user_sys_id,
     )
     variable = await db.get(ItemOptionNew, record["sys_id"])
+    if not variable:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Variable not found")
     return {"result": _variable_dict(variable)}
 
 
@@ -444,6 +446,8 @@ async def create_condition(
         auth.user_sys_id,
     )
     condition = await db.get(ItemOptionNewCondition, record["sys_id"])
+    if not condition:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Condition not found")
     return {"result": _condition_dict(condition)}
 
 
@@ -536,6 +540,8 @@ async def create_secret(
         auth=auth,
     )
     secret = await db.get(SysSecret, record["sys_id"])
+    if not secret:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Secret not found")
     return {"result": _secret_dict(secret)}
 
 
@@ -583,9 +589,7 @@ async def update_secret(
     if "active" in payload:
         allowed["active"] = bool(payload["active"])
     if allowed:
-        await update_record(
-            db, "sys_secret", secret_id, allowed, auth.user_sys_id, auth=auth
-        )
+        await update_record(db, "sys_secret", secret_id, allowed, auth.user_sys_id, auth=auth)
         await db.refresh(secret)
     return {"result": _secret_dict(secret)}
 
@@ -628,6 +632,8 @@ async def create_global_webhook(
         auth.user_sys_id,
     )
     webhook = await db.get(ScWebhook, record["sys_id"])
+    if not webhook:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook not found")
     return {"result": _webhook_dict(webhook)}
 
 
@@ -740,6 +746,8 @@ async def attach_webhook_to_item(
         auth.user_sys_id,
     )
     attachment = await db.get(ScCatItemWebhook, record["sys_id"])
+    if not attachment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Webhook attachment not found")
     return {"result": _attachment_dict(attachment, webhook)}
 
 

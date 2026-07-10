@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -8,7 +8,7 @@ from app.db import Base
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class TimestampMixin:
@@ -331,9 +331,7 @@ class CmdbClassField(Base):
     __table_args__ = (UniqueConstraint("class_name", "field_name"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    class_name: Mapped[str] = mapped_column(
-        String(128), ForeignKey("cmdb_class.name"), index=True
-    )
+    class_name: Mapped[str] = mapped_column(String(128), ForeignKey("cmdb_class.name"), index=True)
     field_name: Mapped[str] = mapped_column(String(128))
     label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     sn_type: Mapped[str | None] = mapped_column(String(64), nullable=True)

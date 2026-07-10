@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.domain.cmdb.constants import PROMOTED_COLUMNS, SYSTEM_FIELDS
-from app.domain.cmdb.registry import FieldMeta, get_merged_fields, is_registered
+from app.domain.cmdb.registry import get_merged_fields, is_registered
 from app.domain.errors import InvalidFieldNameError, validate_other_field_keys
 from app.models import CmdbCi
 
@@ -16,7 +16,9 @@ def _unwrap(value: Any) -> Any:
     return value
 
 
-def split_payload(class_name: str, payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+def split_payload(
+    class_name: str, payload: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Split a flat API payload into promoted columns and attributes."""
     columns: dict[str, Any] = {}
     attributes: dict[str, Any] = {}

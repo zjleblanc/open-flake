@@ -1,8 +1,8 @@
-import { type ReactNode, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
-import { useUserPreferences } from "../settings/UserPreferencesContext";
-import openFlakeSm from "../assets/images/open_flake_sm.png";
+import { type ReactNode, useMemo, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { useUserPreferences } from '../settings/UserPreferencesContext';
+import openFlakeSm from '../assets/images/open_flake_sm.png';
 import {
   CatalogIcon,
   ChangeIcon,
@@ -15,10 +15,10 @@ import {
   SettingsIcon,
   UsersIcon,
   WebhookIcon,
-} from "./NavIcons";
-import { PageHeaderProvider } from "./PageHeaderContext";
-import { TopNavbar } from "./TopNavbar";
-import "./Layout.css";
+} from './NavIcons';
+import { PageHeaderProvider } from './PageHeaderContext';
+import { TopNavbar } from './TopNavbar';
+import './Layout.css';
 
 type NavLeaf = {
   to: string;
@@ -38,36 +38,36 @@ type NavGroup = {
 type NavEntry = NavLeaf | NavGroup;
 
 function isNavGroup(entry: NavEntry): entry is NavGroup {
-  return "children" in entry;
+  return 'children' in entry;
 }
 
 const NAV: NavEntry[] = [
-  { to: "/", label: "Dashboard", icon: <DashboardIcon /> },
-  { to: "/catalog", label: "Service Catalog", icon: <CatalogIcon /> },
-  { to: "/incidents", label: "Incidents", icon: <IncidentIcon /> },
-  { to: "/problems", label: "Problems", icon: <ProblemIcon /> },
-  { to: "/changes", label: "Changes", icon: <ChangeIcon /> },
+  { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/catalog', label: 'Service Catalog', icon: <CatalogIcon /> },
+  { to: '/incidents', label: 'Incidents', icon: <IncidentIcon /> },
+  { to: '/problems', label: 'Problems', icon: <ProblemIcon /> },
+  { to: '/changes', label: 'Changes', icon: <ChangeIcon /> },
   {
-    to: "/configuration-items",
-    label: "Configuration Items",
+    to: '/configuration-items',
+    label: 'Configuration Items',
     icon: <ConfigurationItemIcon />,
   },
   {
-    id: "integrations",
-    label: "Integrations",
+    id: 'integrations',
+    label: 'Integrations',
     icon: <IntegrationsIcon />,
     children: [
-      { to: "/integrations/webhooks", label: "Webhooks", icon: <WebhookIcon /> },
+      { to: '/integrations/webhooks', label: 'Webhooks', icon: <WebhookIcon /> },
       {
-        to: "/integrations/secrets",
-        label: "Secrets",
+        to: '/integrations/secrets',
+        label: 'Secrets',
         icon: <SecretIcon />,
-        permission: "secrets.read",
+        permission: 'secrets.read',
       },
     ],
   },
-  { to: "/users", label: "Users & Groups", icon: <UsersIcon />, permission: "users.read" },
-  { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
+  { to: '/users', label: 'Users & Groups', icon: <UsersIcon />, permission: 'users.read' },
+  { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];
 
 function ChevronLeftIcon() {
@@ -120,25 +120,23 @@ export function Layout() {
     integrations: true,
   });
 
-  const visibleNav = useMemo(
-    () =>
-      NAV.flatMap((item) => {
-        if (!isNavGroup(item)) {
-          return !item.permission || hasPermission(item.permission) ? [item] : [];
-        }
-        if (item.permission && !hasPermission(item.permission)) {
-          return [];
-        }
-        const children = item.children.filter(
-          (child) => !child.permission || hasPermission(child.permission)
-        );
-        if (!children.length) {
-          return [];
-        }
-        return [{ ...item, children }];
-      }),
-    [hasPermission]
-  );
+  const visibleNav = useMemo((): NavEntry[] => {
+    return NAV.flatMap((item): NavEntry[] => {
+      if (!isNavGroup(item)) {
+        return !item.permission || hasPermission(item.permission) ? [item] : [];
+      }
+      if (item.permission && !hasPermission(item.permission)) {
+        return [];
+      }
+      const children = item.children.filter(
+        (child) => !child.permission || hasPermission(child.permission),
+      );
+      if (!children.length) {
+        return [];
+      }
+      return [{ ...item, children }];
+    });
+  }, [hasPermission]);
 
   function toggleGroup(id: string) {
     setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -146,8 +144,8 @@ export function Layout() {
 
   return (
     <PageHeaderProvider>
-      <div className={`layout${sidebarExpanded ? "" : " layout--sidebar-collapsed"}`}>
-        <aside className={`sidebar${sidebarExpanded ? "" : " sidebar--collapsed"}`}>
+      <div className={`layout${sidebarExpanded ? '' : ' layout--sidebar-collapsed'}`}>
+        <aside className={`sidebar${sidebarExpanded ? '' : ' sidebar--collapsed'}`}>
           <div className="sidebar-brand">
             <img src={openFlakeSm} alt="OpenFlake" width={32} height={32} />
             <span className="brand-text">OpenFlake</span>
@@ -159,9 +157,9 @@ export function Layout() {
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    end={item.to === "/"}
+                    end={item.to === '/'}
                     title={item.label}
-                    className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}
+                    className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                   >
                     <span className="nav-link-icon">{item.icon}</span>
                     <span className="nav-link-label">{item.label}</span>
@@ -171,8 +169,7 @@ export function Layout() {
 
               const childActive = item.children.some(
                 (child) =>
-                  location.pathname === child.to ||
-                  location.pathname.startsWith(`${child.to}/`)
+                  location.pathname === child.to || location.pathname.startsWith(`${child.to}/`),
               );
               const expanded = openGroups[item.id] ?? childActive;
 
@@ -183,7 +180,7 @@ export function Layout() {
                     key={item.id}
                     to={firstChild.to}
                     title={item.label}
-                    className={() => `nav-link${childActive ? " active" : ""}`}
+                    className={() => `nav-link${childActive ? ' active' : ''}`}
                   >
                     <span className="nav-link-icon">{item.icon}</span>
                     <span className="nav-link-label">{item.label}</span>
@@ -195,13 +192,13 @@ export function Layout() {
                 <div key={item.id} className="nav-group">
                   <button
                     type="button"
-                    className={`nav-link nav-group-toggle${childActive ? " active" : ""}`}
+                    className={`nav-link nav-group-toggle${childActive ? ' active' : ''}`}
                     onClick={() => toggleGroup(item.id)}
                     aria-expanded={expanded}
                   >
                     <span className="nav-link-icon">{item.icon}</span>
                     <span className="nav-link-label">{item.label}</span>
-                    <span className={`nav-group-chevron${expanded ? " open" : ""}`}>
+                    <span className={`nav-group-chevron${expanded ? ' open' : ''}`}>
                       <ChevronDownIcon />
                     </span>
                   </button>
@@ -213,7 +210,7 @@ export function Layout() {
                           to={child.to}
                           title={child.label}
                           className={({ isActive }) =>
-                            `nav-link nav-sublink${isActive ? " active" : ""}`
+                            `nav-link nav-sublink${isActive ? ' active' : ''}`
                           }
                         >
                           <span className="nav-link-icon">{child.icon}</span>
@@ -231,7 +228,7 @@ export function Layout() {
               type="button"
               className="nav-link sidebar-nav-toggle"
               onClick={() => setSidebarExpanded(!sidebarExpanded)}
-              aria-label={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+              aria-label={sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'}
               aria-expanded={sidebarExpanded}
             >
               <span className="nav-link-icon">

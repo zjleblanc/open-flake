@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,8 @@ def parse_hierarchy_export(raw: str) -> dict:
     text = raw.strip()
     if "---START_JSON_DATA---" in text:
         text = text.split("---START_JSON_DATA---", 1)[1].strip()
-    return json.loads(text)
+    parsed: dict[str, Any] = json.loads(text)
+    return parsed
 
 
 def _field_storage(field_name: str) -> str:

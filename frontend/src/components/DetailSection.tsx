@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 
-export type DetailSectionAccent = "primary" | "accent" | "info" | "success";
+export type DetailSectionAccent = 'primary' | 'accent' | 'info' | 'success';
 
 interface DetailSectionProps {
   title: string;
@@ -15,7 +15,7 @@ interface DetailSectionProps {
 export function DetailSection({
   title,
   icon,
-  accent = "accent",
+  accent = 'accent',
   headerActions,
   children,
   className,
@@ -23,7 +23,7 @@ export function DetailSection({
 }: DetailSectionProps) {
   return (
     <section
-      className={`detail-section detail-section--${accent}${className ? ` ${className}` : ""}`}
+      className={`detail-section detail-section--${accent}${className ? ` ${className}` : ''}`}
       style={style}
     >
       <header className="detail-section-header">

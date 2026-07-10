@@ -39,7 +39,7 @@ For production installs from pre-built Quay images with HTTPS, see [docs/install
 | [Ansible integration](docs/ansible-integration.md) | servicenow.itsm collection setup and examples |
 | [API compatibility](docs/api-compatibility.md) | Supported APIs, tables, and Phase 1 limitations |
 | [RBAC](docs/rbac.md) | Record ownership, grants, and platform roles |
-| [Development](docs/development.md) | Local backend, frontend, lab seed, and tests |
+| [Development](docs/development.md) | Local setup, pre-commit guardrails, lab seed, and tests |
 | [Configuration](docs/configuration.md) | Environment variables |
 | [Release tagging](docs/release-tagging.md) | Git and Quay image tag strategy |
 

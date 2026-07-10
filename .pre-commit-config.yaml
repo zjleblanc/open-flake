@@ -1,0 +1,81 @@
+# See https://pre-commit.com for more information
+# Install: make setup  (or: pip install pre-commit && pre-commit install)
+
+repos:
+  # --- General hygiene ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # --- Python: Ruff (lint + format) ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: ["--fix", "--config", "backend/pyproject.toml"]
+        files: ^backend/
+      - id: ruff-format
+        args: ["--config", "backend/pyproject.toml"]
+        files: ^backend/
+
+  # --- Python: mypy ---
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - pydantic>=2.0
+          - pydantic-settings>=2.0
+          - types-python-jose
+          - bcrypt>=4.0
+          - sqlalchemy[asyncio]>=2.0
+        args: ["--config-file", "backend/pyproject.toml", "backend/app"]
+        files: ^backend/app/
+        pass_filenames: false
+
+  # --- TypeScript: ESLint, Prettier, tsc (local Node tools) ---
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bash -c 'cd frontend && npx eslint --max-warnings 0 src/'
+        language: system
+        types_or: [ts, tsx]
+        files: ^frontend/
+        pass_filenames: false
+      - id: prettier
+        name: prettier
+        entry: bash -c 'cd frontend && npx prettier --check "src/**/*.{ts,tsx,css,json}" "*.json" "tsconfig*.json" "vite.config.ts" "eslint.config.js"'
+        language: system
+        types_or: [ts, tsx, css, json, javascript]
+        files: ^frontend/
+        pass_filenames: false
+      - id: tsc
+        name: typescript typecheck
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        types_or: [ts, tsx]
+        files: ^frontend/
+        pass_filenames: false
+
+  # --- Shell: shellcheck (binary via shellcheck-py, no Docker) ---
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: ^scripts/
+        args: ["--exclude=1090,1091"]
+
+  # --- Secrets: gitleaks ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks

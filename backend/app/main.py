@@ -7,7 +7,6 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.api.health import router as health_router
 from app.api.flake.attachment import router as attachment_router
 from app.api.flake.catalog import router as catalog_router
 from app.api.flake.catalog_admin import router as catalog_admin_router
@@ -15,6 +14,7 @@ from app.api.flake.cmdb import router as cmdb_router
 from app.api.flake.oauth import router as oauth_router
 from app.api.flake.schema import router as schema_router
 from app.api.flake.table import router as table_router
+from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
 from app.config import get_settings
 from app.domain.errors import InvalidFieldNameError

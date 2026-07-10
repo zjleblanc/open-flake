@@ -22,6 +22,9 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
     "debugpy>=1.8.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
 ]
 
 [build-system]
@@ -36,3 +39,52 @@ exclude = ["app.seed*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "F",      # pyflakes
+    "W",      # pycodestyle warnings
+    "I",      # isort
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "S",      # flake8-bandit
+    "SIM",    # flake8-simplify
+    "RUF",    # ruff-specific
+]
+ignore = [
+    "B008",   # FastAPI Depends()/Query() in defaults is idiomatic
+    "E501",   # line length handled by formatter; long strings/URLs are fine
+    "S105",   # hardcoded password string (config defaults / test fixtures)
+    "S106",   # hardcoded password argument (config defaults / test fixtures)
+    "S108",   # hardcoded temp paths used intentionally in config/tests
+    "S603",   # subprocess call without shell=True
+    "S607",   # starting process with partial executable path
+    "SIM102", # nested ifs often clearer for auth/permission guards
+    "SIM108", # ternary not always clearer than if/else
+    "SIM117", # nested with patches are common and readable in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "S101",   # assert is fine in tests
+    "B023",   # closures over loop vars are intentional in test mocks
+]
+"**/tests/**" = [
+    "S101",
+    "B023",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

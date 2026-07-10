@@ -1,19 +1,23 @@
-import { FormEvent, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate } from "react-router-dom";
-import { api } from "../api/client";
-import { usePageHeader } from "../components/PageHeaderContext";
-import "./CatalogPages.css";
+import { FormEvent, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../api/client';
+import { usePageHeader } from '../components/PageHeaderContext';
+import './CatalogPages.css';
 
 export function CatalogAdminListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [name, setName] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [error, setError] = useState("");
+  const [name, setName] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
+  const [error, setError] = useState('');
 
-  const { data, isLoading, error: loadError } = useQuery({
-    queryKey: ["catalog-admin-items"],
+  const {
+    data,
+    isLoading,
+    error: loadError,
+  } = useQuery({
+    queryKey: ['catalog-admin-items'],
     queryFn: () => api.adminListCatalogItems(),
   });
 
@@ -22,12 +26,12 @@ export function CatalogAdminListPage() {
       api.adminCreateCatalogItem({
         name,
         short_description: shortDescription,
-        description: "",
-        price: "0",
+        description: '',
+        price: '0',
       }),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-items"] });
-      queryClient.invalidateQueries({ queryKey: ["catalog-items"] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-items'] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
       navigate(`/catalog/admin/${res.result.sys_id}`);
     },
     onError: (err: Error) => setError(err.message),
@@ -39,21 +43,18 @@ export function CatalogAdminListPage() {
         Browse
       </Link>
     ),
-    []
+    [],
   );
 
   usePageHeader({
-    breadcrumbs: [
-      { label: "Service Catalog", to: "/catalog" },
-      { label: "Manage" },
-    ],
+    breadcrumbs: [{ label: 'Service Catalog', to: '/catalog' }, { label: 'Manage' }],
     actions: headerActions,
   });
 
   function onCreate(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) {
-      setError("Name is required");
+      setError('Name is required');
       return;
     }
     createMutation.mutate();
@@ -66,7 +67,7 @@ export function CatalogAdminListPage() {
 
   return (
     <div className="catalog-admin-list">
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table>
           <thead>
             <tr>
@@ -87,8 +88,8 @@ export function CatalogAdminListPage() {
               items.map((item) => (
                 <tr key={item.sys_id}>
                   <td>{item.name}</td>
-                  <td>{item.category || "—"}</td>
-                  <td>{item.active === false ? "No" : "Yes"}</td>
+                  <td>{item.category || '—'}</td>
+                  <td>{item.active === false ? 'No' : 'Yes'}</td>
                   <td>
                     <Link to={`/catalog/admin/${item.sys_id}`} className="btn btn-secondary btn-sm">
                       Edit
@@ -104,7 +105,9 @@ export function CatalogAdminListPage() {
       <div className="card">
         <form onSubmit={onCreate} className="catalog-builder-form">
           <div className="section-header-row">
-            <h2 className="section-title" style={{ marginBottom: 0 }}>New Catalog Item</h2>
+            <h2 className="section-title" style={{ marginBottom: 0 }}>
+              New Catalog Item
+            </h2>
             <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
               Create
             </button>
@@ -112,11 +115,7 @@ export function CatalogAdminListPage() {
           <div className="catalog-form-grid">
             <div className="form-group">
               <label htmlFor="new-item-name">Name</label>
-              <input
-                id="new-item-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
+              <input id="new-item-name" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="form-group">
               <label htmlFor="new-item-short">Short Description</label>

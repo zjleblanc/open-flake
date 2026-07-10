@@ -1,15 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
-import { usePageHeader } from "../components/PageHeaderContext";
-import "../components/Layout.css";
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
+import { usePageHeader } from '../components/PageHeaderContext';
+import '../components/Layout.css';
 
-const DASHBOARD_BREADCRUMBS = [{ label: "Dashboard" }];
+const DASHBOARD_BREADCRUMBS = [{ label: 'Dashboard' }];
 
 export function DashboardPage() {
   usePageHeader({ breadcrumbs: DASHBOARD_BREADCRUMBS });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["dashboard"],
+    queryKey: ['dashboard'],
     queryFn: api.dashboard,
   });
 
@@ -38,8 +38,8 @@ export function DashboardPage() {
       <div className="card">
         <h2 className="section-title">Welcome to OpenFlake</h2>
         <p className="text-body">
-          Manage incidents, problems, changes, and configuration items. Ansible playbooks
-          can target this instance using the servicenow.itsm collection with{" "}
+          Manage incidents, problems, changes, and configuration items. Ansible playbooks can target
+          this instance using the servicenow.itsm collection with{' '}
           <code className="code-inline">SN_HOST</code> pointing to the backend API.
         </p>
       </div>

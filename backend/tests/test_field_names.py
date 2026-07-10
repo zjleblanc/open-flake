@@ -1,6 +1,9 @@
 import pytest
-
-from app.domain.errors import InvalidFieldNameError, validate_other_field_keys, validate_snake_case_field_name
+from app.domain.errors import (
+    InvalidFieldNameError,
+    validate_other_field_keys,
+    validate_snake_case_field_name,
+)
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from app import db
 from app.config import BACKEND_ROOT, resolve_env_file, settings_from_env_file
 

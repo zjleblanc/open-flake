@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { api, getRecordPermissions, STATE_LABELS, stateBadge } from "../api/client";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { displayValue, EmptyValue, isEmptyDisplayValue } from "../components/EmptyValue";
-import { usePageHeader } from "../components/PageHeaderContext";
-import { ToastBanner } from "../components/ToastBanner";
-import "../components/Layout.css";
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { api, getRecordPermissions, STATE_LABELS, stateBadge } from '../api/client';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EmptyValue } from '../components/EmptyValue';
+import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { ToastBanner } from '../components/ToastBanner';
+import '../components/Layout.css';
 
 interface RecordListProps {
   resource: string;
@@ -23,13 +24,13 @@ interface ListColumn {
 }
 
 const DEFAULT_COLUMNS: ListColumn[] = [
-  { key: "number", label: "Number", filterKeys: ["number", "name"] },
-  { key: "short_description", label: "Short Description" },
-  { key: "state", label: "State" },
-  { key: "priority", label: "Priority" },
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
 ];
 
-type ListBanner = { type: "success" | "error"; text: string };
+type ListBanner = { type: 'success' | 'error'; text: string };
 
 function recordLabel(record: Record<string, string>): string {
   return record.number || record.name || record.sys_id;
@@ -37,13 +38,13 @@ function recordLabel(record: Record<string, string>): string {
 
 function getColumnFilterValue(record: Record<string, string>, column: ListColumn): string {
   const keys = column.filterKeys ?? [column.key];
-  const values = keys.map((key) => record[key] || "").filter(Boolean);
-  if (column.key === "state") {
-    const raw = record.state || "";
-    const label = STATE_LABELS[raw] || "";
+  const values = keys.map((key) => record[key] || '').filter(Boolean);
+  if (column.key === 'state') {
+    const raw = record.state || '';
+    const label = STATE_LABELS[raw] || '';
     if (label && !values.includes(label)) values.push(label);
   }
-  return values.join(" ");
+  return values.join(' ');
 }
 
 export function RecordListPage({
@@ -58,28 +59,28 @@ export function RecordListPage({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [banner, setBanner] = useState<ListBanner | null>(null);
-  const [filterField, setFilterField] = useState(columns[0]?.key ?? "number");
-  const [filterText, setFilterText] = useState("");
+  const [filterField, setFilterField] = useState(columns[0]?.key ?? 'number');
+  const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["records", resource],
+    queryKey: ['records', resource],
     queryFn: () => api.listRecords(resource),
   });
 
-  const records = data?.records || [];
+  const records = useMemo(() => data?.records ?? [], [data?.records]);
   const activeFilterColumn = columns.find((column) => column.key === filterField) ?? columns[0];
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
     if (!query || !activeFilterColumn) return records;
     return records.filter((record) =>
-      getColumnFilterValue(record, activeFilterColumn).toLowerCase().includes(query)
+      getColumnFilterValue(record, activeFilterColumn).toLowerCase().includes(query),
     );
   }, [records, filterText, activeFilterColumn]);
   const isFiltered = filterText.trim().length > 0;
   const deletableRecords = useMemo(
     () => filteredRecords.filter((record) => getRecordPermissions(record).delete),
-    [filteredRecords]
+    [filteredRecords],
   );
   const hasDeletable = deletableRecords.length > 0;
   const allDeletableSelected =
@@ -96,8 +97,8 @@ export function RecordListPage({
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => api.createRecord(resource, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["records", resource] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setShowCreate(false);
       setForm({});
     },
@@ -105,31 +106,33 @@ export function RecordListPage({
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async (sysIds: string[]) => {
-      const results = await Promise.allSettled(sysIds.map((sysId) => api.deleteRecord(resource, sysId)));
-      const succeeded = results.filter((result) => result.status === "fulfilled").length;
+      const results = await Promise.allSettled(
+        sysIds.map((sysId) => api.deleteRecord(resource, sysId)),
+      );
+      const succeeded = results.filter((result) => result.status === 'fulfilled').length;
       const failed = results.length - succeeded;
       return { succeeded, failed };
     },
     onSuccess: ({ succeeded, failed }) => {
-      queryClient.invalidateQueries({ queryKey: ["records", resource] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setSelected(new Set());
       setConfirmOpen(false);
       if (failed > 0) {
         setBanner({
-          type: "error",
+          type: 'error',
           text:
             succeeded > 0
               ? `Deleted ${succeeded} record(s). ${failed} could not be deleted.`
               : `Failed to delete ${failed} record(s).`,
         });
       } else {
-        setBanner({ type: "success", text: `Deleted ${succeeded} record(s).` });
+        setBanner({ type: 'success', text: `Deleted ${succeeded} record(s).` });
       }
     },
     onError: (error: Error) => {
       setConfirmOpen(false);
-      setBanner({ type: "error", text: error.message || "Failed to delete records." });
+      setBanner({ type: 'error', text: error.message || 'Failed to delete records.' });
     },
   });
 
@@ -158,9 +161,7 @@ export function RecordListPage({
     selectAll();
   };
 
-  const selectedLabels = records
-    .filter((record) => selected.has(record.sys_id))
-    .map(recordLabel);
+  const selectedLabels = records.filter((record) => selected.has(record.sys_id)).map(recordLabel);
 
   const headerBreadcrumbs = useMemo(() => [{ label: title }], [title]);
   const headerActions = useMemo(
@@ -178,12 +179,12 @@ export function RecordListPage({
         )}
         {createFields ? (
           <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-            {showCreate ? "Cancel" : "Create"}
+            {showCreate ? 'Cancel' : 'Create'}
           </button>
         ) : null}
       </>
     ),
-    [selected.size, createFields, showCreate, bulkDeleteMutation.isPending]
+    [selected.size, createFields, showCreate, bulkDeleteMutation.isPending],
   );
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, actions: headerActions });
@@ -193,10 +194,10 @@ export function RecordListPage({
   const columnCount = columns.length + (hasDeletable ? 1 : 0);
 
   function renderCell(column: ListColumn, record: Record<string, string>) {
-    if (column.key === "number") {
+    if (column.key === 'number') {
       return <Link to={`${basePath}/${record.sys_id}`}>{recordLabel(record)}</Link>;
     }
-    if (column.key === "state") {
+    if (column.key === 'state') {
       if (isEmptyDisplayValue(record.state)) {
         return <EmptyValue />;
       }
@@ -216,26 +217,26 @@ export function RecordListPage({
           message={banner.text}
           type={banner.type}
           onDismiss={() => setBanner(null)}
-          durationMs={banner.type === "success" ? 2500 : 5000}
+          durationMs={banner.type === 'success' ? 2500 : 5000}
         />
       )}
 
       {showCreate && createFields && (
-        <div className="card" style={{ marginBottom: "1.5rem" }}>
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
           <h2 className="section-title">New {title.slice(0, -1)}</h2>
           {createFields.map((f) => (
             <div className="form-group" key={f.key}>
               <label>{f.label}</label>
-              {f.type === "textarea" ? (
+              {f.type === 'textarea' ? (
                 <textarea
                   rows={3}
-                  value={form[f.key] || ""}
+                  value={form[f.key] || ''}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                 />
               ) : (
                 <input
-                  type={f.type || "text"}
-                  value={form[f.key] || ""}
+                  type={f.type || 'text'}
+                  value={form[f.key] || ''}
                   onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
                 />
               )}
@@ -251,7 +252,7 @@ export function RecordListPage({
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="record-list-filter">
           <label htmlFor={`filter-field-${resource}`}>Filter by</label>
           <select
@@ -269,14 +270,14 @@ export function RecordListPage({
             type="search"
             value={filterText}
             onChange={(event) => setFilterText(event.target.value)}
-            placeholder={`Search ${activeFilterColumn?.label.toLowerCase() ?? "records"}…`}
+            placeholder={`Search ${activeFilterColumn?.label.toLowerCase() ?? 'records'}…`}
             aria-label="Filter value"
           />
           {isFiltered && (
             <button
               type="button"
               className="btn btn-secondary btn-sm record-list-filter-clear"
-              onClick={() => setFilterText("")}
+              onClick={() => setFilterText('')}
             >
               Clear
             </button>
@@ -332,7 +333,7 @@ export function RecordListPage({
             {filteredRecords.length === 0 && (
               <tr>
                 <td colSpan={columnCount} className="empty-state">
-                  {isFiltered ? "No records match this filter" : "No records found"}
+                  {isFiltered ? 'No records match this filter' : 'No records found'}
                 </td>
               </tr>
             )}
@@ -342,16 +343,16 @@ export function RecordListPage({
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Delete ${selected.size} record${selected.size === 1 ? "" : "s"}`}
+        title={`Delete ${selected.size} record${selected.size === 1 ? '' : 's'}`}
         message={
           selected.size === 1
             ? `Are you sure you want to permanently delete "${selectedLabels[0]}"? This action cannot be undone.`
             : `Are you sure you want to permanently delete ${selected.size} records? This action cannot be undone.${
                 selectedLabels.length > 0
-                  ? ` (${selectedLabels.slice(0, 3).join(", ")}${
-                      selectedLabels.length > 3 ? ", …" : ""
+                  ? ` (${selectedLabels.slice(0, 3).join(', ')}${
+                      selectedLabels.length > 3 ? ', …' : ''
                     })`
-                  : ""
+                  : ''
               }`
         }
         onConfirm={() => bulkDeleteMutation.mutate([...selected])}

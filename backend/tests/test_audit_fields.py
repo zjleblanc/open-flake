@@ -1,7 +1,6 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-
 from app.auth.deps import AuthContext
 from app.domain.table_service import _resolve_audit_username, create_record, update_record
 from app.models import CmdbCi, SysUser

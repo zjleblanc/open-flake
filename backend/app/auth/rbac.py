@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, exists, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext
@@ -33,7 +33,7 @@ class RecordPermissions:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def has_permission(user_permissions: set[str], required: str) -> bool:
@@ -80,7 +80,7 @@ async def is_group_owner(db: AsyncSession, user_sys_id: str, group_sys_id: str) 
         select(SysUserGroup.owner).where(SysUserGroup.sys_id == group_sys_id)
     )
     owner = result.scalar_one_or_none()
-    return owner == user_sys_id
+    return bool(owner == user_sys_id)
 
 
 def _record_from_dict(record: dict[str, Any] | Any) -> dict[str, Any]:
@@ -125,7 +125,7 @@ async def _active_grants_for_record(
     ]
     grantee = or_(
         RecordAccessGrant.user_sys_id == user_sys_id,
-        RecordAccessGrant.group_sys_id.in_(group_ids) if group_ids else False,
+        RecordAccessGrant.group_sys_id.in_(group_ids) if group_ids else literal(False),
     )
     result = await db.execute(
         select(RecordAccessGrant.access_level).where(and_(*conditions, grantee))
@@ -215,10 +215,7 @@ async def assert_record_action_by_id(
     return await assert_record_action(db, auth, table, record, action)
 
 
-
-async def filter_record_list_query(
-    db: AsyncSession, auth: AuthContext, table: str, query, model
-):
+async def filter_record_list_query(db: AsyncSession, auth: AuthContext, table: str, query, model):
     if table not in RBAC_RECORD_TABLES:
         return query
 
@@ -240,7 +237,7 @@ async def filter_record_list_query(
                 ),
                 or_(
                     RecordAccessGrant.user_sys_id == auth.user_sys_id,
-                    RecordAccessGrant.group_sys_id.in_(group_ids) if group_ids else False,
+                    RecordAccessGrant.group_sys_id.in_(group_ids) if group_ids else literal(False),
                 ),
             )
         )

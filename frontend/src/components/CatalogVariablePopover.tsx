@@ -1,27 +1,23 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type CatalogVariable } from "../api/client";
-import { Portal } from "./Portal";
-import { ReferenceFilterBuilder } from "./ReferenceFilterBuilder";
-import {
-  parseFilterRows,
-  serializeFilterRows,
-  type FilterRow,
-} from "./filterBuilderUtils";
-import "../pages/CatalogPages.css";
-import "./Layout.css";
+import { FormEvent, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, type CatalogVariable } from '../api/client';
+import { Portal } from './Portal';
+import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
+import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
+import '../pages/CatalogPages.css';
+import './Layout.css';
 
 const VARIABLE_TYPES = [
-  "string",
-  "text_area",
-  "integer",
-  "boolean",
-  "select_box",
-  "multi_select",
-  "reference",
-  "date",
-  "email",
-  "url",
+  'string',
+  'text_area',
+  'integer',
+  'boolean',
+  'select_box',
+  'multi_select',
+  'reference',
+  'date',
+  'email',
+  'url',
 ];
 
 type VariableForm = {
@@ -37,56 +33,56 @@ type VariableForm = {
 };
 
 const emptyForm = (): VariableForm => ({
-  name: "",
-  question_text: "",
-  type: "string",
+  name: '',
+  question_text: '',
+  type: 'string',
   mandatory: false,
   order: 100,
-  choice_list_text: "",
-  help_text: "",
-  reference_table: "",
+  choice_list_text: '',
+  help_text: '',
+  reference_table: '',
   filter_rows: [],
 });
 
 function parseChoiceList(text: string): { value: string; label: string }[] {
   return text
-    .split("\n")
+    .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [value, ...rest] = line.split("|");
-      const label = rest.join("|").trim() || value.trim();
+      const [value, ...rest] = line.split('|');
+      const label = rest.join('|').trim() || value.trim();
       return { value: value.trim(), label };
     });
 }
 
 function formatChoiceList(choices: { value: string; label: string }[] | undefined): string {
-  if (!choices?.length) return "";
+  if (!choices?.length) return '';
   return choices
     .map((choice) =>
       choice.label && choice.label !== choice.value
         ? `${choice.value}|${choice.label}`
-        : choice.value
+        : choice.value,
     )
-    .join("\n");
+    .join('\n');
 }
 
 function variableToForm(variable: CatalogVariable): VariableForm {
   return {
-    name: variable.name || "",
-    question_text: variable.question_text || "",
-    type: variable.type || "string",
+    name: variable.name || '',
+    question_text: variable.question_text || '',
+    type: variable.type || 'string',
     mandatory: Boolean(variable.mandatory),
     order: variable.order ?? 100,
     choice_list_text: formatChoiceList(variable.choice_list),
-    help_text: variable.help_text || "",
-    reference_table: variable.reference_table || "",
+    help_text: variable.help_text || '',
+    reference_table: variable.reference_table || '',
     filter_rows: parseFilterRows(variable.reference_filter),
   };
 }
 
 function toPayload(form: VariableForm) {
-  const isReference = form.type === "reference";
+  const isReference = form.type === 'reference';
   return {
     name: form.name,
     question_text: form.question_text,
@@ -95,7 +91,7 @@ function toPayload(form: VariableForm) {
     order: form.order,
     help_text: form.help_text,
     choice_list:
-      form.type === "select_box" || form.type === "multi_select"
+      form.type === 'select_box' || form.type === 'multi_select'
         ? parseChoiceList(form.choice_list_text)
         : [],
     reference_table: isReference ? form.reference_table || null : null,
@@ -105,7 +101,7 @@ function toPayload(form: VariableForm) {
 
 interface CatalogVariablePopoverProps {
   open: boolean;
-  mode: "add" | "edit";
+  mode: 'add' | 'edit';
   itemId: string;
   variable?: CatalogVariable | null;
   onClose: () => void;
@@ -122,38 +118,38 @@ export function CatalogVariablePopover({
 }: CatalogVariablePopoverProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<VariableForm>(emptyForm);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const tablesQuery = useQuery({
-    queryKey: ["catalog-admin-tables"],
+    queryKey: ['catalog-admin-tables'],
     queryFn: () => api.adminListTables(),
-    enabled: open && form.type === "reference",
+    enabled: open && form.type === 'reference',
   });
 
   useEffect(() => {
     if (!open) return;
-    if (mode === "edit" && variable) {
+    if (mode === 'edit' && variable) {
       setForm(variableToForm(variable));
     } else {
       setForm(emptyForm());
     }
-    setError("");
+    setError('');
   }, [open, mode, variable]);
 
   useEffect(() => {
     if (!open) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === 'Escape') onClose();
     }
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [open, onClose]);
 
   const createMutation = useMutation({
     mutationFn: () => api.adminCreateVariable(itemId, toPayload(form)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-variables", itemId] });
-      onSaved("Variable created.");
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-variables', itemId] });
+      onSaved('Variable created.');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -162,8 +158,8 @@ export function CatalogVariablePopover({
   const updateMutation = useMutation({
     mutationFn: () => api.adminUpdateVariable(itemId, variable!.sys_id, toPayload(form)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-variables", itemId] });
-      onSaved("Variable updated.");
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-variables', itemId] });
+      onSaved('Variable updated.');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -172,20 +168,20 @@ export function CatalogVariablePopover({
   if (!open) return null;
 
   const pending = createMutation.isPending || updateMutation.isPending;
-  const title = mode === "edit" ? "Edit Variable" : "Add Variable";
+  const title = mode === 'edit' ? 'Edit Variable' : 'Add Variable';
   const tables = tablesQuery.data?.result || [];
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!form.name.trim()) {
-      setError("Field name is required");
+      setError('Field name is required');
       return;
     }
-    if (form.type === "reference" && !form.reference_table.trim()) {
-      setError("Reference table is required");
+    if (form.type === 'reference' && !form.reference_table.trim()) {
+      setError('Reference table is required');
       return;
     }
-    if (mode === "edit") {
+    if (mode === 'edit') {
       updateMutation.mutate();
     } else {
       createMutation.mutate();
@@ -243,9 +239,9 @@ export function CatalogVariablePopover({
                       ...p,
                       type,
                       filter_rows:
-                        type === "reference" && !p.filter_rows.length
+                        type === 'reference' && !p.filter_rows.length
                           ? []
-                          : type === "reference"
+                          : type === 'reference'
                             ? p.filter_rows
                             : [],
                     }));
@@ -264,29 +260,23 @@ export function CatalogVariablePopover({
                   id="popover-var-order"
                   type="number"
                   value={form.order}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, order: Number(e.target.value) || 100 }))
-                  }
+                  onChange={(e) => setForm((p) => ({ ...p, order: Number(e.target.value) || 100 }))}
                 />
               </div>
-              {(form.type === "select_box" || form.type === "multi_select") && (
+              {(form.type === 'select_box' || form.type === 'multi_select') && (
                 <div className="form-group catalog-form-span">
-                  <label htmlFor="popover-var-choices">
-                    Choices (one per line: value|label)
-                  </label>
+                  <label htmlFor="popover-var-choices">Choices (one per line: value|label)</label>
                   <textarea
                     id="popover-var-choices"
                     className="code-block"
                     rows={4}
                     value={form.choice_list_text}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, choice_list_text: e.target.value }))
-                    }
-                    placeholder={"rhel_10|RHEL 10\nrhel_9|RHEL 9"}
+                    onChange={(e) => setForm((p) => ({ ...p, choice_list_text: e.target.value }))}
+                    placeholder={'rhel_10|RHEL 10\nrhel_9|RHEL 9'}
                   />
                 </div>
               )}
-              {form.type === "reference" && (
+              {form.type === 'reference' && (
                 <>
                   <div className="form-group catalog-form-span">
                     <label htmlFor="popover-var-ref-table">Reference Table</label>
@@ -343,7 +333,7 @@ export function CatalogVariablePopover({
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary" disabled={pending}>
-                {pending ? "Saving…" : mode === "edit" ? "Save" : "Add"}
+                {pending ? 'Saving…' : mode === 'edit' ? 'Save' : 'Add'}
               </button>
             </div>
           </form>

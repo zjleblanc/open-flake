@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import type { DetailSectionAccent } from "./DetailSection";
+import { useEffect, useState, type ReactNode } from 'react';
+import type { DetailSectionAccent } from './DetailSection';
 
 export interface DetailSectionNavItem {
   id: string;
@@ -14,13 +14,13 @@ interface DetailSectionNavProps {
   defaultOpen?: boolean;
 }
 
-const SECTION_NAV_EXPANDED_KEY = "openflake.detail-section-nav.expanded";
+const SECTION_NAV_EXPANDED_KEY = 'openflake.detail-section-nav.expanded';
 
 function readStoredNavExpanded(defaultOpen: boolean): boolean {
   try {
     const stored = localStorage.getItem(SECTION_NAV_EXPANDED_KEY);
-    if (stored === "true") return true;
-    if (stored === "false") return false;
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
   } catch {
     // localStorage unavailable
   }
@@ -33,7 +33,7 @@ function scrollToSection(sectionId: string) {
   if (element instanceof HTMLDetailsElement) {
     element.open = true;
   }
-  element.scrollIntoView({ behavior: "smooth", block: "start" });
+  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function ChevronLeftIcon() {
@@ -94,7 +94,7 @@ export function DetailSectionNav({ sections, defaultOpen = true }: DetailSection
           setActiveId(visible[0].target.id);
         }
       },
-      { rootMargin: "-20% 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] }
+      { rootMargin: '-20% 0px -60% 0px', threshold: [0, 0.25, 0.5, 1] },
     );
 
     visibleSections.forEach((element) => observer.observe(element));
@@ -105,34 +105,32 @@ export function DetailSectionNav({ sections, defaultOpen = true }: DetailSection
 
   return (
     <nav
-      className={`detail-section-nav${open ? "" : " detail-section-nav--collapsed"}`}
+      className={`detail-section-nav${open ? '' : ' detail-section-nav--collapsed'}`}
       aria-label="Page sections"
     >
-      <div className={`detail-section-nav-panel${open ? "" : " detail-section-nav-panel--icons"}`}>
+      <div className={`detail-section-nav-panel${open ? '' : ' detail-section-nav-panel--icons'}`}>
         <ul className="detail-section-nav-list">
           <li>
             <button
               type="button"
               className="detail-section-nav-item detail-section-nav-toggle"
               onClick={() => setOpen((value) => !value)}
-              aria-label={open ? "Collapse section navigation" : "Expand section navigation"}
+              aria-label={open ? 'Collapse section navigation' : 'Expand section navigation'}
               aria-expanded={open}
             >
               <span className="detail-section-nav-item-icon">
                 {open ? <ChevronRightIcon /> : <ChevronLeftIcon />}
               </span>
-              {open ? (
-                <span className="detail-section-nav-item-label">Collapse</span>
-              ) : null}
+              {open ? <span className="detail-section-nav-item-label">Collapse</span> : null}
             </button>
           </li>
           {sections.map((section) => (
             <li key={section.id}>
               <button
                 type="button"
-                className={`detail-section-nav-item detail-section-nav-item--${section.accent ?? "accent"}${activeId === section.id ? " detail-section-nav-item--active" : ""}`}
+                className={`detail-section-nav-item detail-section-nav-item--${section.accent ?? 'accent'}${activeId === section.id ? ' detail-section-nav-item--active' : ''}`}
                 onClick={() => scrollToSection(section.id)}
-                aria-current={activeId === section.id ? "true" : undefined}
+                aria-current={activeId === section.id ? 'true' : undefined}
                 aria-label={section.title}
                 title={section.title}
               >

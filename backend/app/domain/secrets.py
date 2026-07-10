@@ -78,9 +78,7 @@ async def resolve_secret_refs(session: AsyncSession, text: str) -> str:
     values = await load_secret_values(session, names)
     missing = [name for name in names if name not in values]
     if missing:
-        raise SecretResolutionError(
-            f"Unknown or inactive secret: {', '.join(missing)}"
-        )
+        raise SecretResolutionError(f"Unknown or inactive secret: {', '.join(missing)}")
     return substitute_secrets(text, values)
 
 

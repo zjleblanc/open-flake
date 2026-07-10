@@ -1,18 +1,13 @@
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
 interface ToastBannerProps {
   message: string;
-  type: "success" | "error";
+  type: 'success' | 'error';
   onDismiss: () => void;
   durationMs?: number;
 }
 
-export function ToastBanner({
-  message,
-  type,
-  onDismiss,
-  durationMs = 3000,
-}: ToastBannerProps) {
+export function ToastBanner({ message, type, onDismiss, durationMs = 3000 }: ToastBannerProps) {
   useEffect(() => {
     const timer = window.setTimeout(onDismiss, durationMs);
     return () => window.clearTimeout(timer);

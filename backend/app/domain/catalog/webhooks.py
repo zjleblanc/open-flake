@@ -172,7 +172,8 @@ def _render_template(
     context = template_context(ritm=ritm, variables=variables, event=event)
     rendered = Template(payload_template).safe_substitute(context)
     try:
-        return json.loads(rendered)
+        parsed: dict[str, Any] = json.loads(rendered)
+        return parsed
     except json.JSONDecodeError:
         return rendered
 
@@ -269,7 +270,7 @@ async def deliver_webhooks_for_ritm(
                     webhook.sys_id,
                     exc,
                 )
-            except Exception as exc:  # noqa: BLE001 — log and continue
+            except Exception as exc:
                 error_message = str(exc)
                 logger.exception("Webhook delivery failed for %s", webhook.sys_id)
 

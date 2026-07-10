@@ -1,0 +1,16 @@
+# Gitleaks configuration for OpenFlake
+# https://github.com/gitleaks/gitleaks
+
+title = "OpenFlake gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlisted paths and patterns that are not real secrets"
+paths = [
+  '''\.env\.example$''',
+  '''local\.env\.example$''',
+  '''openflake\.env\.example$''',
+  '''backend/tests/''',
+]

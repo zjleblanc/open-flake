@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.api.flake.catalog_admin import _secret_dict
 from app.domain.secrets import (
     SecretResolutionError,
@@ -48,18 +47,12 @@ def test_extract_secret_names_unique_and_ordered():
 
 def test_substitute_secrets_replaces_all_refs():
     text = "Bearer {{secret:aap_token}} / {{secret:aap_token}}"
-    assert (
-        substitute_secrets(text, {"aap_token": "tok-123"})
-        == "Bearer tok-123 / tok-123"
-    )
+    assert substitute_secrets(text, {"aap_token": "tok-123"}) == "Bearer tok-123 / tok-123"
 
 
 def test_substitute_secrets_multiple_distinct():
     text = "{{secret:user}}:{{secret:pass}}"
-    assert (
-        substitute_secrets(text, {"user": "alice", "pass": "s3cret"})
-        == "alice:s3cret"
-    )
+    assert substitute_secrets(text, {"user": "alice", "pass": "s3cret"}) == "alice:s3cret"
 
 
 def test_substitute_secrets_missing_raises():
@@ -137,9 +130,7 @@ async def test_resolve_secret_refs_substitutes_loaded_values():
     result.scalars.return_value.all.return_value = [secret]
     session.execute = AsyncMock(return_value=result)
 
-    resolved = await resolve_secret_refs(
-        session, "Bearer {{secret:aap_token}}"
-    )
+    resolved = await resolve_secret_refs(session, "Bearer {{secret:aap_token}}")
     assert resolved == "Bearer tok-xyz"
 
 

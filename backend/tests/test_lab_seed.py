@@ -1,5 +1,4 @@
 import pytest
-
 from app.seed.lab import LAB_GROUP_NAMES, LAB_PREFIX, LAB_USER_NAMES, seed_lab
 
 

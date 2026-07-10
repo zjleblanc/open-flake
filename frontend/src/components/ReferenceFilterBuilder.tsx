@@ -1,10 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
-import {
-  FILTER_OPERATORS,
-  emptyFilterRow,
-  type FilterRow,
-} from "./filterBuilderUtils";
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../api/client';
+import { FILTER_OPERATORS, emptyFilterRow, type FilterRow } from './filterBuilderUtils';
 
 interface ReferenceFilterBuilderProps {
   table: string;
@@ -20,7 +16,7 @@ export function ReferenceFilterBuilder({
   disabled = false,
 }: ReferenceFilterBuilderProps) {
   const fieldsQuery = useQuery({
-    queryKey: ["catalog-admin-table-fields", table],
+    queryKey: ['catalog-admin-table-fields', table],
     queryFn: () => api.adminListTableFields(table),
     enabled: Boolean(table),
   });
@@ -36,7 +32,7 @@ export function ReferenceFilterBuilder({
   }
 
   function addRow() {
-    onChange([...rows, emptyFilterRow(rows.length ? "AND" : "AND")]);
+    onChange([...rows, emptyFilterRow(rows.length ? 'AND' : 'AND')]);
   }
 
   if (!table) {
@@ -56,11 +52,9 @@ export function ReferenceFilterBuilder({
           {index > 0 ? (
             <button
               type="button"
-              className={`catalog-filter-join ${row.join === "OR" ? "is-or" : "is-and"}`}
+              className={`catalog-filter-join ${row.join === 'OR' ? 'is-or' : 'is-and'}`}
               disabled={disabled}
-              onClick={() =>
-                updateRow(index, { join: row.join === "OR" ? "AND" : "OR" })
-              }
+              onClick={() => updateRow(index, { join: row.join === 'OR' ? 'AND' : 'OR' })}
               title="Toggle AND/OR"
             >
               {row.join}
@@ -92,14 +86,14 @@ export function ReferenceFilterBuilder({
                 </option>
               ))}
             </select>
-            {row.operator === "ISEMPTY" || row.operator === "ISNOTEMPTY" ? (
+            {row.operator === 'ISEMPTY' || row.operator === 'ISNOTEMPTY' ? (
               <span className="catalog-filter-value-placeholder" />
             ) : (
               <input
                 aria-label={`Filter value ${index + 1}`}
                 value={row.value}
                 disabled={disabled}
-                placeholder={row.operator === "IN" || row.operator === "NOT IN" ? "a,b,c" : "value"}
+                placeholder={row.operator === 'IN' || row.operator === 'NOT IN' ? 'a,b,c' : 'value'}
                 onChange={(e) => updateRow(index, { value: e.target.value })}
               />
             )}

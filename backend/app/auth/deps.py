@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -54,27 +54,25 @@ async def authenticate_request(
                 return AuthContext(user.sys_id, user.user_name, "api_key")
 
     if token:
-        oauth_result = await db.execute(
-            select(OAuthToken).where(OAuthToken.access_token == token)
-        )
+        oauth_result = await db.execute(select(OAuthToken).where(OAuthToken.access_token == token))
         oauth_row = oauth_result.scalar_one_or_none()
-        if oauth_row and oauth_row.expires_at > datetime.now(timezone.utc):
+        if oauth_row and oauth_row.expires_at > datetime.now(UTC):
             if oauth_row.user_sys_id:
                 user = await db.get(SysUser, oauth_row.user_sys_id)
                 if user and user.active == "true":
                     return AuthContext(user.sys_id, user.user_name, "oauth")
         subject = decode_access_token(token)
         if subject:
-            result = await db.execute(select(SysUser).where(SysUser.user_name == subject))
-            user = result.scalar_one_or_none()
+            jwt_result = await db.execute(select(SysUser).where(SysUser.user_name == subject))
+            user = jwt_result.scalar_one_or_none()
             if user and user.active == "true":
                 return AuthContext(user.sys_id, user.user_name, "jwt")
 
     basic = _parse_basic_auth(request)
     if basic:
         username, password = basic
-        result = await db.execute(select(SysUser).where(SysUser.user_name == username))
-        user = result.scalar_one_or_none()
+        basic_result = await db.execute(select(SysUser).where(SysUser.user_name == username))
+        user = basic_result.scalar_one_or_none()
         if user and verify_password(password, user.user_password):
             return AuthContext(user.sys_id, user.user_name, "basic")
 

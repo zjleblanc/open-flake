@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
-import { ConfirmDialog } from "./ConfirmDialog";
-import "./Layout.css";
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { api } from '../api/client';
+import { ConfirmDialog } from './ConfirmDialog';
+import './Layout.css';
 
 interface RecordDeleteButtonProps {
   resource: string;
@@ -26,12 +26,12 @@ export function RecordDeleteButton({
   const deleteMutation = useMutation({
     mutationFn: () => api.deleteRecord(resource, sysId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["records", resource] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       navigate(listPath);
     },
     onError: (deleteError: Error) => {
-      setError(deleteError.message || "Failed to delete record.");
+      setError(deleteError.message || 'Failed to delete record.');
     },
   });
 

@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.startup import _migrate_cmdb_other_to_attributes
 
 

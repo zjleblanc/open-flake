@@ -17,7 +17,6 @@ from app.domain.cmdb.ci_service import (
 from app.domain.table_service import create_record, delete_record
 from app.models import CmdbRelCi
 from app.query.parser import parse_sysparm_query
-from app.utils.ids import new_sys_id
 
 router = APIRouter(prefix="/api/flake/cmdb/instance", tags=["cmdb-api"])
 
@@ -123,9 +122,7 @@ async def cmdb_list_relations(
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "CI not found")
     result = await db.execute(
-        select(CmdbRelCi).where(
-            (CmdbRelCi.parent == sys_id) | (CmdbRelCi.child == sys_id)
-        )
+        select(CmdbRelCi).where((CmdbRelCi.parent == sys_id) | (CmdbRelCi.child == sys_id))
     )
     rels = result.scalars().all()
     return {
@@ -165,7 +162,9 @@ async def cmdb_create_relation(
     return {"result": rel_record}
 
 
-@router.delete("/{sys_class_name}/{sys_id}/relation/{rel_sys_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{sys_class_name}/{sys_id}/relation/{rel_sys_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def cmdb_delete_relation(
     sys_class_name: str,
     sys_id: str,

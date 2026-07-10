@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy import delete, or_, select
 
@@ -24,8 +25,8 @@ from app.models import (
     Problem,
     ProblemTask,
     RecordAccessGrant,
-    ScRequest,
     ScReqItem,
+    ScRequest,
     ScTask,
     ServiceCatalog,
     ServiceCatalogItem,
@@ -36,8 +37,8 @@ from app.models import (
     SysUserGrMember,
     SysUserGroup,
 )
-from app.utils.ids import new_sys_id
 from app.startup import run_migrations, seed_data
+from app.utils.ids import new_sys_id
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ LAB_USER_NAMES = frozenset(
     }
 )
 
-_LAB_TICKET_MODELS: tuple[tuple[str, type], ...] = (
+_LAB_TICKET_MODELS: tuple[tuple[str, type[Any]], ...] = (
     ("sc_task", ScTask),
     ("sc_req_item", ScReqItem),
     ("sc_request", ScRequest),
@@ -174,10 +175,8 @@ async def _purge_lab_data(session) -> None:
             )
         )
 
-    for table_name, model in _LAB_TICKET_MODELS:
-        await session.execute(
-            delete(model).where(model.short_description.like(f"{LAB_PREFIX}%"))
-        )
+    for _table_name, model in _LAB_TICKET_MODELS:
+        await session.execute(delete(model).where(model.short_description.like(f"{LAB_PREFIX}%")))
 
     if lab_ci_ids:
         await session.execute(
@@ -185,9 +184,7 @@ async def _purge_lab_data(session) -> None:
                 or_(CmdbRelCi.parent.in_(lab_ci_ids), CmdbRelCi.child.in_(lab_ci_ids))
             )
         )
-        await session.execute(
-            delete(CmdbCi).where(CmdbCi.sys_id.in_(lab_ci_ids))
-        )
+        await session.execute(delete(CmdbCi).where(CmdbCi.sys_id.in_(lab_ci_ids)))
 
     membership_filters = []
     if lab_user_ids:
@@ -209,6 +206,7 @@ async def _purge_lab_data(session) -> None:
         len(lab_user_ids),
         len(lab_group_ids),
     )
+
 
 async def ensure_record(
     session,
@@ -238,12 +236,12 @@ async def _require_admin(session) -> str:
             "Base seed data is missing. Start the backend once or run seed_data() "
             "before seeding the lab environment."
         )
-    return admin.sys_id
+    return str(admin.sys_id)
 
 
 async def _load_rel_types(session) -> dict[str, str]:
     result = await session.execute(select(CmdbRelType))
-    return {row.sys_name: row.sys_id for row in result.scalars().all()}
+    return {str(row.sys_name): str(row.sys_id) for row in result.scalars().all()}
 
 
 async def _load_std_change(session) -> str | None:
@@ -518,7 +516,7 @@ async def _seed_cmdb_relationships(session, ctx: LabContext) -> None:
     runs_on = ctx.rel_types.get("Runs on::Runs")
     depends_on = ctx.rel_types.get("Depends on::Used by")
     contains = ctx.rel_types.get("Contains::Contained by")
-    if not all([runs_on, depends_on, contains]):
+    if not runs_on or not depends_on or not contains:
         logger.warning("CMDB relationship types missing; skipping CI relationships")
         return
 
@@ -551,7 +549,7 @@ async def _seed_incidents(session, ctx: LabContext) -> None:
     incidents = [
         {
             "short_description": f"{LAB_PREFIX} VPN connectivity failures for remote users",
-            "description": "Multiple remote users report VPN disconnects every 15–20 minutes since last firewall policy push.",
+            "description": "Multiple remote users report VPN disconnects every 15-20 minutes since last firewall policy push.",
             "state": "2",
             "impact": "2",
             "urgency": "1",
@@ -745,7 +743,7 @@ async def _seed_changes(session, ctx: LabContext) -> None:
             "requested_by": ctx.users["tchen"],
             "assigned_to": ctx.users["mwilson"],
             "assignment_group": server,
-            "std_change_producer_version": ctx.std_change_id,
+            "std_change_producer_version": ctx.std_change_id or "",
         },
         ctx.admin_id,
     )
@@ -987,7 +985,7 @@ async def _seed_service_requests(session, ctx: LabContext) -> None:
         {"short_description": f"{LAB_PREFIX} New laptop for sales hire"},
         {
             "short_description": f"{LAB_PREFIX} New laptop for sales hire",
-            "description": "MacBook Pro 14\" for regional sales representative starting next week.",
+            "description": 'MacBook Pro 14" for regional sales representative starting next week.',
             "state": "2",
             "requested_for": ctx.users["rpatel"],
             "requested_by": ctx.users["jsmith"],

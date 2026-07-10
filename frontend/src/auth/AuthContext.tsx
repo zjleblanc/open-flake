@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { api, clearToken, getToken, type UserPreferencesApi } from "../api/client";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { api, clearToken, getToken, type UserPreferencesApi } from '../api/client';
 
 export interface AuthUser {
   sys_id: string;
@@ -21,18 +21,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 function permissionMatch(permissions: string[], required: string): boolean {
   if (permissions.includes(required)) return true;
-  if (required.startsWith("records.") && permissions.includes("records.*.write")) {
-    return required.endsWith(".write") || required.endsWith(".delete");
+  if (required.startsWith('records.') && permissions.includes('records.*.write')) {
+    return required.endsWith('.write') || required.endsWith('.delete');
   }
-  if (required.endsWith(".read") && permissions.includes("records.*.read")) {
-    return required.startsWith("records.");
+  if (required.endsWith('.read') && permissions.includes('records.*.read')) {
+    return required.startsWith('records.');
   }
   // secrets.admin ⊃ secrets.write ⊃ secrets.read
-  if (required === "secrets.read") {
-    return permissions.includes("secrets.write") || permissions.includes("secrets.admin");
+  if (required === 'secrets.read') {
+    return permissions.includes('secrets.write') || permissions.includes('secrets.admin');
   }
-  if (required === "secrets.write") {
-    return permissions.includes("secrets.admin");
+  if (required === 'secrets.write') {
+    return permissions.includes('secrets.admin');
   }
   return false;
 }
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPermission = useCallback(
     (permission: string) => (user ? permissionMatch(user.permissions, permission) : false),
-    [user]
+    [user],
   );
 
   const logout = useCallback(() => {
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({ user, loading, refresh, hasPermission, logout }),
-    [user, loading, refresh, hasPermission, logout]
+    [user, loading, refresh, hasPermission, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -83,6 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }

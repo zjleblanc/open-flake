@@ -17,7 +17,9 @@
   padding: 1.25rem;
   text-decoration: none;
   color: inherit;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .catalog-card:hover {
@@ -124,7 +126,7 @@
   min-height: 2.25rem;
 }
 
-.form-check input[type="checkbox"] {
+.form-check input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
 }
@@ -148,7 +150,7 @@
   cursor: pointer;
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
 }
@@ -201,7 +203,9 @@
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .markdown-editor-tab:hover {

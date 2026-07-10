@@ -235,11 +235,13 @@ button.nav-link {
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .user-menu-trigger:hover,
-.user-menu-trigger[aria-expanded="true"] {
+.user-menu-trigger[aria-expanded='true'] {
   border-color: color-mix(in srgb, var(--of-primary) 40%, var(--of-border));
   background: color-mix(in srgb, var(--of-primary) 6%, var(--of-surface));
 }
@@ -434,7 +436,9 @@ button.nav-link {
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .layout-density-option:hover {
@@ -482,7 +486,9 @@ button.nav-link {
   font-weight: 600;
   text-align: left;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .user-menu-item:hover {
@@ -560,7 +566,10 @@ button.nav-link {
   background: var(--of-surface);
   color: var(--of-text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
 }
 
 .share-popover-trigger:hover,
@@ -929,7 +938,9 @@ button.nav-link {
   border-radius: 999px;
   background: color-mix(in srgb, var(--of-border) 70%, var(--of-bg));
   border: 1px solid var(--of-border);
-  transition: background 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
   flex-shrink: 0;
 }
 
@@ -942,7 +953,9 @@ button.nav-link {
   border-radius: 50%;
   background: var(--of-text-muted);
   transform: translateY(-50%);
-  transition: transform 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    background 0.2s;
   box-shadow: 0 1px 2px rgb(0 0 0 / 25%);
 }
 
@@ -1245,7 +1258,9 @@ button.nav-link {
 
 .detail-section-nav-item-label,
 .detail-section-nav-item-count {
-  transition: opacity 0.15s, width 0.15s;
+  transition:
+    opacity 0.15s,
+    width 0.15s;
 }
 
 .detail-section-nav-panel--icons .detail-section-nav-item-label,
@@ -1302,7 +1317,7 @@ button.nav-link {
 }
 
 .property-panel summary::after {
-  content: "+";
+  content: '+';
   margin-left: auto;
   color: var(--of-text-muted);
   font-size: 1.125rem;
@@ -1310,7 +1325,7 @@ button.nav-link {
 }
 
 .property-panel[open] summary::after {
-  content: "−";
+  content: '−';
 }
 
 .property-panel-count {
@@ -1343,7 +1358,7 @@ button.nav-link {
 }
 
 .class-hierarchy-node:not(:last-child)::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 0.9375rem;
   top: 1.25rem;
@@ -1612,7 +1627,7 @@ button.nav-link {
   padding-right: 0.5rem;
 }
 
-.record-select-column input[type="checkbox"] {
+.record-select-column input[type='checkbox'] {
   width: auto;
   margin: 0;
   cursor: pointer;
@@ -1639,7 +1654,7 @@ button.nav-link {
   min-width: 10rem;
 }
 
-.record-list-filter input[type="search"] {
+.record-list-filter input[type='search'] {
   flex: 1;
   min-width: 8rem;
 }

@@ -1,7 +1,6 @@
 import pytest
-
 from app.domain.table_service import _model_to_dict, _ref_table
-from app.models import ChangeRequest, Incident, ScRequest, SysUser, SysUserGroup
+from app.models import ChangeRequest, Incident, ScRequest, SysUser
 
 
 @pytest.mark.parametrize(

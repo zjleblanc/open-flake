@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,7 +49,8 @@ def settings_from_env_file(env_file: str | Path) -> Settings:
     path = resolve_env_file(env_file)
     if not path.is_file():
         raise FileNotFoundError(f"Env file not found: {path}")
-    return Settings(_env_file=str(path), _env_file_encoding="utf-8")
+    init_kwargs: dict[str, Any] = {"_env_file": str(path), "_env_file_encoding": "utf-8"}
+    return Settings(**init_kwargs)
 
 
 @lru_cache

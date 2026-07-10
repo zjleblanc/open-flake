@@ -6,9 +6,9 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react";
-import { MarkdownRenderer } from "./MarkdownRenderer";
-import { Portal } from "./Portal";
+} from 'react';
+import { MarkdownRenderer } from './MarkdownRenderer';
+import { Portal } from './Portal';
 
 type FieldTooltipProps = {
   ariaLabel: string;
@@ -40,10 +40,10 @@ function releaseExclusive(close: () => void) {
 
 function renderContent(children: ReactNode, rich?: boolean): ReactNode {
   if (children == null || children === false) return null;
-  if (rich && typeof children === "string") {
+  if (rich && typeof children === 'string') {
     return <MarkdownRenderer content={children} className="field-tooltip-rich" />;
   }
-  if (typeof children === "string") {
+  if (typeof children === 'string') {
     return <p className="field-tooltip-plain">{children}</p>;
   }
   return children;
@@ -115,16 +115,16 @@ export function FieldTooltip({ ariaLabel, children, rich }: FieldTooltipProps) {
     };
     const onResize = () => closeRef.current();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
+      if (event.key === 'Escape') closeRef.current();
     };
 
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('keydown', onKeyDown);
     return () => {
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);
 
@@ -133,7 +133,7 @@ export function FieldTooltip({ ariaLabel, children, rich }: FieldTooltipProps) {
       clearCloseTimer();
       releaseExclusive(closeRef.current);
     },
-    [clearCloseTimer]
+    [clearCloseTimer],
   );
 
   useLayoutEffect(() => {

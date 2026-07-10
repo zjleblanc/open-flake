@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
-import { useUserPreferences } from "../settings/UserPreferencesContext";
-import { Breadcrumbs } from "./Breadcrumbs";
-import { ColorSchemeSelector, LayoutDensitySelector, ToggleSwitch } from "./DetailFieldControls";
-import { SignOutIcon } from "./NavIcons";
-import { usePageHeaderContext } from "./PageHeaderContext";
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
+import { useUserPreferences } from '../settings/UserPreferencesContext';
+import { Breadcrumbs } from './Breadcrumbs';
+import { ColorSchemeSelector, LayoutDensitySelector, ToggleSwitch } from './DetailFieldControls';
+import { SignOutIcon } from './NavIcons';
+import { usePageHeaderContext } from './PageHeaderContext';
 
 function userInitials(userName: string): string {
   const parts = userName.split(/[.@_-]/).filter(Boolean);
@@ -40,21 +40,21 @@ export function TopNavbar() {
     }
 
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === 'Escape') setMenuOpen(false);
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [menuOpen]);
 
   function logout() {
     setMenuOpen(false);
     authLogout();
-    navigate("/login");
+    navigate('/login');
   }
 
   return (
@@ -102,8 +102,8 @@ export function TopNavbar() {
                 <div className="user-menu-preference">
                   <ToggleSwitch
                     id="user-menu-date-local"
-                    checked={dateDisplayFormat === "local"}
-                    onChange={(checked) => setDateDisplayFormat(checked ? "local" : "raw")}
+                    checked={dateDisplayFormat === 'local'}
+                    onChange={(checked) => setDateDisplayFormat(checked ? 'local' : 'raw')}
                     label="Local Dates"
                   />
                 </div>

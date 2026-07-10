@@ -2,16 +2,16 @@ import hashlib
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext, authenticate_request
 from app.auth.rbac import assert_record_action_by_id, resolve_record_permissions
-from app.domain.registry import RBAC_RECORD_TABLES, TABLE_MODELS
 from app.config import BACKEND_ROOT, get_settings
 from app.db import get_db
+from app.domain.registry import RBAC_RECORD_TABLES, TABLE_MODELS
 from app.models import SysAttachment
 from app.utils.ids import new_sys_id
 
@@ -39,7 +39,7 @@ def _sha256_hex(content: bytes) -> str:
 def _attachment_hash(record: SysAttachment) -> str:
     stored = (record.other or {}).get("hash")
     if stored:
-        return stored
+        return str(stored)
     if record.storage_path and os.path.exists(record.storage_path):
         return _sha256_hex(Path(record.storage_path).read_bytes())
     return ""
@@ -76,6 +76,11 @@ async def _parse_upload_request(
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "table_name, table_sys_id, and file are required",
+            )
+        if not isinstance(upload, UploadFile):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "file must be an uploaded file",
             )
         content = await upload.read()
         file_name = upload.filename or "file"
@@ -247,9 +252,7 @@ async def purge_stale_attachment_files(db: AsyncSession) -> int:
     result = await db.execute(select(SysAttachment))
     records = result.scalars().all()
     referenced_paths = {
-        str(path)
-        for record in records
-        for path in _attachment_storage_candidates(record)
+        str(path) for record in records for path in _attachment_storage_candidates(record)
     }
     referenced_names = {Path(path).name for path in referenced_paths}
 
@@ -304,18 +307,14 @@ async def upload_attachment(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    table_name, table_sys_id, file_name, mime_type, content = await _parse_upload_request(
-        request
-    )
+    table_name, table_sys_id, file_name, mime_type, content = await _parse_upload_request(request)
     await _assert_attachment_parent_access(db, auth, table_name, table_sys_id, "write")
 
     record = await _save_attachment(
         db, auth, table_name, table_sys_id, file_name, mime_type, content
     )
 
-    return {
-        "result": _attachment_to_dict(record)
-    }
+    return {"result": _attachment_to_dict(record)}
 
 
 @router.get("/{sys_id}")

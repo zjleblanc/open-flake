@@ -25,7 +25,6 @@ from app.domain.cmdb.registry import (
     is_registered,
     refresh_cache,
 )
-from app.domain.errors import InvalidFieldNameError
 from app.events.bus import RecordEvent, emit
 from app.models import CmdbCi, SysUser
 from app.query.parser import QueryCondition, apply_condition_groups
@@ -230,7 +229,6 @@ async def delete_cmdb_ci(
     query_class: str | None = None,
 ) -> bool:
     from app.api.flake.attachment import delete_attachments_for_parent
-    from app.domain.table_service import _model_to_dict
 
     record = await db.get(CmdbCi, sys_id)
     if not record:

@@ -1,37 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
-import {
-  api,
-  type CatalogVariable,
-  type CatalogWebhookAttachment,
-} from "../api/client";
-import { AttachIntegrationPopover } from "../components/AttachIntegrationPopover";
-import { CatalogFilterConditionsPanel } from "../components/CatalogFilterConditionsPanel";
-import { CatalogVariablePopover } from "../components/CatalogVariablePopover";
-import {
-  FieldsIcon,
-  OverviewIcon,
-  ShareIcon,
-} from "../components/DetailIcons";
-import { DetailSectionNav, type DetailSectionNavItem } from "../components/DetailSectionNav";
-import { ExpandableDetailSection } from "../components/ExpandableDetailSection";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import { MarkdownRenderer } from "../components/MarkdownRenderer";
-import { usePageHeader } from "../components/PageHeaderContext";
-import { ToastBanner } from "../components/ToastBanner";
-import "../components/Layout.css";
-import "./CatalogPages.css";
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useParams } from 'react-router-dom';
+import { api, type CatalogVariable, type CatalogWebhookAttachment } from '../api/client';
+import { AttachIntegrationPopover } from '../components/AttachIntegrationPopover';
+import { CatalogFilterConditionsPanel } from '../components/CatalogFilterConditionsPanel';
+import { CatalogVariablePopover } from '../components/CatalogVariablePopover';
+import { FieldsIcon, OverviewIcon, ShareIcon } from '../components/DetailIcons';
+import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
+import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { ToastBanner } from '../components/ToastBanner';
+import '../components/Layout.css';
+import './CatalogPages.css';
 
 const BUILDER_SECTION = {
-  details: "catalog-section-details",
-  variables: "catalog-section-variables",
-  integrations: "catalog-section-integrations",
+  details: 'catalog-section-details',
+  variables: 'catalog-section-variables',
+  integrations: 'catalog-section-integrations',
 } as const;
 
 type PendingDelete =
-  | { kind: "variable"; id: string; label: string }
-  | { kind: "process"; id: string; label: string };
+  { kind: 'variable'; id: string; label: string } | { kind: 'process'; id: string; label: string };
 
 type ItemSnapshot = {
   name: string;
@@ -42,22 +33,22 @@ type ItemSnapshot = {
 };
 
 export function CatalogItemBuilderPage() {
-  const { itemId = "" } = useParams();
+  const { itemId = '' } = useParams();
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
-  const [name, setName] = useState("");
-  const [shortDescription, setShortDescription] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("0");
-  const [category, setCategory] = useState("");
+  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
+  const [name, setName] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('0');
+  const [category, setCategory] = useState('');
   const [savedItem, setSavedItem] = useState<ItemSnapshot | null>(null);
-  const [toast, setToast] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [variablePopover, setVariablePopover] = useState<{
-    mode: "add" | "edit";
+    mode: 'add' | 'edit';
     variable: CatalogVariable | null;
   } | null>(null);
   const [integrationPopover, setIntegrationPopover] = useState<{
-    mode: "attach" | "edit";
+    mode: 'attach' | 'edit';
     attachment: CatalogWebhookAttachment | null;
   } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
@@ -65,19 +56,19 @@ export function CatalogItemBuilderPage() {
   const [saving, setSaving] = useState(false);
 
   const itemQuery = useQuery({
-    queryKey: ["catalog-admin-item", itemId],
+    queryKey: ['catalog-admin-item', itemId],
     queryFn: () => api.adminGetCatalogItem(itemId),
     enabled: Boolean(itemId),
   });
 
   const variablesQuery = useQuery({
-    queryKey: ["catalog-admin-variables", itemId],
+    queryKey: ['catalog-admin-variables', itemId],
     queryFn: () => api.adminListVariables(itemId),
     enabled: Boolean(itemId),
   });
 
   const attachmentsQuery = useQuery({
-    queryKey: ["catalog-admin-item-webhooks", itemId],
+    queryKey: ['catalog-admin-item-webhooks', itemId],
     queryFn: () => api.adminListItemWebhooks(itemId),
     enabled: Boolean(itemId),
   });
@@ -90,11 +81,11 @@ export function CatalogItemBuilderPage() {
     if (!itemQuery.data || initialized) return;
     const item = itemQuery.data.result;
     const snapshot: ItemSnapshot = {
-      name: item.name || "",
-      shortDescription: item.short_description || "",
-      description: item.description || "",
-      price: item.price || "0",
-      category: item.category || "",
+      name: item.name || '',
+      shortDescription: item.short_description || '',
+      description: item.description || '',
+      price: item.price || '0',
+      category: item.category || '',
     };
     setName(snapshot.name);
     setShortDescription(snapshot.shortDescription);
@@ -107,11 +98,11 @@ export function CatalogItemBuilderPage() {
 
   const headerBreadcrumbs = useMemo(
     () => [
-      { label: "Service Catalog", to: "/catalog" },
-      { label: "Manage", to: "/catalog/admin" },
-      { label: name || "Edit" },
+      { label: 'Service Catalog', to: '/catalog' },
+      { label: 'Manage', to: '/catalog/admin' },
+      { label: name || 'Edit' },
     ],
-    [name]
+    [name],
   );
 
   const headerActions = useMemo(
@@ -120,7 +111,7 @@ export function CatalogItemBuilderPage() {
         View
       </Link>
     ),
-    [itemId]
+    [itemId],
   );
 
   usePageHeader({
@@ -142,7 +133,7 @@ export function CatalogItemBuilderPage() {
   const deleteVariable = useMutation({
     mutationFn: (varId: string) => api.adminDeleteVariable(itemId, varId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-variables", itemId] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-variables', itemId] });
       setPendingDelete(null);
     },
   });
@@ -150,7 +141,7 @@ export function CatalogItemBuilderPage() {
   const detachIntegration = useMutation({
     mutationFn: (attachmentId: string) => api.adminDetachItemWebhook(itemId, attachmentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-item-webhooks", itemId] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-item-webhooks', itemId] });
       setPendingDelete(null);
     },
   });
@@ -162,22 +153,22 @@ export function CatalogItemBuilderPage() {
     return [
       {
         id: BUILDER_SECTION.details,
-        title: "Details",
+        title: 'Details',
         icon: <OverviewIcon size={14} />,
-        accent: "accent",
+        accent: 'accent',
       },
       {
         id: BUILDER_SECTION.variables,
-        title: "Variables",
+        title: 'Variables',
         icon: <FieldsIcon size={14} />,
-        accent: "info",
+        accent: 'info',
         count: variables.length,
       },
       {
         id: BUILDER_SECTION.integrations,
-        title: "Processes",
+        title: 'Processes',
         icon: <ShareIcon size={14} />,
-        accent: "success",
+        accent: 'success',
         count: attachments.length,
       },
     ];
@@ -195,11 +186,11 @@ export function CatalogItemBuilderPage() {
         category,
       });
       setSavedItem({ name, shortDescription, description, price, category });
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-item", itemId] });
-      queryClient.invalidateQueries({ queryKey: ["catalog-items"] });
-      setToast({ text: "Changes saved.", type: "success" });
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-item', itemId] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
+      setToast({ text: 'Changes saved.', type: 'success' });
     } catch (err) {
-      setToast({ text: (err as Error).message, type: "error" });
+      setToast({ text: (err as Error).message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -215,7 +206,7 @@ export function CatalogItemBuilderPage() {
           message={toast.text}
           type={toast.type}
           onDismiss={() => setToast(null)}
-          durationMs={toast.type === "success" ? 2500 : 4000}
+          durationMs={toast.type === 'success' ? 2500 : 4000}
         />
       ) : null}
 
@@ -233,11 +224,7 @@ export function CatalogItemBuilderPage() {
                 <div className="catalog-form-grid">
                   <div className="form-group">
                     <label htmlFor="item-name">Name</label>
-                    <input
-                      id="item-name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
+                    <input id="item-name" value={name} onChange={(e) => setName(e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label htmlFor="item-short">Short Description</label>
@@ -277,11 +264,11 @@ export function CatalogItemBuilderPage() {
                         type="button"
                         role="tab"
                         id="description-tab-edit"
-                        aria-selected={mode === "edit"}
+                        aria-selected={mode === 'edit'}
                         aria-controls="description-panel-edit"
-                        tabIndex={mode === "edit" ? 0 : -1}
-                        className={`markdown-editor-tab${mode === "edit" ? " markdown-editor-tab--active" : ""}`}
-                        onClick={() => setMode("edit")}
+                        tabIndex={mode === 'edit' ? 0 : -1}
+                        className={`markdown-editor-tab${mode === 'edit' ? ' markdown-editor-tab--active' : ''}`}
+                        onClick={() => setMode('edit')}
                       >
                         Edit
                       </button>
@@ -289,17 +276,17 @@ export function CatalogItemBuilderPage() {
                         type="button"
                         role="tab"
                         id="description-tab-preview"
-                        aria-selected={mode === "preview"}
+                        aria-selected={mode === 'preview'}
                         aria-controls="description-panel-preview"
-                        tabIndex={mode === "preview" ? 0 : -1}
-                        className={`markdown-editor-tab${mode === "preview" ? " markdown-editor-tab--active" : ""}`}
-                        onClick={() => setMode("preview")}
+                        tabIndex={mode === 'preview' ? 0 : -1}
+                        className={`markdown-editor-tab${mode === 'preview' ? ' markdown-editor-tab--active' : ''}`}
+                        onClick={() => setMode('preview')}
                       >
                         Preview
                       </button>
                     </div>
                   </div>
-                  {mode === "edit" ? (
+                  {mode === 'edit' ? (
                     <textarea
                       id="description-panel-edit"
                       role="tabpanel"
@@ -337,7 +324,7 @@ export function CatalogItemBuilderPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => setVariablePopover({ mode: "add", variable: null })}
+                  onClick={() => setVariablePopover({ mode: 'add', variable: null })}
                 >
                   Add
                 </button>
@@ -370,23 +357,21 @@ export function CatalogItemBuilderPage() {
                         </td>
                         <td>{variable.question_text}</td>
                         <td>{variable.type}</td>
-                        <td>{variable.mandatory ? "Yes" : "No"}</td>
+                        <td>{variable.mandatory ? 'Yes' : 'No'}</td>
                         <td className="catalog-row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          onClick={() =>
-                            setVariablePopover({ mode: "edit", variable })
-                          }
-                        >
-                          Edit
-                        </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setVariablePopover({ mode: 'edit', variable })}
+                          >
+                            Edit
+                          </button>
                           <button
                             type="button"
                             className="btn btn-danger btn-sm"
                             onClick={() =>
                               setPendingDelete({
-                                kind: "variable",
+                                kind: 'variable',
                                 id: variable.sys_id,
                                 label: variable.question_text || variable.name,
                               })
@@ -404,9 +389,7 @@ export function CatalogItemBuilderPage() {
               <CatalogFilterConditionsPanel
                 itemId={itemId}
                 variables={variables}
-                onToast={(message, type = "success") =>
-                  setToast({ text: message, type })
-                }
+                onToast={(message, type = 'success') => setToast({ text: message, type })}
               />
             </ExpandableDetailSection>
 
@@ -419,15 +402,11 @@ export function CatalogItemBuilderPage() {
               defaultOpen
             >
               <div className="section-header-row">
-                <p className="catalog-browse-intro">
-                  Attach processes to this catalog item.
-                </p>
+                <p className="catalog-browse-intro">Attach processes to this catalog item.</p>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() =>
-                    setIntegrationPopover({ mode: "attach", attachment: null })
-                  }
+                  onClick={() => setIntegrationPopover({ mode: 'attach', attachment: null })}
                 >
                   Attach
                 </button>
@@ -461,7 +440,7 @@ export function CatalogItemBuilderPage() {
                             className="btn btn-secondary btn-sm"
                             onClick={() =>
                               setIntegrationPopover({
-                                mode: "edit",
+                                mode: 'edit',
                                 attachment,
                               })
                             }
@@ -473,7 +452,7 @@ export function CatalogItemBuilderPage() {
                             className="btn btn-danger btn-sm"
                             onClick={() =>
                               setPendingDelete({
-                                kind: "process",
+                                kind: 'process',
                                 id: attachment.sys_id,
                                 label: attachment.webhook_name || attachment.webhook,
                               })
@@ -496,39 +475,37 @@ export function CatalogItemBuilderPage() {
 
       <CatalogVariablePopover
         open={Boolean(variablePopover)}
-        mode={variablePopover?.mode || "add"}
+        mode={variablePopover?.mode || 'add'}
         itemId={itemId}
         variable={variablePopover?.variable}
         onClose={() => setVariablePopover(null)}
-        onSaved={(message) => setToast({ text: message, type: "success" })}
+        onSaved={(message) => setToast({ text: message, type: 'success' })}
       />
 
       <AttachIntegrationPopover
         open={Boolean(integrationPopover)}
-        mode={integrationPopover?.mode || "attach"}
+        mode={integrationPopover?.mode || 'attach'}
         itemId={itemId}
         attachment={integrationPopover?.attachment}
         onClose={() => setIntegrationPopover(null)}
-        onSaved={(message) => setToast({ text: message, type: "success" })}
+        onSaved={(message) => setToast({ text: message, type: 'success' })}
       />
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}
-        title={
-          pendingDelete?.kind === "process" ? "Detach process" : "Delete variable"
-        }
+        title={pendingDelete?.kind === 'process' ? 'Detach process' : 'Delete variable'}
         message={
           pendingDelete
-            ? pendingDelete.kind === "process"
+            ? pendingDelete.kind === 'process'
               ? `Are you sure you want to detach "${pendingDelete.label}" from this catalog item?`
               : `Are you sure you want to permanently delete "${pendingDelete.label}"? This action cannot be undone.`
-            : ""
+            : ''
         }
-        confirmLabel={pendingDelete?.kind === "process" ? "Detach" : "Delete"}
-        pendingLabel={pendingDelete?.kind === "process" ? "Detaching…" : "Deleting…"}
+        confirmLabel={pendingDelete?.kind === 'process' ? 'Detach' : 'Delete'}
+        pendingLabel={pendingDelete?.kind === 'process' ? 'Detaching…' : 'Deleting…'}
         onConfirm={() => {
           if (!pendingDelete) return;
-          if (pendingDelete.kind === "process") {
+          if (pendingDelete.kind === 'process') {
             detachIntegration.mutate(pendingDelete.id);
           } else {
             deleteVariable.mutate(pendingDelete.id);
@@ -546,7 +523,7 @@ export function CatalogItemBuilderPage() {
             onClick={() => void saveChanges()}
             disabled={saving}
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       ) : null}

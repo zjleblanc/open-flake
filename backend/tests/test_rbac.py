@@ -1,8 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
-
 from app.auth.deps import AuthContext
 from app.auth.rbac import (
     RecordPermissions,
@@ -11,6 +9,7 @@ from app.auth.rbac import (
     has_permission,
     resolve_record_permissions,
 )
+from fastapi import HTTPException
 
 
 def test_has_permission_exact_and_wildcard():
@@ -146,9 +145,7 @@ async def test_resolve_view_grant_read_only():
         nonlocal call_count
         call_count += 1
         result = MagicMock()
-        if call_count == 1:
-            result.scalars.return_value.all.return_value = []
-        elif call_count == 2:
+        if call_count == 1 or call_count == 2:
             result.scalars.return_value.all.return_value = []
         else:
             result.scalars.return_value.all.return_value = ["view"]
@@ -263,6 +260,4 @@ async def test_platform_self_write_allowed():
 
     db.execute = mock_execute
 
-    await assert_platform_action(
-        db, auth, "sys_user", "self_write", target_user_sys_id="user1"
-    )
+    await assert_platform_action(db, auth, "sys_user", "self_write", target_user_sys_id="user1")

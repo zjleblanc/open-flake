@@ -5,11 +5,19 @@ set -euo pipefail
 if command -v lsof >/dev/null 2>&1; then
   pids=$(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null || true)
   if [[ -n "${pids}" ]]; then
-    kill -TERM ${pids} 2>/dev/null || true
+    while IFS= read -r pid; do
+      if [[ -n "${pid}" ]]; then
+        kill -TERM "${pid}" 2>/dev/null || true
+      fi
+    done <<< "${pids}"
     sleep 0.5
     pids=$(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null || true)
     if [[ -n "${pids}" ]]; then
-      kill -KILL ${pids} 2>/dev/null || true
+      while IFS= read -r pid; do
+        if [[ -n "${pid}" ]]; then
+          kill -KILL "${pid}" 2>/dev/null || true
+        fi
+      done <<< "${pids}"
     fi
   fi
 fi

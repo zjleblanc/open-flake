@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,7 +70,9 @@ async def refresh_cache(db: AsyncSession) -> None:
         if cls.super_class:
             children.setdefault(cls.super_class, set()).add(name)
 
-    _snapshot = _RegistrySnapshot(classes=classes, fields_by_class=fields_by_class, children=children)
+    _snapshot = _RegistrySnapshot(
+        classes=classes, fields_by_class=fields_by_class, children=children
+    )
 
 
 def _require_snapshot() -> _RegistrySnapshot:
@@ -216,7 +219,7 @@ async def ensure_class(
             if existing.is_logical != is_logical:
                 existing.is_logical = is_logical
             await db.flush()
-        return existing
+        return cast(CmdbClass, existing)
 
     if super_class:
         parent = await db.get(CmdbClass, super_class)

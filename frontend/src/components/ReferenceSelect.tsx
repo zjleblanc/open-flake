@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { api, type CatalogChoice } from "../api/client";
+import { useQuery } from '@tanstack/react-query';
+import { api, type CatalogChoice } from '../api/client';
 
 interface ReferenceSelectProps {
   itemId: string;
@@ -15,13 +15,13 @@ export function ReferenceSelect({
   itemId,
   varName,
   value,
-  dependsOn = "",
+  dependsOn = '',
   disabled = false,
   id,
   onChange,
 }: ReferenceSelectProps) {
   const optionsQuery = useQuery({
-    queryKey: ["catalog-variable-options", itemId, varName, dependsOn],
+    queryKey: ['catalog-variable-options', itemId, varName, dependsOn],
     queryFn: () => api.getVariableOptions(itemId, varName, dependsOn || undefined),
     enabled: Boolean(itemId && varName),
   });
@@ -33,13 +33,11 @@ export function ReferenceSelect({
     <div className="catalog-reference-select">
       <select
         id={id}
-        value={selectedStillValid ? value : ""}
+        value={selectedStillValid ? value : ''}
         disabled={disabled || optionsQuery.isLoading}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">
-          {optionsQuery.isLoading ? "Loading…" : "Select…"}
-        </option>
+        <option value="">{optionsQuery.isLoading ? 'Loading…' : 'Select…'}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label || option.value}
@@ -49,9 +47,7 @@ export function ReferenceSelect({
       {optionsQuery.isLoading ? (
         <span className="catalog-reference-loading">Loading options…</span>
       ) : null}
-      {optionsQuery.error ? (
-        <p className="error">{(optionsQuery.error as Error).message}</p>
-      ) : null}
+      {optionsQuery.error ? <p className="error">{(optionsQuery.error as Error).message}</p> : null}
     </div>
   );
 }

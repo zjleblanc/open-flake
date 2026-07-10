@@ -28,10 +28,12 @@ def _resolve_table(table: str) -> tuple[str, str | None]:
 
 def _exclude_links(request: Request) -> bool:
     val = request.query_params.get("sysparm_exclude_reference_link", "true")
-    return val.lower() != "false"
+    return bool(val.lower() != "false")
 
 
-def _query_params_to_conditions(request: Request, sysparm_query: str | None) -> list[QueryCondition]:
+def _query_params_to_conditions(
+    request: Request, sysparm_query: str | None
+) -> list[QueryCondition]:
     conditions = parse_sysparm_query(sysparm_query)
     reserved = {
         "sysparm_query",
@@ -184,9 +186,7 @@ async def table_delete(
     )
     if not existing:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
-    deleted = await delete_record(
-        db, internal_table, sys_id, auth=auth, query_class=query_class
-    )
+    deleted = await delete_record(db, internal_table, sys_id, auth=auth, query_class=query_class)
     if not deleted:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Record not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)

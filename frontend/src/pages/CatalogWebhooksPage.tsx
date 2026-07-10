@@ -1,12 +1,12 @@
-import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, CatalogWebhook } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
-import { usePageHeader } from "../components/PageHeaderContext";
-import { FieldTooltip } from "../components/FieldTooltip";
-import { ConfirmDialog } from "../components/ConfirmDialog";
-import "./CatalogPages.css";
+import { FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, CatalogWebhook } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { FieldTooltip } from '../components/FieldTooltip';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import './CatalogPages.css';
 
 type HeaderRow = { key: string; value: string };
 
@@ -22,7 +22,9 @@ function headersFromRows(rows: HeaderRow[]): Record<string, string> {
 
 function rowsFromHeaders(headers: Record<string, string>): HeaderRow[] {
   const entries = Object.entries(headers);
-  return entries.length ? entries.map(([key, value]) => ({ key, value })) : [{ key: "", value: "" }];
+  return entries.length
+    ? entries.map(([key, value]) => ({ key, value }))
+    : [{ key: '', value: '' }];
 }
 
 type WebhookFormState = {
@@ -35,12 +37,12 @@ type WebhookFormState = {
 };
 
 const EMPTY_FORM: WebhookFormState = {
-  name: "",
-  url: "",
-  method: "POST",
-  secret: "",
-  description: "",
-  headerRows: [{ key: "", value: "" }],
+  name: '',
+  url: '',
+  method: 'POST',
+  secret: '',
+  description: '',
+  headerRows: [{ key: '', value: '' }],
 };
 
 function formFromWebhook(webhook: CatalogWebhook): WebhookFormState {
@@ -48,8 +50,8 @@ function formFromWebhook(webhook: CatalogWebhook): WebhookFormState {
     name: webhook.name,
     url: webhook.url,
     method: webhook.method,
-    secret: "",
-    description: webhook.description || "",
+    secret: '',
+    description: webhook.description || '',
     headerRows: rowsFromHeaders(webhook.headers || {}),
   };
 }
@@ -66,21 +68,25 @@ function headersEqual(a: HeaderRow[], b: HeaderRow[]): boolean {
 export function CatalogWebhooksPage() {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
-  const canReadSecrets = hasPermission("secrets.read");
+  const canReadSecrets = hasPermission('secrets.read');
   const [form, setForm] = useState<WebhookFormState>(EMPTY_FORM);
   const [editing, setEditing] = useState<CatalogWebhook | null>(null);
   const [baseline, setBaseline] = useState<WebhookFormState>(EMPTY_FORM);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
-  const { data, isLoading, error: loadError } = useQuery({
-    queryKey: ["catalog-webhooks"],
+  const {
+    data,
+    isLoading,
+    error: loadError,
+  } = useQuery({
+    queryKey: ['catalog-webhooks'],
     queryFn: () => api.adminListWebhooks(),
   });
 
   const secretsQuery = useQuery({
-    queryKey: ["integration-secrets"],
+    queryKey: ['integration-secrets'],
     queryFn: () => api.adminListSecrets(),
     enabled: canReadSecrets,
   });
@@ -98,13 +104,13 @@ export function CatalogWebhooksPage() {
       }),
     onSuccess: () => {
       setForm(EMPTY_FORM);
-      setMessage("Webhook created.");
-      setError("");
-      queryClient.invalidateQueries({ queryKey: ["catalog-webhooks"] });
+      setMessage('Webhook created.');
+      setError('');
+      queryClient.invalidateQueries({ queryKey: ['catalog-webhooks'] });
     },
     onError: (err: Error) => {
       setError(err.message);
-      setMessage("");
+      setMessage('');
     },
   });
 
@@ -114,7 +120,8 @@ export function CatalogWebhooksPage() {
       if (form.name !== baseline.name) patch.name = form.name;
       if (form.url !== baseline.url) patch.url = form.url;
       if (form.method !== baseline.method) patch.method = form.method;
-      if (form.description !== baseline.description) patch.description = form.description || undefined;
+      if (form.description !== baseline.description)
+        patch.description = form.description || undefined;
       if (form.secret) patch.secret = form.secret;
       if (!headersEqual(form.headerRows, baseline.headerRows)) {
         patch.headers = headersFromRows(form.headerRows);
@@ -125,26 +132,26 @@ export function CatalogWebhooksPage() {
       setEditing(null);
       setForm(EMPTY_FORM);
       setBaseline(EMPTY_FORM);
-      setMessage("Webhook updated.");
-      setError("");
-      queryClient.invalidateQueries({ queryKey: ["catalog-webhooks"] });
+      setMessage('Webhook updated.');
+      setError('');
+      queryClient.invalidateQueries({ queryKey: ['catalog-webhooks'] });
     },
     onError: (err: Error) => {
       setError(err.message);
-      setMessage("");
+      setMessage('');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.adminDeleteWebhook(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-webhooks"] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-webhooks'] });
       setPendingDelete(null);
     },
   });
 
   usePageHeader({
-    breadcrumbs: [{ label: "Integrations" }, { label: "Webhooks" }],
+    breadcrumbs: [{ label: 'Integrations' }, { label: 'Webhooks' }],
   });
 
   function startEdit(webhook: CatalogWebhook) {
@@ -152,15 +159,15 @@ export function CatalogWebhooksPage() {
     setEditing(webhook);
     setForm(initial);
     setBaseline(initial);
-    setError("");
-    setMessage("");
+    setError('');
+    setMessage('');
   }
 
   function cancelEdit() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setBaseline(EMPTY_FORM);
-    setError("");
+    setError('');
   }
 
   function onSubmit(event: FormEvent) {
@@ -169,7 +176,7 @@ export function CatalogWebhooksPage() {
       updateMutation.mutate();
     } else {
       if (!form.url.trim()) {
-        setError("URL is required");
+        setError('URL is required');
         return;
       }
       createMutation.mutate();
@@ -184,13 +191,16 @@ export function CatalogWebhooksPage() {
   }
 
   function addHeaderRow() {
-    setForm((prev) => ({ ...prev, headerRows: [...prev.headerRows, { key: "", value: "" }] }));
+    setForm((prev) => ({ ...prev, headerRows: [...prev.headerRows, { key: '', value: '' }] }));
   }
 
   function removeHeaderRow(index: number) {
     setForm((prev) => ({
       ...prev,
-      headerRows: prev.headerRows.length <= 1 ? [{ key: "", value: "" }] : prev.headerRows.filter((_, i) => i !== index),
+      headerRows:
+        prev.headerRows.length <= 1
+          ? [{ key: '', value: '' }]
+          : prev.headerRows.filter((_, i) => i !== index),
     }));
   }
 
@@ -217,18 +227,16 @@ export function CatalogWebhooksPage() {
       {error ? <p className="error">{error}</p> : null}
 
       <p className="catalog-browse-intro">
-        Configure reusable webhook destinations, then attach them to catalog items. Header
-        values can reference stored secrets as{" "}
-        <code className="code-inline">{"{{secret:name}}"}</code>
+        Configure reusable webhook destinations, then attach them to catalog items. Header values
+        can reference stored secrets as <code className="code-inline">{'{{secret:name}}'}</code>
         {canReadSecrets ? (
           <>
-            . Manage secrets under{" "}
-            <Link to="/integrations/secrets">Integrations → Secrets</Link>
+            . Manage secrets under <Link to="/integrations/secrets">Integrations → Secrets</Link>
           </>
         ) : null}
         .
       </p>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table>
           <thead>
             <tr>
@@ -251,14 +259,19 @@ export function CatalogWebhooksPage() {
               webhooks.map((webhook) => {
                 const headerCount = Object.keys(webhook.headers || {}).length;
                 return (
-                  <tr key={webhook.sys_id} className={editing?.sys_id === webhook.sys_id ? "catalog-row-active" : undefined}>
+                  <tr
+                    key={webhook.sys_id}
+                    className={
+                      editing?.sys_id === webhook.sys_id ? 'catalog-row-active' : undefined
+                    }
+                  >
                     <td>{webhook.name}</td>
                     <td>
                       <code className="code-inline">{webhook.url}</code>
                     </td>
                     <td>{webhook.method}</td>
-                    <td>{headerCount ? `${headerCount}` : "—"}</td>
-                    <td>{webhook.active ? "Yes" : "No"}</td>
+                    <td>{headerCount ? `${headerCount}` : '—'}</td>
+                    <td>{webhook.active ? 'Yes' : 'No'}</td>
                     <td>
                       <div className="catalog-row-actions">
                         <button
@@ -291,7 +304,7 @@ export function CatalogWebhooksPage() {
         <form onSubmit={onSubmit} className="catalog-builder-form">
           <div className="section-header-row">
             <h2 className="section-title" style={{ marginBottom: 0 }}>
-              {isEditing ? `Edit: ${editing.name}` : "New Webhook"}
+              {isEditing ? `Edit: ${editing.name}` : 'New Webhook'}
             </h2>
             <div className="catalog-form-actions" style={{ margin: 0 }}>
               {isEditing ? (
@@ -299,12 +312,8 @@ export function CatalogWebhooksPage() {
                   Cancel
                 </button>
               ) : null}
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={!isDirty || isPending}
-              >
-                {isEditing ? "Save" : "Create"}
+              <button type="submit" className="btn btn-primary" disabled={!isDirty || isPending}>
+                {isEditing ? 'Save' : 'Create'}
               </button>
             </div>
           </div>
@@ -348,7 +357,7 @@ export function CatalogWebhooksPage() {
                 id="wh-secret"
                 value={form.secret}
                 onChange={(e) => setForm({ ...form, secret: e.target.value })}
-                placeholder={isEditing ? "(leave blank to keep current)" : ""}
+                placeholder={isEditing ? '(leave blank to keep current)' : ''}
               />
             </div>
             <div className="form-group">
@@ -366,11 +375,11 @@ export function CatalogWebhooksPage() {
               <label>Custom headers</label>
               <FieldTooltip ariaLabel="Header value secrets">
                 <p>
-                  Use <code>{"{{secret:name}}"}</code> in a value to inject a stored secret at
+                  Use <code>{'{{secret:name}}'}</code> in a value to inject a stored secret at
                   delivery time.
                 </p>
                 {canReadSecrets && availableSecrets.length ? (
-                  <p>Available: {availableSecrets.map((s) => s.name).join(", ")}</p>
+                  <p>Available: {availableSecrets.map((s) => s.name).join(', ')}</p>
                 ) : null}
               </FieldTooltip>
             </span>
@@ -381,13 +390,13 @@ export function CatalogWebhooksPage() {
                     aria-label={`Header name ${index + 1}`}
                     placeholder="Authorization"
                     value={row.key}
-                    onChange={(e) => updateHeaderRow(index, "key", e.target.value)}
+                    onChange={(e) => updateHeaderRow(index, 'key', e.target.value)}
                   />
                   <input
                     aria-label={`Header value ${index + 1}`}
                     placeholder="Bearer {{secret:aap_token}}"
                     value={row.value}
-                    onChange={(e) => updateHeaderRow(index, "value", e.target.value)}
+                    onChange={(e) => updateHeaderRow(index, 'value', e.target.value)}
                   />
                   <button
                     type="button"
@@ -413,7 +422,7 @@ export function CatalogWebhooksPage() {
         message={
           pendingDelete
             ? `Are you sure you want to permanently delete "${pendingDelete.label}"? This action cannot be undone.`
-            : ""
+            : ''
         }
         onConfirm={() => {
           if (pendingDelete) deleteMutation.mutate(pendingDelete.id);

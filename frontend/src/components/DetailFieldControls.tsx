@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
-import { useUserPreferences } from "../settings/UserPreferencesContext";
-import type { ColorScheme, LayoutDensity } from "../settings/userPreferences";
-import { formatDetailValue } from "../utils/formatDisplayValue";
-import { LockIcon } from "./DetailIcons";
+import type { ReactNode } from 'react';
+import { useUserPreferences } from '../settings/UserPreferencesContext';
+import type { ColorScheme, LayoutDensity } from '../settings/userPreferences';
+import { formatDetailValue } from '../utils/formatDisplayValue';
+import { LockIcon } from './DetailIcons';
 
 interface SegmentedPreferenceSelectorProps<T extends string> {
   value: T;
@@ -37,7 +37,7 @@ export function SegmentedPreferenceSelector<T extends string>({
             role="radio"
             aria-checked={value === option.value}
             className={`layout-density-option${
-              value === option.value ? " layout-density-option--active" : ""
+              value === option.value ? ' layout-density-option--active' : ''
             }`}
             onClick={() => onChange(option.value)}
           >
@@ -50,8 +50,8 @@ export function SegmentedPreferenceSelector<T extends string>({
 }
 
 const LAYOUT_DENSITY_OPTIONS: { value: LayoutDensity; label: string }[] = [
-  { value: "comfortable", label: "Comfortable" },
-  { value: "compact", label: "Compact" },
+  { value: 'comfortable', label: 'Comfortable' },
+  { value: 'compact', label: 'Compact' },
 ];
 
 interface LayoutDensitySelectorProps {
@@ -65,7 +65,7 @@ export function LayoutDensitySelector({
   value,
   onChange,
   idPrefix,
-  label = "Layout",
+  label = 'Layout',
 }: LayoutDensitySelectorProps) {
   return (
     <SegmentedPreferenceSelector
@@ -79,9 +79,9 @@ export function LayoutDensitySelector({
 }
 
 const COLOR_SCHEME_OPTIONS: { value: ColorScheme; label: string }[] = [
-  { value: "dark", label: "Dark" },
-  { value: "light", label: "Light" },
-  { value: "system", label: "System" },
+  { value: 'dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
 ];
 
 interface ColorSchemeSelectorProps {
@@ -95,7 +95,7 @@ export function ColorSchemeSelector({
   value,
   onChange,
   idPrefix,
-  label = "Theme",
+  label = 'Theme',
 }: ColorSchemeSelectorProps) {
   return (
     <SegmentedPreferenceSelector
@@ -135,8 +135,6 @@ export function ToggleSwitch({ id, checked, onChange, label, icon }: ToggleSwitc
   );
 }
 
-export { formatDetailValue } from "../utils/formatDisplayValue";
-
 interface ReadOnlyFieldInputProps {
   id: string;
   label: string;
@@ -158,10 +156,7 @@ export function ReadOnlyFieldInput({
   const display = formatDetailValue(value, { fieldKey, dateDisplayFormat });
 
   return (
-    <div
-      className="form-group form-group--readonly"
-      style={{ marginBottom: 0, gridColumn }}
-    >
+    <div className="form-group form-group--readonly" style={{ marginBottom: 0, gridColumn }}>
       <label htmlFor={id}>{label}</label>
       <div className="readonly-input-wrap">
         {multiline ? (
@@ -187,25 +182,11 @@ interface DetailFieldGroupProps {
 export function DetailFieldGroup({ title, dividerTop, children, style }: DetailFieldGroupProps) {
   return (
     <div
-      className={`detail-field-group${dividerTop ? " detail-field-group--divider-top" : ""}`}
+      className={`detail-field-group${dividerTop ? ' detail-field-group--divider-top' : ''}`}
       style={style}
     >
       {title ? <h3 className="detail-field-group-title">{title}</h3> : null}
       <div className="detail-grid">{children}</div>
     </div>
   );
-}
-
-export function refSysId(field: unknown): string {
-  if (!field) return "";
-  if (typeof field === "object" && field !== null && "value" in field) {
-    return String((field as { value: string }).value);
-  }
-  return String(field);
-}
-
-export function resolveUserLabel(field: unknown, userLabels: Record<string, string>): string {
-  const sysId = refSysId(field);
-  if (!sysId) return "—";
-  return userLabels[sysId] || sysId;
 }

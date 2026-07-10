@@ -1,16 +1,16 @@
-import logging
 import json
+import logging
 from contextlib import asynccontextmanager
 
 from sqlalchemy import select, text
 
-from app.auth.security import hash_password
 from app import db
 from app.api.flake.attachment import (
     purge_orphan_attachments,
     purge_stale_attachment_files,
     resolve_attachments_path,
 )
+from app.auth.security import hash_password
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
@@ -19,15 +19,14 @@ from app.models import (
     ChangeRequest,
     ChangeTask,
     CmdbCi,
-    CmdbRelCi,
     CmdbRelType,
     Incident,
     NumberSequence,
     OAuthClient,
     Problem,
     ProblemTask,
-    ScRequest,
     ScReqItem,
+    ScRequest,
     ScTask,
     ServiceCatalog,
     ServiceCatalogItem,
@@ -35,8 +34,8 @@ from app.models import (
     SysGroupRole,
     SysRole,
     SysUser,
-    SysUserGroup,
     SysUserGrMember,
+    SysUserGroup,
 )
 from app.utils.ids import new_sys_id
 
@@ -131,10 +130,7 @@ async def _migrate_legacy_item_webhooks(conn) -> None:
         )
     )
     await conn.execute(
-        text(
-            "ALTER TABLE sc_cat_item_webhook "
-            "ADD COLUMN IF NOT EXISTS webhook VARCHAR(32)"
-        )
+        text("ALTER TABLE sc_cat_item_webhook " "ADD COLUMN IF NOT EXISTS webhook VARCHAR(32)")
     )
 
     rows = await conn.execute(
@@ -166,10 +162,7 @@ async def _migrate_legacy_item_webhooks(conn) -> None:
             },
         )
         await conn.execute(
-            text(
-                "UPDATE sc_cat_item_webhook SET webhook = :webhook_id "
-                "WHERE sys_id = :sys_id"
-            ),
+            text("UPDATE sc_cat_item_webhook SET webhook = :webhook_id " "WHERE sys_id = :sys_id"),
             {"webhook_id": webhook_id, "sys_id": row["sys_id"]},
         )
         migrated += 1
@@ -216,9 +209,7 @@ async def run_migrations():
         for table in AUDIT_USERNAME_TABLES:
             for column in ("sys_created_by", "sys_updated_by"):
                 await conn.execute(
-                    text(
-                        f'ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE VARCHAR(128)'
-                    )
+                    text(f'ALTER TABLE "{table}" ALTER COLUMN "{column}" TYPE VARCHAR(128)')
                 )
 
 
@@ -228,7 +219,8 @@ async def backfill_audit_usernames():
             for column in ("sys_created_by", "sys_updated_by"):
                 await conn.execute(
                     text(
-                        f'UPDATE "{table}" AS t SET "{column}" = u.user_name '
+                        # table/column come from a fixed allowlist, not user input
+                        f'UPDATE "{table}" AS t SET "{column}" = u.user_name '  # noqa: S608
                         f'FROM sys_user AS u WHERE t."{column}" = u.sys_id'
                     )
                 )
@@ -238,7 +230,7 @@ async def backfill_audit_usernames():
 async def backfill_owners():
     async with db.async_session_factory() as session:
         updated = False
-        for table, model in RBAC_BACKFILL_MODELS.items():
+        for _table, model in RBAC_BACKFILL_MODELS.items():
             result = await session.execute(
                 select(model, SysUser.sys_id)
                 .join(SysUser, SysUser.user_name == model.sys_created_by)
@@ -269,9 +261,7 @@ async def ensure_rbac_roles():
             missing = [p for p in PLATFORM_ADMIN_PERMISSIONS if p not in current]
             if missing:
                 role.permissions = current + missing
-                logger.info(
-                    "Added permissions to platform_admin: %s", ", ".join(missing)
-                )
+                logger.info("Added permissions to platform_admin: %s", ", ".join(missing))
 
         admin_group = (
             await session.execute(select(SysUserGroup).where(SysUserGroup.name == "admin"))
@@ -411,7 +401,9 @@ async def ensure_reference_data():
 
 async def seed_data():
     async with db.async_session_factory() as session:
-        result = await session.execute(select(SysUser).where(SysUser.user_name == settings.admin_username))
+        result = await session.execute(
+            select(SysUser).where(SysUser.user_name == settings.admin_username)
+        )
         if result.scalar_one_or_none():
             await ensure_rbac_roles()
             await backfill_audit_usernames()

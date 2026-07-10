@@ -7,9 +7,9 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react";
-import { api } from "../api/client";
-import { useAuth } from "../auth/AuthContext";
+} from 'react';
+import { api } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import {
   applyColorScheme,
   applyLayoutDensity,
@@ -22,7 +22,7 @@ import {
   type DateDisplayFormat,
   type LayoutDensity,
   type UserPreferences,
-} from "./userPreferences";
+} from './userPreferences';
 
 interface UserPreferencesContextValue {
   preferences: UserPreferences;
@@ -106,7 +106,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         // Keep optimistic local state on failure.
       }
     },
-    [user]
+    [user],
   );
 
   const setDateDisplayFormat = useCallback(
@@ -117,7 +117,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [persistPreferences]
+    [persistPreferences],
   );
 
   const setLayoutDensity = useCallback(
@@ -128,7 +128,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [persistPreferences]
+    [persistPreferences],
   );
 
   const setSidebarExpanded = useCallback(
@@ -139,7 +139,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [persistPreferences]
+    [persistPreferences],
   );
 
   const setColorScheme = useCallback(
@@ -150,7 +150,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
         return next;
       });
     },
-    [persistPreferences]
+    [persistPreferences],
   );
 
   const value = useMemo(
@@ -173,7 +173,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       setLayoutDensity,
       setSidebarExpanded,
       setColorScheme,
-    ]
+    ],
   );
 
   return (

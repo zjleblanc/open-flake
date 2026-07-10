@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
-import { api, getRecordPermissions, STATE_LABELS, stateBadge } from "../api/client";
-import { DetailSection } from "../components/DetailSection";
-import { usePageHeader } from "../components/PageHeaderContext";
-import { OverviewIcon } from "../components/DetailIcons";
-import {
-  DetailFieldGroup,
-  ReadOnlyFieldInput,
-} from "../components/DetailFieldControls";
-import { RecordAttachmentsSection } from "../components/RecordAttachmentsSection";
-import { RecordCommentsSection } from "../components/RecordCommentsSection";
-import { RecordDetailHeaderActions } from "../components/RecordDetailHeaderActions";
-import { EmptyValue } from "../components/EmptyValue";
-import "../components/Layout.css";
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { api, getRecordPermissions, STATE_LABELS, stateBadge } from '../api/client';
+import { DetailSection } from '../components/DetailSection';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { OverviewIcon } from '../components/DetailIcons';
+import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
+import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
+import { RecordCommentsSection } from '../components/RecordCommentsSection';
+import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
+import { EmptyValue } from '../components/EmptyValue';
+import '../components/Layout.css';
 
 export interface DetailFieldConfig {
   key: string;
@@ -31,8 +28,8 @@ interface RecordDetailProps {
 }
 
 function formatReadOnlyValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "object" && value !== null && "value" in value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'object' && value !== null && 'value' in value) {
     return String((value as { value: string }).value);
   }
   return String(value);
@@ -43,14 +40,14 @@ export function RecordDetailPage({
   title,
   listPath,
   fields,
-  sectionTitle = "Details",
+  sectionTitle = 'Details',
 }: RecordDetailProps) {
   const { sysId } = useParams<{ sysId: string }>();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
-    queryKey: ["record", resource, sysId],
+    queryKey: ['record', resource, sysId],
     queryFn: () => api.getRecord(resource, sysId!),
     enabled: !!sysId,
   });
@@ -60,7 +57,7 @@ export function RecordDetailPage({
     const nextForm: Record<string, string> = {};
     fields.forEach((field) => {
       if (!field.readOnly) {
-        nextForm[field.key] = data[field.key] || "";
+        nextForm[field.key] = data[field.key] || '';
       }
     });
     setForm(nextForm);
@@ -71,7 +68,7 @@ export function RecordDetailPage({
     const nextForm: Record<string, string> = {};
     fields.forEach((field) => {
       if (!field.readOnly) {
-        nextForm[field.key] = data[field.key] || "";
+        nextForm[field.key] = data[field.key] || '';
       }
     });
     return nextForm;
@@ -80,21 +77,20 @@ export function RecordDetailPage({
   const isDirty = useMemo(() => {
     for (const field of fields) {
       if (field.readOnly) continue;
-      if ((form[field.key] ?? "") !== (savedForm[field.key] ?? "")) return true;
+      if ((form[field.key] ?? '') !== (savedForm[field.key] ?? '')) return true;
     }
     return false;
   }, [form, savedForm, fields]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: Record<string, unknown>) =>
-      api.updateRecord(resource, sysId!, payload),
+    mutationFn: (payload: Record<string, unknown>) => api.updateRecord(resource, sysId!, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["record", resource, sysId] });
-      queryClient.invalidateQueries({ queryKey: ["records", resource] });
+      queryClient.invalidateQueries({ queryKey: ['record', resource, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['records', resource] });
     },
   });
 
-  const recordTitle = data?.number || data?.name || data?.sys_id || "Loading…";
+  const recordTitle = data?.number || data?.name || data?.sys_id || 'Loading…';
   const permissions = data ? getRecordPermissions(data) : null;
   const canWrite = !!permissions?.write;
   const editableFields = fields.filter((field) => canWrite && !field.readOnly);
@@ -104,22 +100,19 @@ export function RecordDetailPage({
   const headerBreadcrumbs = useMemo(
     () => [
       { label: title, to: listPath },
-      { label: isLoading || !data ? "Loading…" : recordTitle },
+      { label: isLoading || !data ? 'Loading…' : recordTitle },
     ],
-    [title, listPath, isLoading, data, recordTitle]
+    [title, listPath, isLoading, data, recordTitle],
   );
-  const headerBadge = useMemo(
-    () => {
-      if (isLoading || !data) return undefined;
-      if (!data.state) return <EmptyValue />;
-      return (
-        <span className={`badge ${stateBadge(data.state)}`}>
-          {STATE_LABELS[data.state] || data.state}
-        </span>
-      );
-    },
-    [isLoading, data]
-  );
+  const headerBadge = useMemo(() => {
+    if (isLoading || !data) return undefined;
+    if (!data.state) return <EmptyValue />;
+    return (
+      <span className={`badge ${stateBadge(data.state)}`}>
+        {STATE_LABELS[data.state] || data.state}
+      </span>
+    );
+  }, [isLoading, data]);
   const headerActions = useMemo(
     () =>
       !isLoading && data && sysId ? (
@@ -132,7 +125,7 @@ export function RecordDetailPage({
           canWrite={canWrite}
         />
       ) : undefined,
-    [isLoading, data, sysId, resource, recordTitle, listPath, canWrite]
+    [isLoading, data, sysId, resource, recordTitle, listPath, canWrite],
   );
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
@@ -150,7 +143,7 @@ export function RecordDetailPage({
               {lockedFields.map((field) => {
                 const raw = data[field.key];
                 const display =
-                  field.type === "select-state"
+                  field.type === 'select-state'
                     ? STATE_LABELS[String(raw)] || formatReadOnlyValue(raw)
                     : raw;
 
@@ -161,8 +154,8 @@ export function RecordDetailPage({
                     fieldKey={field.key}
                     label={field.label}
                     value={display}
-                    multiline={field.type === "textarea"}
-                    gridColumn={field.type === "textarea" ? "1 / -1" : undefined}
+                    multiline={field.type === 'textarea'}
+                    gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
                   />
                 );
               })}
@@ -177,14 +170,14 @@ export function RecordDetailPage({
                   key={field.key}
                   style={{
                     marginBottom: 0,
-                    gridColumn: field.type === "textarea" ? "1 / -1" : undefined,
+                    gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
                   }}
                 >
                   <label htmlFor={`field-${field.key}`}>{field.label}</label>
-                  {field.type === "select-state" ? (
+                  {field.type === 'select-state' ? (
                     <select
                       id={`field-${field.key}`}
-                      value={form[field.key] ?? ""}
+                      value={form[field.key] ?? ''}
                       onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     >
                       {Object.entries(STATE_LABELS).map(([val, label]) => (
@@ -193,18 +186,18 @@ export function RecordDetailPage({
                         </option>
                       ))}
                     </select>
-                  ) : field.type === "textarea" ? (
+                  ) : field.type === 'textarea' ? (
                     <textarea
                       id={`field-${field.key}`}
                       rows={3}
-                      value={form[field.key] ?? ""}
+                      value={form[field.key] ?? ''}
                       onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     />
                   ) : (
                     <input
                       id={`field-${field.key}`}
                       type="text"
-                      value={form[field.key] ?? ""}
+                      value={form[field.key] ?? ''}
                       onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                     />
                   )}
@@ -215,13 +208,13 @@ export function RecordDetailPage({
         </div>
 
         {canWrite && editableFields.length > 0 && (
-          <div style={{ marginTop: "1.25rem" }}>
+          <div style={{ marginTop: '1.25rem' }}>
             <button
               className="btn btn-primary"
               onClick={() => updateMutation.mutate(form)}
               disabled={!isDirty || updateMutation.isPending}
             >
-              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         )}

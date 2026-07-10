@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react";
-import type { BreadcrumbItem } from "./Breadcrumbs";
+} from 'react';
+import type { BreadcrumbItem } from './Breadcrumbs';
 
 export interface PageHeaderState {
   breadcrumbs: BreadcrumbItem[];
@@ -50,13 +50,13 @@ export function PageHeaderProvider({ children }: { children: ReactNode }) {
 
   const clearPageHeader = useCallback(() => {
     setHeader((prev) =>
-      prev.breadcrumbs.length === 0 && !prev.badge && !prev.actions ? prev : EMPTY_HEADER
+      prev.breadcrumbs.length === 0 && !prev.badge && !prev.actions ? prev : EMPTY_HEADER,
     );
   }, []);
 
   const value = useMemo(
     () => ({ header, setPageHeader, clearPageHeader }),
-    [header, setPageHeader, clearPageHeader]
+    [header, setPageHeader, clearPageHeader],
   );
 
   return <PageHeaderContext.Provider value={value}>{children}</PageHeaderContext.Provider>;
@@ -64,7 +64,7 @@ export function PageHeaderProvider({ children }: { children: ReactNode }) {
 
 export function usePageHeaderContext(): PageHeaderContextValue {
   const ctx = useContext(PageHeaderContext);
-  if (!ctx) throw new Error("usePageHeaderContext must be used within PageHeaderProvider");
+  if (!ctx) throw new Error('usePageHeaderContext must be used within PageHeaderProvider');
   return ctx;
 }
 

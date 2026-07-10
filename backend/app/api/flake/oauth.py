@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.security import (
-    hash_password,
     new_oauth_token,
     new_refresh_token,
     verify_password,
@@ -30,7 +29,7 @@ async def oauth_token(
     db: AsyncSession = Depends(get_db),
 ):
     expires_in = settings.oauth_token_expire_seconds
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in)
+    expires_at = datetime.now(UTC) + timedelta(seconds=expires_in)
 
     if grant_type == "password":
         if not username or not password:
@@ -70,7 +69,9 @@ async def oauth_token(
 
     if grant_type == "client_credentials":
         if not client_id or not client_secret:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, "client_id and client_secret required")
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "client_id and client_secret required"
+            )
         client_result = await db.execute(
             select(OAuthClient).where(
                 OAuthClient.client_id == client_id,
@@ -101,10 +102,10 @@ async def oauth_token(
     if grant_type == "refresh_token":
         if not refresh_token:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "refresh_token required")
-        result = await db.execute(
+        token_result = await db.execute(
             select(OAuthToken).where(OAuthToken.refresh_token == refresh_token)
         )
-        old = result.scalar_one_or_none()
+        old = token_result.scalar_one_or_none()
         if not old:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid refresh token")
         access = new_oauth_token()

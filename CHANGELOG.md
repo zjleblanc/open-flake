@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-07-10 — Pre-commit lint pipeline and inner-loop quality guardrails
+
+### Added
+
+- Pre-commit hooks for repo hygiene, Ruff (lint + format), mypy, ESLint, Prettier, TypeScript (`tsc`), shellcheck, and gitleaks.
+- Root `Makefile` with `setup`, `lint`, `format`, `test`, and `check` targets for one-command local quality gates.
+- Frontend ESLint flat config and Prettier; npm scripts for `lint`, `format`, and `typecheck`.
+- Backend Ruff and mypy configuration plus `ruff`, `mypy`, and `pre-commit` in the `dev` extras.
+- `.editorconfig`, `.gitleaks.toml`, and development docs for the new setup flow.
+
+### Changed
+
+- Backend and frontend code cleaned to satisfy strict mypy (`warn_return_any`) and ESLint/Prettier baselines.
+- Shell scripts (`stop-backend.sh`, `publish-images.sh`) tightened for shellcheck.
+
 ## 2026-07-10 — Service catalog with webhooks, secrets, and consistent UI
 
 ### Added

@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../api/client";
-import { useUserPreferences } from "../settings/UserPreferencesContext";
+import { useEffect, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../api/client';
+import { useUserPreferences } from '../settings/UserPreferencesContext';
 import {
   formatFileSize,
   getPreviewKind,
   type AttachmentRecord,
   type PreviewKind,
-} from "../utils/attachmentUtils";
-import { formatDateValue } from "../utils/formatDisplayValue";
-import { AttachmentsIcon } from "./DetailIcons";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { ExpandableDetailSection } from "./ExpandableDetailSection";
+} from '../utils/attachmentUtils';
+import { formatDateValue } from '../utils/formatDisplayValue';
+import { AttachmentsIcon } from './DetailIcons';
+import { ConfirmDialog } from './ConfirmDialog';
+import { ExpandableDetailSection } from './ExpandableDetailSection';
 
 interface RecordAttachmentsSectionProps {
   resource: string;
@@ -41,7 +41,7 @@ function AttachmentPreview({ resource, sysId, attachment, previewKind }: Attachm
         const blob = await api.fetchAttachmentBlob(resource, sysId, attachment.sys_id);
         if (cancelled) return;
 
-        if (previewKind === "text") {
+        if (previewKind === 'text') {
           const text = await blob.text();
           if (!cancelled) {
             setTextContent(text.slice(0, 8000));
@@ -74,7 +74,7 @@ function AttachmentPreview({ resource, sysId, attachment, previewKind }: Attachm
     return <p className="text-muted text-sm attachment-preview-error">Preview unavailable.</p>;
   }
 
-  if (previewKind === "text") {
+  if (previewKind === 'text') {
     if (textContent === null) {
       return <p className="text-muted text-sm">Loading preview…</p>;
     }
@@ -85,7 +85,7 @@ function AttachmentPreview({ resource, sysId, attachment, previewKind }: Attachm
     return <p className="text-muted text-sm">Loading preview…</p>;
   }
 
-  if (previewKind === "image") {
+  if (previewKind === 'image') {
     return (
       <img
         src={previewUrl}
@@ -96,15 +96,17 @@ function AttachmentPreview({ resource, sysId, attachment, previewKind }: Attachm
     );
   }
 
-  if (previewKind === "pdf") {
-    return <iframe src={previewUrl} title={attachment.file_name} className="attachment-pdf-preview" />;
+  if (previewKind === 'pdf') {
+    return (
+      <iframe src={previewUrl} title={attachment.file_name} className="attachment-pdf-preview" />
+    );
   }
 
-  if (previewKind === "audio") {
+  if (previewKind === 'audio') {
     return <audio controls src={previewUrl} className="attachment-media-preview" />;
   }
 
-  if (previewKind === "video") {
+  if (previewKind === 'video') {
     return <video controls src={previewUrl} className="attachment-media-preview" />;
   }
 
@@ -115,36 +117,33 @@ export function RecordAttachmentsSection({
   resource,
   sysId,
   canManageAttachments,
-  sectionId = "ci-section-attachments",
+  sectionId = 'ci-section-attachments',
 }: RecordAttachmentsSectionProps) {
   const queryClient = useQueryClient();
   const { dateDisplayFormat } = useUserPreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedPreviewId, setExpandedPreviewId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(
-    null
-  );
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   const { data: attachments = [], isLoading } = useQuery({
-    queryKey: ["attachments", resource, sysId],
+    queryKey: ['attachments', resource, sysId],
     queryFn: () => api.listAttachments(resource, sysId),
   });
 
   const uploadMutation = useMutation({
     mutationFn: (file: File) => api.uploadAttachment(resource, sysId, file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["attachments", resource, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['attachments', resource, sysId] });
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = '';
       }
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (attachmentSysId: string) =>
-      api.deleteAttachment(resource, sysId, attachmentSysId),
+    mutationFn: (attachmentSysId: string) => api.deleteAttachment(resource, sysId, attachmentSysId),
     onSuccess: (_data, attachmentSysId) => {
-      queryClient.invalidateQueries({ queryKey: ["attachments", resource, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['attachments', resource, sysId] });
       if (expandedPreviewId === attachmentSysId) {
         setExpandedPreviewId(null);
       }
@@ -152,7 +151,7 @@ export function RecordAttachmentsSection({
     },
   });
 
-  const countLabel = isLoading ? "…" : String(attachments.length);
+  const countLabel = isLoading ? '…' : String(attachments.length);
 
   return (
     <ExpandableDetailSection
@@ -163,14 +162,12 @@ export function RecordAttachmentsSection({
       count={countLabel}
     >
       {isLoading && <p className="empty-state">Loading attachments…</p>}
-      {!isLoading && attachments.length === 0 && (
-        <p className="empty-state">No attachments yet</p>
-      )}
+      {!isLoading && attachments.length === 0 && <p className="empty-state">No attachments yet</p>}
 
       <ul className="attachment-list">
         {attachments.map((attachment) => {
           const previewKind = getPreviewKind(attachment.content_type);
-          const isPreviewable = previewKind !== "none";
+          const isPreviewable = previewKind !== 'none';
           const isExpanded = expandedPreviewId === attachment.sys_id;
 
           return (
@@ -182,7 +179,7 @@ export function RecordAttachmentsSection({
                     {formatFileSize(attachment.size_bytes)}
                     {attachment.sys_created_on
                       ? ` · ${formatDateValue(attachment.sys_created_on, dateDisplayFormat)}`
-                      : ""}
+                      : ''}
                   </span>
                 </div>
                 <div className="attachment-item-actions">
@@ -190,11 +187,9 @@ export function RecordAttachmentsSection({
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
-                      onClick={() =>
-                        setExpandedPreviewId(isExpanded ? null : attachment.sys_id)
-                      }
+                      onClick={() => setExpandedPreviewId(isExpanded ? null : attachment.sys_id)}
                     >
-                      {isExpanded ? "Hide Preview" : "Preview"}
+                      {isExpanded ? 'Hide Preview' : 'Preview'}
                     </button>
                   )}
                   {canManageAttachments && (
@@ -250,11 +245,11 @@ export function RecordAttachmentsSection({
             disabled={uploadMutation.isPending}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploadMutation.isPending ? "Uploading…" : "Upload File"}
+            {uploadMutation.isPending ? 'Uploading…' : 'Upload File'}
           </button>
           {uploadMutation.isError && (
-            <p className="error text-sm" style={{ margin: "0.5rem 0 0" }}>
-              {(uploadMutation.error as Error).message || "Upload failed."}
+            <p className="error text-sm" style={{ margin: '0.5rem 0 0' }}>
+              {(uploadMutation.error as Error).message || 'Upload failed.'}
             </p>
           )}
         </div>
@@ -266,7 +261,7 @@ export function RecordAttachmentsSection({
         message={
           pendingDelete
             ? `Are you sure you want to permanently delete "${pendingDelete.label}"? This action cannot be undone.`
-            : ""
+            : ''
         }
         onConfirm={() => {
           if (pendingDelete) deleteMutation.mutate(pendingDelete.id);

@@ -1,19 +1,19 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { api, type CatalogWebhook, type CatalogWebhookAttachment } from "../api/client";
-import { FieldTooltip } from "./FieldTooltip";
-import { Portal } from "./Portal";
-import "../pages/CatalogPages.css";
-import "./Layout.css";
+import { FormEvent, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { api, type CatalogWebhook, type CatalogWebhookAttachment } from '../api/client';
+import { FieldTooltip } from './FieldTooltip';
+import { Portal } from './Portal';
+import '../pages/CatalogPages.css';
+import './Layout.css';
 
-export type IntegrationKind = "webhook";
+export type IntegrationKind = 'webhook';
 
 const INTEGRATION_KINDS: { value: IntegrationKind; label: string; description: string }[] = [
   {
-    value: "webhook",
-    label: "Webhook",
-    description: "POST order/state events to a configured webhook destination.",
+    value: 'webhook',
+    label: 'Webhook',
+    description: 'POST order/state events to a configured webhook destination.',
   },
 ];
 
@@ -25,15 +25,15 @@ type AttachForm = {
 };
 
 const emptyForm = (): AttachForm => ({
-  kind: "webhook",
-  webhook: "",
-  trigger_on: "order",
-  payload_template: "",
+  kind: 'webhook',
+  webhook: '',
+  trigger_on: 'order',
+  payload_template: '',
 });
 
 function formatPreview(preview: Record<string, unknown> | string | undefined): string {
-  if (preview == null) return "";
-  if (typeof preview === "string") return preview;
+  if (preview == null) return '';
+  if (typeof preview === 'string') return preview;
   return JSON.stringify(preview, null, 2);
 }
 
@@ -66,7 +66,7 @@ function PayloadTemplateLabel({
 
 interface AttachIntegrationPopoverProps {
   open: boolean;
-  mode: "attach" | "edit";
+  mode: 'attach' | 'edit';
   itemId: string;
   attachment?: CatalogWebhookAttachment | null;
   onClose: () => void;
@@ -83,42 +83,42 @@ export function AttachIntegrationPopover({
 }: AttachIntegrationPopoverProps) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState<AttachForm>(emptyForm);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const webhooksQuery = useQuery({
-    queryKey: ["catalog-webhooks"],
+    queryKey: ['catalog-webhooks'],
     queryFn: () => api.adminListWebhooks(),
     enabled: open,
   });
 
   const previewQuery = useQuery({
-    queryKey: ["catalog-payload-preview", form.payload_template],
+    queryKey: ['catalog-payload-preview', form.payload_template],
     queryFn: () => api.adminPayloadPreview(form.payload_template || undefined),
-    enabled: open && form.kind === "webhook",
+    enabled: open && form.kind === 'webhook',
   });
 
   useEffect(() => {
     if (!open) return;
-    if (mode === "edit" && attachment) {
+    if (mode === 'edit' && attachment) {
       setForm({
-        kind: "webhook",
+        kind: 'webhook',
         webhook: attachment.webhook,
-        trigger_on: attachment.trigger_on || "order",
-        payload_template: attachment.payload_template || "",
+        trigger_on: attachment.trigger_on || 'order',
+        payload_template: attachment.payload_template || '',
       });
     } else {
       setForm(emptyForm());
     }
-    setError("");
+    setError('');
   }, [open, mode, attachment]);
 
   useEffect(() => {
     if (!open) return;
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === 'Escape') onClose();
     }
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [open, onClose]);
 
   const attachMutation = useMutation({
@@ -130,8 +130,8 @@ export function AttachIntegrationPopover({
         active: true,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-item-webhooks", itemId] });
-      onSaved("Process attached.");
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-item-webhooks', itemId] });
+      onSaved('Process attached.');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -145,8 +145,8 @@ export function AttachIntegrationPopover({
         payload_template: form.payload_template || null,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["catalog-admin-item-webhooks", itemId] });
-      onSaved("Process updated.");
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-item-webhooks', itemId] });
+      onSaved('Process updated.');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
@@ -157,19 +157,19 @@ export function AttachIntegrationPopover({
   const webhooks: CatalogWebhook[] = webhooksQuery.data?.result || [];
   const templateVariables = previewQuery.data?.result.variables || [];
   const pending = attachMutation.isPending || updateMutation.isPending;
-  const title = mode === "edit" ? "Configure Process" : "Attach Process";
+  const title = mode === 'edit' ? 'Configure Process' : 'Attach Process';
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (form.kind !== "webhook") {
-      setError("Select a process type");
+    if (form.kind !== 'webhook') {
+      setError('Select a process type');
       return;
     }
     if (!form.webhook) {
-      setError("Select a webhook destination");
+      setError('Select a webhook destination');
       return;
     }
-    if (mode === "edit") {
+    if (mode === 'edit') {
       updateMutation.mutate();
     } else {
       attachMutation.mutate();
@@ -209,7 +209,7 @@ export function AttachIntegrationPopover({
               <select
                 id="integration-kind"
                 value={form.kind}
-                disabled={mode === "edit"}
+                disabled={mode === 'edit'}
                 onChange={(e) =>
                   setForm((prev) => ({
                     ...prev,
@@ -225,7 +225,7 @@ export function AttachIntegrationPopover({
               </select>
             </div>
 
-            {form.kind === "webhook" ? (
+            {form.kind === 'webhook' ? (
               <>
                 <div className="catalog-form-grid">
                   <div className="form-group">
@@ -233,21 +233,19 @@ export function AttachIntegrationPopover({
                     <select
                       id="integration-webhook"
                       value={form.webhook}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, webhook: e.target.value }))
-                      }
+                      onChange={(e) => setForm((prev) => ({ ...prev, webhook: e.target.value }))}
                     >
                       <option value="">Select configured webhook…</option>
                       {webhooks.map((webhook) => (
                         <option key={webhook.sys_id} value={webhook.sys_id}>
                           {webhook.name}
-                          {webhook.active === false ? " (inactive)" : ""}
+                          {webhook.active === false ? ' (inactive)' : ''}
                         </option>
                       ))}
                     </select>
                     {!webhooks.length ? (
                       <p className="catalog-help-text">
-                        No webhooks yet. Create one under{" "}
+                        No webhooks yet. Create one under{' '}
                         <Link to="/integrations/webhooks" onClick={onClose}>
                           Integrations → Webhooks
                         </Link>
@@ -260,9 +258,7 @@ export function AttachIntegrationPopover({
                     <select
                       id="integration-trigger"
                       value={form.trigger_on}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, trigger_on: e.target.value }))
-                      }
+                      onChange={(e) => setForm((prev) => ({ ...prev, trigger_on: e.target.value }))}
                     >
                       <option value="order">On order</option>
                       <option value="state_change">On state change</option>
@@ -306,9 +302,9 @@ export function AttachIntegrationPopover({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={pending || (form.kind === "webhook" && !webhooks.length)}
+                disabled={pending || (form.kind === 'webhook' && !webhooks.length)}
               >
-                {pending ? "Saving…" : mode === "edit" ? "Save" : "Attach"}
+                {pending ? 'Saving…' : mode === 'edit' ? 'Save' : 'Attach'}
               </button>
             </div>
           </form>

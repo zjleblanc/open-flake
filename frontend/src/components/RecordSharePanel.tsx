@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, getRecordPermissions, type RecordPermissions } from "../api/client";
-import { EmptyValue, isEmptyDisplayValue } from "./EmptyValue";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, getRecordPermissions, type RecordPermissions } from '../api/client';
+import { EmptyValue } from './EmptyValue';
+import { isEmptyDisplayValue } from '../utils/emptyDisplay';
+import { ConfirmDialog } from './ConfirmDialog';
 
 function refValue(field: unknown): string {
-  if (!field) return "";
-  if (typeof field === "object" && field !== null && "value" in field) {
+  if (!field) return '';
+  if (typeof field === 'object' && field !== null && 'value' in field) {
     return String((field as { value: string }).value);
   }
   return String(field);
@@ -14,11 +15,11 @@ function refValue(field: unknown): string {
 
 function formatPermissions(perms: RecordPermissions): string[] {
   const labels: string[] = [];
-  if (perms.write) labels.push("Write");
-  else if (perms.comment) labels.push("Comment");
-  else if (perms.read) labels.push("View");
-  if (perms.delete && perms.write) labels.push("Delete");
-  return labels.length > 0 ? labels : ["None"];
+  if (perms.write) labels.push('Write');
+  else if (perms.comment) labels.push('Comment');
+  else if (perms.read) labels.push('View');
+  if (perms.delete && perms.write) labels.push('Delete');
+  return labels.length > 0 ? labels : ['None'];
 }
 
 interface RecordSharePanelProps {
@@ -31,14 +32,12 @@ interface RecordSharePanelProps {
 export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSharePanelProps) {
   const queryClient = useQueryClient();
   const permissions = getRecordPermissions(record);
-  const [accessLevel, setAccessLevel] = useState<"view" | "comment">("view");
-  const [granteeType, setGranteeType] = useState<"user" | "group">("user");
-  const [granteeId, setGranteeId] = useState("");
+  const [accessLevel, setAccessLevel] = useState<'view' | 'comment'>('view');
+  const [granteeType, setGranteeType] = useState<'user' | 'group'>('user');
+  const [granteeId, setGranteeId] = useState('');
   const [owner, setOwner] = useState(refValue(record.owner));
   const [ownerGroup, setOwnerGroup] = useState(refValue(record.owner_group));
-  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(
-    null
-  );
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   useEffect(() => {
     setOwner(refValue(record.owner));
@@ -46,33 +45,33 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
   }, [record.owner, record.owner_group]);
 
   const { data: grants = [] } = useQuery({
-    queryKey: ["grants", resource, sysId],
+    queryKey: ['grants', resource, sysId],
     queryFn: () => api.listGrants(resource, sysId),
     enabled: canWrite,
   });
 
   const users = useQuery({
-    queryKey: ["records", "users"],
-    queryFn: () => api.listRecords("users"),
+    queryKey: ['records', 'users'],
+    queryFn: () => api.listRecords('users'),
   });
 
   const groups = useQuery({
-    queryKey: ["records", "groups"],
-    queryFn: () => api.listRecords("groups"),
+    queryKey: ['records', 'groups'],
+    queryFn: () => api.listRecords('groups'),
   });
 
   const userLabels = Object.fromEntries(
-    (users.data?.records || []).map((u) => [u.sys_id, u.user_name])
+    (users.data?.records || []).map((u) => [u.sys_id, u.user_name]),
   );
   const groupLabels = Object.fromEntries(
-    (groups.data?.records || []).map((g) => [g.sys_id, g.name])
+    (groups.data?.records || []).map((g) => [g.sys_id, g.name]),
   );
 
   const ownerMutation = useMutation({
     mutationFn: (payload: { owner?: string; owner_group?: string }) =>
       api.updateRecord(resource, sysId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["record", resource, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['record', resource, sysId] });
     },
   });
 
@@ -80,25 +79,25 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
     mutationFn: () =>
       api.createGrant(resource, sysId, {
         access_level: accessLevel,
-        user_sys_id: granteeType === "user" ? granteeId : undefined,
-        group_sys_id: granteeType === "group" ? granteeId : undefined,
+        user_sys_id: granteeType === 'user' ? granteeId : undefined,
+        group_sys_id: granteeType === 'group' ? granteeId : undefined,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["grants", resource, sysId] });
-      setGranteeId("");
+      queryClient.invalidateQueries({ queryKey: ['grants', resource, sysId] });
+      setGranteeId('');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (grantSysId: string) => api.deleteGrant(resource, sysId, grantSysId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["grants", resource, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['grants', resource, sysId] });
       setPendingDelete(null);
     },
   });
 
   const granteeOptions =
-    granteeType === "user"
+    granteeType === 'user'
       ? (users.data?.records || []).map((u) => ({ id: u.sys_id, label: u.user_name }))
       : (groups.data?.records || []).map((g) => ({ id: g.sys_id, label: g.name }));
 
@@ -161,8 +160,8 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
               disabled={ownerMutation.isPending}
               onClick={() =>
                 ownerMutation.mutate({
-                  owner: owner || "",
-                  owner_group: ownerGroup || "",
+                  owner: owner || '',
+                  owner_group: ownerGroup || '',
                 })
               }
             >
@@ -200,7 +199,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
                   (g.group_sys_id && groupLabels[g.group_sys_id]) ||
                   g.user_sys_id ||
                   g.group_sys_id;
-                const granteeKind = g.user_sys_id ? "User" : "Group";
+                const granteeKind = g.user_sys_id ? 'User' : 'Group';
                 return (
                   <li key={g.sys_id} className="sharing-grant-item">
                     <div className="sharing-grant-info">
@@ -234,7 +233,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
               <select
                 id={`grant-level-${sysId}`}
                 value={accessLevel}
-                onChange={(e) => setAccessLevel(e.target.value as "view" | "comment")}
+                onChange={(e) => setAccessLevel(e.target.value as 'view' | 'comment')}
               >
                 <option value="view">View</option>
                 <option value="comment">Comment</option>
@@ -246,8 +245,8 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
                 id={`grantee-type-${sysId}`}
                 value={granteeType}
                 onChange={(e) => {
-                  setGranteeType(e.target.value as "user" | "group");
-                  setGranteeId("");
+                  setGranteeType(e.target.value as 'user' | 'group');
+                  setGranteeId('');
                 }}
               >
                 <option value="user">User</option>
@@ -256,7 +255,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
             </div>
             <div className="form-group">
               <label htmlFor={`grantee-id-${sysId}`}>
-                {granteeType === "user" ? "User" : "Group"}
+                {granteeType === 'user' ? 'User' : 'Group'}
               </label>
               <select
                 id={`grantee-id-${sysId}`}
@@ -289,7 +288,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
         message={
           pendingDelete
             ? `Are you sure you want to remove access for "${pendingDelete.label}"?`
-            : ""
+            : ''
         }
         confirmLabel="Remove"
         onConfirm={() => {

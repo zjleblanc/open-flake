@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.table_service import create_record
 from app.models import ItemOptionNew, ServiceCatalogItem
 
-
 SUPPORTED_TYPES = {
     "string",
     "integer",

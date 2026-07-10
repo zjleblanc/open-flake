@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
-import type { DetailSectionAccent } from "./DetailSection";
+import type { ReactNode } from 'react';
+import type { DetailSectionAccent } from './DetailSection';
 
 interface ExpandableDetailSectionProps {
   id?: string;
@@ -16,7 +16,7 @@ export function ExpandableDetailSection({
   id,
   title,
   icon,
-  accent = "accent",
+  accent = 'accent',
   defaultOpen = false,
   count,
   children,
@@ -25,7 +25,7 @@ export function ExpandableDetailSection({
   return (
     <details
       id={id}
-      className={`property-panel property-panel--${accent}${className ? ` ${className}` : ""}`}
+      className={`property-panel property-panel--${accent}${className ? ` ${className}` : ''}`}
       open={defaultOpen || undefined}
     >
       <summary>

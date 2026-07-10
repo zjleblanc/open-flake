@@ -1,8 +1,14 @@
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import Boolean, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.flake.attachment import (
+    _assert_attachment_parent_access,
+    delete_attachments_for_parent,
+    remove_attachment,
+)
 from app.auth.deps import AuthContext
 from app.auth.rbac import (
     assert_can_create_record,
@@ -19,11 +25,6 @@ from app.domain.registry import (
     RBAC_RECORD_TABLES,
     REFERENCE_FIELDS,
     TABLE_MODELS,
-)
-from app.api.flake.attachment import (
-    _assert_attachment_parent_access,
-    delete_attachments_for_parent,
-    remove_attachment,
 )
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence, SysUser
@@ -62,14 +63,14 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             data[col.name] = val.isoformat()
         elif isinstance(val, bool):
             data[col.name] = "true" if val else "false"
-        elif isinstance(val, (dict, list)):
+        elif isinstance(val, dict | list):
             data[col.name] = val
         else:
             data[col.name] = str(val)
 
     if exclude_links:
         for field in refs:
-            if field in data and data[field]:
+            if data.get(field):
                 sys_id = data[field]
                 data[field] = {
                     "link": f"{settings.base_url}/api/flake/table/{_ref_table(field, table)}/{sys_id}",
@@ -179,16 +180,16 @@ async def _filter_platform_list(
     db: AsyncSession,
     auth: AuthContext,
     table: str,
-    records: list[Any],
+    records: Sequence[Any],
 ) -> list[Any]:
     if table not in PLATFORM_TABLES:
-        return records
+        return list(records)
     filtered = []
     for record in records:
         try:
             await assert_platform_action(db, auth, table, "read", record=record)
             filtered.append(record)
-        except Exception:
+        except Exception:  # noqa: S112 — skip unauthorized records during list filtering
             continue
     return filtered
 
@@ -263,7 +264,9 @@ async def list_records(
     out = []
     for r in records:
         record_dict = _model_to_dict(r, table, exclude_links)
-        out.append(await _enrich_with_permissions(db, auth, table, record_dict, include_permissions))
+        out.append(
+            await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
+        )
     return out, total
 
 
@@ -302,16 +305,7 @@ async def get_record_by_sys_id(
             await assert_record_action(db, auth, table, record, "read")
         elif table in PLATFORM_TABLES:
             await assert_platform_action(db, auth, table, "read", record=record)
-        elif table == "record_access_grant":
-            parent_table = getattr(record, "table_name", None)
-            parent_id = getattr(record, "record_sys_id", None)
-            if parent_table and parent_id:
-                parent_model = TABLE_MODELS.get(parent_table)
-                if parent_model:
-                    parent = await db.get(parent_model, parent_id)
-                    if parent:
-                        await assert_record_action(db, auth, parent_table, parent, "read")
-        elif table == "sys_comment":
+        elif table == "record_access_grant" or table == "sys_comment":
             parent_table = getattr(record, "table_name", None)
             parent_id = getattr(record, "record_sys_id", None)
             if parent_table and parent_id:
@@ -414,7 +408,9 @@ async def create_record(
     else:
         other = {}
 
-    record = model(**{k: v for k, v in flat.items() if k in {c.name for c in model.__table__.columns}})
+    record = model(
+        **{k: v for k, v in flat.items() if k in {c.name for c in model.__table__.columns}}
+    )
     if hasattr(record, "other"):
         record.other = other
     db.add(record)
@@ -463,14 +459,10 @@ async def update_record(
                     db, auth, table, "self_write", target_user_sys_id=sys_id
                 )
             else:
-                await assert_platform_action(
-                    db, auth, table, "write", target_user_sys_id=sys_id
-                )
+                await assert_platform_action(db, auth, table, "write", target_user_sys_id=sys_id)
         elif table == "sys_user_group":
             await assert_platform_action(db, auth, table, "manage", record=record)
-        elif table == "sys_user_grmember":
-            await assert_platform_action(db, auth, table, "write", record=record)
-        elif table in PLATFORM_TABLES:
+        elif table == "sys_user_grmember" or table in PLATFORM_TABLES:
             await assert_platform_action(db, auth, table, "write", record=record)
 
     flat = _flatten_payload(payload, table)
@@ -519,9 +511,7 @@ async def delete_record(
         if table in RBAC_RECORD_TABLES:
             await assert_record_action(db, auth, table, record, "delete")
         elif table == "sys_user":
-            await assert_platform_action(
-                db, auth, table, "write", target_user_sys_id=sys_id
-            )
+            await assert_platform_action(db, auth, table, "write", target_user_sys_id=sys_id)
         elif table == "sys_user_group":
             await assert_platform_action(db, auth, table, "write", record=record)
         elif table == "record_access_grant":

@@ -2,7 +2,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from app.api.flake.attachment import (
     _save_attachment,
     delete_attachments_for_parent,

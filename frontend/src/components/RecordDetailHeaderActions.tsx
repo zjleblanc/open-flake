@@ -1,7 +1,7 @@
-import { getRecordPermissions } from "../api/client";
-import { RecordDeleteButton } from "./RecordDeleteButton";
-import { RecordSharePopover } from "./RecordSharePopover";
-import "./Layout.css";
+import { getRecordPermissions } from '../api/client';
+import { RecordDeleteButton } from './RecordDeleteButton';
+import { RecordSharePopover } from './RecordSharePopover';
+import './Layout.css';
 
 interface RecordDetailHeaderActionsProps {
   resource: string;

@@ -1,11 +1,11 @@
 function parseClassPath(sysClassPath: string | undefined): string[] {
   if (!sysClassPath) return [];
-  return sysClassPath.split("/").filter(Boolean);
+  return sysClassPath.split('/').filter(Boolean);
 }
 
 function fallbackPath(className: string): string[] {
   if (!className) return [];
-  return ["cmdb", "cmdb_ci", className];
+  return ['cmdb', 'cmdb_ci', className];
 }
 
 export function isOrderedSubsequence(shorter: string[], longer: string[]): boolean {
@@ -37,7 +37,7 @@ function pickLongestCompatiblePath(paths: string[][]): string[] {
       (path) =>
         path === candidate ||
         isOrderedSubsequence(path, candidate) ||
-        isOrderedSubsequence(candidate, path)
+        isOrderedSubsequence(candidate, path),
     );
     if (compatible) return candidate;
   }
@@ -50,7 +50,7 @@ export function resolveInheritancePath(
   options: {
     schemaPath?: string[];
     sysClassPath?: string;
-  }
+  },
 ): string[] {
   if (!className) return [];
 

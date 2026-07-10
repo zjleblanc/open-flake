@@ -1,10 +1,10 @@
-@import "./fonts.css";
+@import './fonts.css';
 
 :root {
   --of-radius: 8px;
-  --of-font-heading: "Hubot Sans", system-ui, sans-serif;
-  --of-font-ui: "Mona Sans", system-ui, sans-serif;
-  --of-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --of-font-heading: 'Hubot Sans', system-ui, sans-serif;
+  --of-font-ui: 'Mona Sans', system-ui, sans-serif;
+  --of-font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --of-font: var(--of-font-ui);
   --of-density-content-padding: 2rem;
   --of-density-content-body-top: 1.25rem;
@@ -27,7 +27,7 @@
 }
 
 :root,
-[data-theme="dark"] {
+[data-theme='dark'] {
   color-scheme: dark;
   --of-bg: #151515;
   --of-surface: #1f1f1f;
@@ -71,7 +71,7 @@
     0 0 0 1px color-mix(in srgb, #fff 8%, transparent);
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   color-scheme: light;
   --of-bg: #f4f4f6;
   --of-surface: #ffffff;
@@ -115,7 +115,7 @@
     0 0 0 1px color-mix(in srgb, #18181b 6%, transparent);
 }
 
-[data-layout-density="compact"] {
+[data-layout-density='compact'] {
   --of-density-content-padding: 1.25rem;
   --of-density-content-body-top: 0.75rem;
   --of-density-navbar-min-height: 2.75rem;
@@ -264,7 +264,11 @@ button,
   font-family: var(--of-font-ui);
   font-size: 0.875rem;
   font-weight: 600;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s,
+    opacity 0.15s;
 }
 
 .btn-primary {
@@ -389,16 +393,16 @@ select {
 }
 
 :root select,
-[data-theme="dark"] select {
+[data-theme='dark'] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
-[data-theme="light"] select {
+[data-theme='light'] select {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2318181b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
-input[type="checkbox"],
-input[type="radio"] {
+input[type='checkbox'],
+input[type='radio'] {
   width: 1rem;
   height: 1rem;
   padding: 0;

@@ -1,9 +1,10 @@
 from pathlib import Path
 
 import pytest
-
+from app.domain.cmdb.ci_service import class_filter_conditions, record_in_class_subtree
 from app.domain.cmdb.constants import CMDB_ROOT
 from app.domain.cmdb.importer import parse_hierarchy_export
+from app.domain.cmdb.payload import split_payload
 from app.domain.cmdb.registry import (
     FieldMeta,
     _RegistrySnapshot,
@@ -12,11 +13,8 @@ from app.domain.cmdb.registry import (
     get_descendants,
     get_merged_fields,
 )
-from app.domain.cmdb.payload import split_payload
-from app.domain.cmdb.ci_service import class_filter_conditions, record_in_class_subtree
 from app.domain.errors import InvalidFieldNameError
 from app.models import CmdbClass
-
 
 HIERARCHY_DIR = Path(__file__).resolve().parents[2] / "docs" / "class-hierarchy"
 
@@ -26,9 +24,14 @@ def _load_snapshot() -> None:
 
     classes = {
         "cmdb": CmdbClass(name="cmdb", super_class=None, label="cmdb", is_logical=True),
-        CMDB_ROOT: CmdbClass(name=CMDB_ROOT, super_class="cmdb", label=CMDB_ROOT, is_logical=False),
+        CMDB_ROOT: CmdbClass(
+            name=CMDB_ROOT, super_class="cmdb", label=CMDB_ROOT, is_logical=False
+        ),
         "cmdb_ci_hardware": CmdbClass(
-            name="cmdb_ci_hardware", super_class=CMDB_ROOT, label="cmdb_ci_hardware", is_logical=False
+            name="cmdb_ci_hardware",
+            super_class=CMDB_ROOT,
+            label="cmdb_ci_hardware",
+            is_logical=False,
         ),
         "cmdb_ci_computer": CmdbClass(
             name="cmdb_ci_computer",
@@ -71,7 +74,9 @@ def _load_snapshot() -> None:
     }
     fields = {
         "cmdb_ci_linux_server": [
-            FieldMeta("kernel_release", "Kernel Release", "string", "cmdb_ci_linux_server", "attributes")
+            FieldMeta(
+                "kernel_release", "Kernel Release", "string", "cmdb_ci_linux_server", "attributes"
+            )
         ],
         CMDB_ROOT: [
             FieldMeta("name", "Name", "string", CMDB_ROOT, "column"),
@@ -81,7 +86,9 @@ def _load_snapshot() -> None:
             FieldMeta("host_name", "Host name", "string", "cmdb_ci_server", "column"),
         ],
     }
-    registry._snapshot = _RegistrySnapshot(classes=classes, fields_by_class=fields, children=children)
+    registry._snapshot = _RegistrySnapshot(
+        classes=classes, fields_by_class=fields, children=children
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -128,7 +135,12 @@ def test_hierarchy_exports_define_full_inheritance_paths():
         ],
         "cmdb_ci_router.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_router"],
         "cmdb_ci_switch.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_switch"],
-        "cmdb_ci_vm_instance.json": ["cmdb", "cmdb_ci", "cmdb_ci_vm_object", "cmdb_ci_vm_instance"],
+        "cmdb_ci_vm_instance.json": [
+            "cmdb",
+            "cmdb_ci",
+            "cmdb_ci_vm_object",
+            "cmdb_ci_vm_instance",
+        ],
     }
     for filename, path in expected_paths.items():
         export = parse_hierarchy_export((HIERARCHY_DIR / filename).read_text(encoding="utf-8"))

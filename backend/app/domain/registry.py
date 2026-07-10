@@ -1,5 +1,7 @@
 """Table name to SQLAlchemy model mapping."""
 
+from typing import Any
+
 from app.models import (
     ChangeRequest,
     ChangeTask,
@@ -31,7 +33,7 @@ from app.models import (
     SysUserGroup,
 )
 
-TABLE_MODELS: dict[str, type] = {
+TABLE_MODELS: dict[str, type[Any]] = {
     "incident": Incident,
     "problem": Problem,
     "problem_task": ProblemTask,
@@ -121,7 +123,7 @@ NUMBER_PREFIXES: dict[str, str] = {
     "sc_task": "SCTASK",
 }
 
-from app.domain.cmdb.registry import is_cmdb_class_name, is_registered
+from app.domain.cmdb.registry import is_cmdb_class_name, is_registered  # noqa: E402
 
 
 def resolve_table_name(table: str) -> tuple[str, str | None] | None:

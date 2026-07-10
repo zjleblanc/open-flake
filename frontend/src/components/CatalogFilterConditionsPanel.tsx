@@ -1,24 +1,16 @@
-import { FormEvent, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  api,
-  type CatalogCondition,
-  type CatalogVariable,
-} from "../api/client";
-import { ReferenceFilterBuilder } from "./ReferenceFilterBuilder";
-import {
-  parseFilterRows,
-  serializeFilterRows,
-  type FilterRow,
-} from "./filterBuilderUtils";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { FormEvent, useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, type CatalogCondition, type CatalogVariable } from '../api/client';
+import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
+import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
+import { ConfirmDialog } from './ConfirmDialog';
 
-const CONDITION_OPERATORS = ["=", "!=", "IN", "NOT_IN", "EMPTY", "NOT_EMPTY"];
+const CONDITION_OPERATORS = ['=', '!=', 'IN', 'NOT_IN', 'EMPTY', 'NOT_EMPTY'];
 
 interface CatalogFilterConditionsPanelProps {
   itemId: string;
   variables: CatalogVariable[];
-  onToast: (message: string, type?: "success" | "error") => void;
+  onToast: (message: string, type?: 'success' | 'error') => void;
 }
 
 type ConditionForm = {
@@ -29,11 +21,11 @@ type ConditionForm = {
   filterRows: FilterRow[];
 };
 
-const emptyConditionForm = (variableId = ""): ConditionForm => ({
+const emptyConditionForm = (variableId = ''): ConditionForm => ({
   variableId,
-  dependsOn: "",
-  operator: "=",
-  value: "",
+  dependsOn: '',
+  operator: '=',
+  value: '',
   filterRows: [],
 });
 
@@ -43,34 +35,31 @@ export function CatalogFilterConditionsPanel({
   onToast,
 }: CatalogFilterConditionsPanelProps) {
   const queryClient = useQueryClient();
-  const referenceVariables = variables.filter((v) => v.type === "reference");
-  const [selectedVarId, setSelectedVarId] = useState("");
+  const referenceVariables = variables.filter((v) => v.type === 'reference');
+  const [selectedVarId, setSelectedVarId] = useState('');
   const [form, setForm] = useState<ConditionForm>(emptyConditionForm());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(null);
 
   useEffect(() => {
     if (!selectedVarId && referenceVariables.length) {
       setSelectedVarId(referenceVariables[0].sys_id);
-    } else if (
-      selectedVarId &&
-      !referenceVariables.some((v) => v.sys_id === selectedVarId)
-    ) {
-      setSelectedVarId(referenceVariables[0]?.sys_id || "");
+    } else if (selectedVarId && !referenceVariables.some((v) => v.sys_id === selectedVarId)) {
+      setSelectedVarId(referenceVariables[0]?.sys_id || '');
     }
   }, [referenceVariables, selectedVarId]);
 
   const selectedVariable = referenceVariables.find((v) => v.sys_id === selectedVarId);
 
   const conditionsQuery = useQuery({
-    queryKey: ["catalog-admin-conditions", itemId, selectedVarId],
+    queryKey: ['catalog-admin-conditions', itemId, selectedVarId],
     queryFn: () => api.adminListConditions(itemId, selectedVarId),
     enabled: Boolean(itemId && selectedVarId),
   });
 
   const conditions = (conditionsQuery.data?.result || []).filter(
-    (c) => c.condition_type === "filter"
+    (c) => c.condition_type === 'filter',
   );
 
   const createMutation = useMutation({
@@ -78,47 +67,41 @@ export function CatalogFilterConditionsPanel({
       api.adminCreateCondition(itemId, selectedVarId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["catalog-admin-conditions", itemId, selectedVarId],
+        queryKey: ['catalog-admin-conditions', itemId, selectedVarId],
       });
       setForm(emptyConditionForm(selectedVarId));
       setEditingId(null);
-      setError("");
-      onToast("Filter condition created.");
+      setError('');
+      onToast('Filter condition created.');
     },
     onError: (err: Error) => setError(err.message),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
-      condId,
-      payload,
-    }: {
-      condId: string;
-      payload: Record<string, unknown>;
-    }) => api.adminUpdateCondition(itemId, selectedVarId, condId, payload),
+    mutationFn: ({ condId, payload }: { condId: string; payload: Record<string, unknown> }) =>
+      api.adminUpdateCondition(itemId, selectedVarId, condId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["catalog-admin-conditions", itemId, selectedVarId],
+        queryKey: ['catalog-admin-conditions', itemId, selectedVarId],
       });
       setForm(emptyConditionForm(selectedVarId));
       setEditingId(null);
-      setError("");
-      onToast("Filter condition updated.");
+      setError('');
+      onToast('Filter condition updated.');
     },
     onError: (err: Error) => setError(err.message),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (condId: string) =>
-      api.adminDeleteCondition(itemId, selectedVarId, condId),
+    mutationFn: (condId: string) => api.adminDeleteCondition(itemId, selectedVarId, condId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["catalog-admin-conditions", itemId, selectedVarId],
+        queryKey: ['catalog-admin-conditions', itemId, selectedVarId],
       });
       setPendingDelete(null);
-      onToast("Filter condition deleted.");
+      onToast('Filter condition deleted.');
     },
-    onError: (err: Error) => onToast(err.message, "error"),
+    onError: (err: Error) => onToast(err.message, 'error'),
   });
 
   if (referenceVariables.length === 0) {
@@ -130,29 +113,29 @@ export function CatalogFilterConditionsPanel({
     setForm({
       variableId: selectedVarId,
       dependsOn: condition.depends_on,
-      operator: condition.operator || "=",
-      value: condition.value || "",
+      operator: condition.operator || '=',
+      value: condition.value || '',
       filterRows: parseFilterRows(condition.filter_override),
     });
-    setError("");
+    setError('');
   }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
     if (!form.dependsOn) {
-      setError("Depends-on field is required");
+      setError('Depends-on field is required');
       return;
     }
     const filterOverride = serializeFilterRows(form.filterRows);
     if (!filterOverride) {
-      setError("At least one filter override row is required");
+      setError('At least one filter override row is required');
       return;
     }
     const payload = {
-      condition_type: "filter",
+      condition_type: 'filter',
       depends_on: form.dependsOn,
       operator: form.operator,
-      value: form.operator === "EMPTY" || form.operator === "NOT_EMPTY" ? null : form.value,
+      value: form.operator === 'EMPTY' || form.operator === 'NOT_EMPTY' ? null : form.value,
       filter_override: filterOverride,
       active: true,
     };
@@ -172,8 +155,8 @@ export function CatalogFilterConditionsPanel({
         <div>
           <h4>Dynamic Filter Overrides</h4>
           <p className="catalog-browse-intro">
-            When another form field matches a rule, replace the reference filter for the
-            selected variable.
+            When another form field matches a rule, replace the reference filter for the selected
+            variable.
           </p>
         </div>
       </div>
@@ -187,13 +170,13 @@ export function CatalogFilterConditionsPanel({
             setSelectedVarId(e.target.value);
             setEditingId(null);
             setForm(emptyConditionForm(e.target.value));
-            setError("");
+            setError('');
           }}
         >
           {referenceVariables.map((variable) => (
             <option key={variable.sys_id} value={variable.sys_id}>
               {variable.question_text || variable.name}
-              {variable.reference_table ? ` → ${variable.reference_table}` : ""}
+              {variable.reference_table ? ` → ${variable.reference_table}` : ''}
             </option>
           ))}
         </select>
@@ -223,9 +206,9 @@ export function CatalogFilterConditionsPanel({
                 <tr key={condition.sys_id}>
                   <td>{depends?.question_text || depends?.name || condition.depends_on}</td>
                   <td>{condition.operator}</td>
-                  <td>{condition.value || "—"}</td>
+                  <td>{condition.value || '—'}</td>
                   <td>
-                    <code className="code-inline">{condition.filter_override || "—"}</code>
+                    <code className="code-inline">{condition.filter_override || '—'}</code>
                   </td>
                   <td className="catalog-row-actions">
                     <button
@@ -245,7 +228,7 @@ export function CatalogFilterConditionsPanel({
                             depends?.question_text ||
                             depends?.name ||
                             condition.depends_on ||
-                            "this filter override",
+                            'this filter override',
                         })
                       }
                     >
@@ -260,7 +243,7 @@ export function CatalogFilterConditionsPanel({
       </table>
 
       <form onSubmit={onSubmit} className="catalog-builder-form catalog-condition-form">
-        <h4>{editingId ? "Edit Override" : "Add Override"}</h4>
+        <h4>{editingId ? 'Edit Override' : 'Add Override'}</h4>
         <div className="catalog-form-grid">
           <div className="form-group">
             <label htmlFor="filter-cond-depends">Depends On</label>
@@ -291,7 +274,7 @@ export function CatalogFilterConditionsPanel({
               ))}
             </select>
           </div>
-          {form.operator !== "EMPTY" && form.operator !== "NOT_EMPTY" ? (
+          {form.operator !== 'EMPTY' && form.operator !== 'NOT_EMPTY' ? (
             <div className="form-group">
               <label htmlFor="filter-cond-value">Value</label>
               <input
@@ -305,7 +288,7 @@ export function CatalogFilterConditionsPanel({
           <div className="form-group catalog-form-span">
             <label>Filter Override</label>
             <ReferenceFilterBuilder
-              table={selectedVariable?.reference_table || ""}
+              table={selectedVariable?.reference_table || ''}
               rows={form.filterRows}
               onChange={(filterRows) => setForm((p) => ({ ...p, filterRows }))}
               disabled={pending}
@@ -321,14 +304,14 @@ export function CatalogFilterConditionsPanel({
               onClick={() => {
                 setEditingId(null);
                 setForm(emptyConditionForm(selectedVarId));
-                setError("");
+                setError('');
               }}
             >
               Cancel
             </button>
           ) : null}
           <button type="submit" className="btn btn-primary" disabled={pending}>
-            {pending ? "Saving…" : editingId ? "Save Override" : "Add Override"}
+            {pending ? 'Saving…' : editingId ? 'Save Override' : 'Add Override'}
           </button>
         </div>
       </form>
@@ -339,7 +322,7 @@ export function CatalogFilterConditionsPanel({
         message={
           pendingDelete
             ? `Are you sure you want to permanently delete the filter override for "${pendingDelete.label}"? This action cannot be undone.`
-            : ""
+            : ''
         }
         onConfirm={() => {
           if (pendingDelete) deleteMutation.mutate(pendingDelete.id);

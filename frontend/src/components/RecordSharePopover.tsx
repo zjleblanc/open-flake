@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { ShareIcon } from "./DetailIcons";
-import { Portal } from "./Portal";
-import { RecordSharePanel } from "./RecordSharePanel";
-import "./Layout.css";
+import { useEffect, useState } from 'react';
+import { ShareIcon } from './DetailIcons';
+import { Portal } from './Portal';
+import { RecordSharePanel } from './RecordSharePanel';
+import './Layout.css';
 
 interface RecordSharePopoverProps {
   resource: string;
@@ -18,18 +18,18 @@ export function RecordSharePopover({ resource, sysId, record, canWrite }: Record
     if (!open) return;
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === 'Escape') setOpen(false);
     }
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [open]);
 
   return (
     <div className="share-popover-root">
       <button
         type="button"
-        className={`share-popover-trigger${open ? " active" : ""}`}
+        className={`share-popover-trigger${open ? ' active' : ''}`}
         aria-label="Share and access"
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -40,11 +40,7 @@ export function RecordSharePopover({ resource, sysId, record, canWrite }: Record
 
       {open && (
         <Portal>
-          <div
-            className="share-popover-overlay"
-            role="presentation"
-            onClick={() => setOpen(false)}
-          >
+          <div className="share-popover-overlay" role="presentation" onClick={() => setOpen(false)}>
             <div
               className="share-popover"
               role="dialog"

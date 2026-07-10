@@ -1,45 +1,45 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { Layout } from "./components/Layout";
-import { getToken } from "./api/client";
-import { CatalogAdminListPage } from "./pages/CatalogAdminListPage";
-import { CatalogBrowsePage } from "./pages/CatalogBrowsePage";
-import { CatalogItemBuilderPage } from "./pages/CatalogItemBuilderPage";
-import { CatalogItemPage } from "./pages/CatalogItemPage";
-import { CatalogWebhooksPage } from "./pages/CatalogWebhooksPage";
-import { CatalogSecretsPage } from "./pages/CatalogSecretsPage";
-import { ConfigurationItemDetailPage } from "./pages/ConfigurationItemDetailPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { LoginPage } from "./pages/LoginPage";
-import { RecordDetailPage } from "./pages/RecordDetailPage";
-import { RecordListPage } from "./pages/RecordListPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { UsersPage } from "./pages/UsersPage";
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { Layout } from './components/Layout';
+import { getToken } from './api/client';
+import { CatalogAdminListPage } from './pages/CatalogAdminListPage';
+import { CatalogBrowsePage } from './pages/CatalogBrowsePage';
+import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
+import { CatalogItemPage } from './pages/CatalogItemPage';
+import { CatalogWebhooksPage } from './pages/CatalogWebhooksPage';
+import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
+import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { LoginPage } from './pages/LoginPage';
+import { RecordDetailPage } from './pages/RecordDetailPage';
+import { RecordListPage } from './pages/RecordListPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { UsersPage } from './pages/UsersPage';
 
 const INCIDENT_FIELDS = [
-  { key: "short_description", label: "Short Description" },
-  { key: "description", label: "Description", type: "textarea" },
-  { key: "impact", label: "Impact (1=High, 2=Medium, 3=Low)" },
-  { key: "urgency", label: "Urgency (1=High, 2=Medium, 3=Low)" },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'impact', label: 'Impact (1=High, 2=Medium, 3=Low)' },
+  { key: 'urgency', label: 'Urgency (1=High, 2=Medium, 3=Low)' },
 ];
 
 const INCIDENT_DETAIL_FIELDS = [
-  { key: "short_description", label: "Short Description" },
-  { key: "description", label: "Description", type: "textarea" },
-  { key: "state", label: "State", type: "select-state" },
-  { key: "priority", label: "Priority", readOnly: true },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
 ];
 
 const PROBLEM_DETAIL_FIELDS = [
-  { key: "short_description", label: "Short Description" },
-  { key: "description", label: "Description", type: "textarea" },
-  { key: "state", label: "State", type: "select-state" },
-  { key: "priority", label: "Priority", readOnly: true },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
 ];
 
 const CHANGE_DETAIL_FIELDS = [
-  { key: "short_description", label: "Short Description" },
-  { key: "state", label: "State", type: "select-state" },
-  { key: "priority", label: "Priority", readOnly: true },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -88,7 +88,7 @@ export function App() {
               resource="problems"
               title="Problems"
               basePath="/problems"
-              createFields={[{ key: "short_description", label: "Short Description" }]}
+              createFields={[{ key: 'short_description', label: 'Short Description' }]}
             />
           }
         />
@@ -110,7 +110,7 @@ export function App() {
               resource="change-requests"
               title="Change Requests"
               basePath="/changes"
-              createFields={[{ key: "short_description", label: "Short Description" }]}
+              createFields={[{ key: 'short_description', label: 'Short Description' }]}
             />
           }
         />
@@ -133,15 +133,15 @@ export function App() {
               title="Configuration Items"
               basePath="/configuration-items"
               columns={[
-                { key: "number", label: "Name", filterKeys: ["number", "name"] },
-                { key: "short_description", label: "Short Description" },
-                { key: "state", label: "State" },
-                { key: "priority", label: "Priority" },
+                { key: 'number', label: 'Name', filterKeys: ['number', 'name'] },
+                { key: 'short_description', label: 'Short Description' },
+                { key: 'state', label: 'State' },
+                { key: 'priority', label: 'Priority' },
               ]}
               createFields={[
-                { key: "name", label: "Name" },
-                { key: "short_description", label: "Short Description" },
-                { key: "sys_class_name", label: "Class (e.g. cmdb_ci_server)" },
+                { key: 'name', label: 'Name' },
+                { key: 'short_description', label: 'Short Description' },
+                { key: 'sys_class_name', label: 'Class (e.g. cmdb_ci_server)' },
               ]}
             />
           }

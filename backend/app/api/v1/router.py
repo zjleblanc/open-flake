@@ -6,6 +6,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.flake.attachment import (
+    _assert_attachment_parent_access,
+    _attachment_storage_candidates,
+    _attachment_to_dict,
+    _save_attachment,
+    remove_attachment,
+)
 from app.auth.deps import AuthContext, authenticate_request
 from app.auth.rbac import (
     assert_grant_management,
@@ -17,8 +24,6 @@ from app.auth.rbac import (
 from app.auth.security import create_access_token, hash_api_key, hash_password, verify_password
 from app.config import get_settings
 from app.db import get_db
-from app.domain.registry import TABLE_MODELS
-from app.domain.user_preferences import merge_user_preferences_update, normalize_user_preferences
 from app.domain.table_service import (
     create_record,
     delete_record,
@@ -26,13 +31,7 @@ from app.domain.table_service import (
     list_records,
     update_record,
 )
-from app.api.flake.attachment import (
-    _assert_attachment_parent_access,
-    _attachment_storage_candidates,
-    _attachment_to_dict,
-    _save_attachment,
-    remove_attachment,
-)
+from app.domain.user_preferences import merge_user_preferences_update, normalize_user_preferences
 from app.models import (
     ApiKey,
     ChangeRequest,
@@ -44,7 +43,6 @@ from app.models import (
     SysAttachment,
     SysComment,
     SysUser,
-    SysUserGroup,
 )
 from app.utils.ids import new_api_key, new_sys_id
 
@@ -349,7 +347,9 @@ async def create_grant(
     )
 
 
-@router.delete("/records/{resource}/{sys_id}/grants/{grant_sys_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/records/{resource}/{sys_id}/grants/{grant_sys_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_grant(
     resource: str,
     sys_id: str,

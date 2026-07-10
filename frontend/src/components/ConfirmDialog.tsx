@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { Portal } from "./Portal";
-import "./Layout.css";
+import { useEffect } from 'react';
+import { Portal } from './Portal';
+import './Layout.css';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -20,9 +20,9 @@ export function ConfirmDialog({
   title,
   message,
   error,
-  confirmLabel = "Delete",
+  confirmLabel = 'Delete',
   pendingLabel,
-  cancelLabel = "Cancel",
+  cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
   isPending = false,
@@ -31,11 +31,11 @@ export function ConfirmDialog({
     if (!open) return;
 
     function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isPending) onCancel();
+      if (event.key === 'Escape' && !isPending) onCancel();
     }
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
   }, [open, isPending, onCancel]);
 
   if (!open) return null;
@@ -44,7 +44,11 @@ export function ConfirmDialog({
 
   return (
     <Portal>
-      <div className="confirm-dialog-overlay" role="presentation" onClick={isPending ? undefined : onCancel}>
+      <div
+        className="confirm-dialog-overlay"
+        role="presentation"
+        onClick={isPending ? undefined : onCancel}
+      >
         <div
           className="confirm-dialog"
           role="alertdialog"
@@ -61,10 +65,20 @@ export function ConfirmDialog({
           </p>
           {error && <p className="confirm-dialog-error">{error}</p>}
           <div className="confirm-dialog-actions">
-            <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isPending}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={onCancel}
+              disabled={isPending}
+            >
               {cancelLabel}
             </button>
-            <button type="button" className="btn btn-danger-solid" onClick={onConfirm} disabled={isPending}>
+            <button
+              type="button"
+              className="btn btn-danger-solid"
+              onClick={onConfirm}
+              disabled={isPending}
+            >
               {isPending ? busyLabel : confirmLabel}
             </button>
           </div>

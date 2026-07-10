@@ -52,7 +52,7 @@ parse_platforms() {
   local IFS=','
   read -ra PLATFORM_LIST <<< "${PLATFORMS}"
   for i in "${!PLATFORM_LIST[@]}"; do
-    PLATFORM_LIST[$i]="${PLATFORM_LIST[$i]// /}"
+    PLATFORM_LIST[i]="${PLATFORM_LIST[i]// /}"
   done
 
   if [[ "${SINGLE_ARCH}" -eq 1 ]]; then
