@@ -1,6 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { getToken } from "./api/client";
+import { CatalogAdminListPage } from "./pages/CatalogAdminListPage";
+import { CatalogBrowsePage } from "./pages/CatalogBrowsePage";
+import { CatalogItemBuilderPage } from "./pages/CatalogItemBuilderPage";
+import { CatalogItemPage } from "./pages/CatalogItemPage";
+import { CatalogWebhooksPage } from "./pages/CatalogWebhooksPage";
+import { CatalogSecretsPage } from "./pages/CatalogSecretsPage";
 import { ConfigurationItemDetailPage } from "./pages/ConfigurationItemDetailPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -141,6 +147,13 @@ export function App() {
           }
         />
         <Route path="configuration-items/:sysId" element={<ConfigurationItemDetailPage />} />
+        <Route path="catalog" element={<CatalogBrowsePage />} />
+        <Route path="catalog/admin" element={<CatalogAdminListPage />} />
+        <Route path="catalog/admin/:itemId" element={<CatalogItemBuilderPage />} />
+        <Route path="catalog/webhooks" element={<Navigate to="/integrations/webhooks" replace />} />
+        <Route path="catalog/:itemId" element={<CatalogItemPage />} />
+        <Route path="integrations/webhooks" element={<CatalogWebhooksPage />} />
+        <Route path="integrations/secrets" element={<CatalogSecretsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>

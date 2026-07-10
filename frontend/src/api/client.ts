@@ -287,6 +287,273 @@ export const api = {
     request<{ result: CmdbClassSchema }>(
       `/api/flake/schema/cmdb/${encodeURIComponent(className)}`
     ),
+
+  listCatalogItems: () =>
+    request<{ result: CatalogItemSummary[] }>("/api/sn_sc/servicecatalog/items"),
+
+  getCatalogItem: (itemId: string) =>
+    request<{ result: CatalogItemDetail }>(`/api/sn_sc/servicecatalog/items/${itemId}`),
+
+  orderCatalogItem: (
+    itemId: string,
+    data: {
+      variables?: Record<string, unknown>;
+      quantity?: number;
+      requested_for?: string;
+      cmdb_ci?: string;
+      short_description?: string;
+    }
+  ) =>
+    request<{ result: Record<string, unknown> }>(
+      `/api/sn_sc/servicecatalog/items/${itemId}/order_now`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  getVariableOptions: (itemId: string, varName: string, dependsOn?: string) => {
+    const qs = new URLSearchParams();
+    if (dependsOn) qs.set("depends_on", dependsOn);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<{ result: { options: CatalogChoice[]; total: number } }>(
+      `/api/sn_sc/servicecatalog/items/${itemId}/variables/${encodeURIComponent(varName)}/options${suffix}`
+    );
+  },
+
+  adminListCatalogItems: () =>
+    request<{ result: CatalogItemSummary[] }>("/api/flake/catalog/admin/items"),
+
+  adminGetCatalogItem: (itemId: string) =>
+    request<{ result: CatalogItemSummary }>(`/api/flake/catalog/admin/items/${itemId}`),
+
+  adminCreateCatalogItem: (data: Record<string, unknown>) =>
+    request<{ result: CatalogItemSummary }>("/api/flake/catalog/admin/items", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  adminUpdateCatalogItem: (itemId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogItemSummary }>(`/api/flake/catalog/admin/items/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  adminListVariables: (itemId: string) =>
+    request<{ result: CatalogVariable[] }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables`
+    ),
+
+  adminCreateVariable: (itemId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogVariable }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  adminUpdateVariable: (itemId: string, varId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogVariable }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    ),
+
+  adminDeleteVariable: (itemId: string, varId: string) =>
+    request<void>(`/api/flake/catalog/admin/items/${itemId}/variables/${varId}`, {
+      method: "DELETE",
+    }),
+
+  adminListTables: () =>
+    request<{ result: TableInfo[] }>("/api/flake/catalog/admin/tables"),
+
+  adminListTableFields: (table: string) =>
+    request<{ result: TableField[] }>(
+      `/api/flake/catalog/admin/tables/${encodeURIComponent(table)}/fields`
+    ),
+
+  adminListConditions: (itemId: string, varId: string) =>
+    request<{ result: CatalogCondition[] }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`
+    ),
+
+  adminCreateCondition: (itemId: string, varId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogCondition }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  adminUpdateCondition: (
+    itemId: string,
+    varId: string,
+    condId: string,
+    data: Record<string, unknown>
+  ) =>
+    request<{ result: CatalogCondition }>(
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions/${condId}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    ),
+
+  adminDeleteCondition: (itemId: string, varId: string, condId: string) =>
+    request<void>(
+      `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions/${condId}`,
+      { method: "DELETE" }
+    ),
+
+  adminListWebhooks: () =>
+    request<{ result: CatalogWebhook[] }>("/api/flake/catalog/admin/webhooks"),
+
+  adminCreateWebhook: (data: Record<string, unknown>) =>
+    request<{ result: CatalogWebhook }>("/api/flake/catalog/admin/webhooks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  adminUpdateWebhook: (webhookId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogWebhook }>(`/api/flake/catalog/admin/webhooks/${webhookId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  adminDeleteWebhook: (webhookId: string) =>
+    request<void>(`/api/flake/catalog/admin/webhooks/${webhookId}`, {
+      method: "DELETE",
+    }),
+
+  adminListSecrets: () =>
+    request<{ result: IntegrationSecret[] }>("/api/flake/catalog/admin/secrets"),
+
+  adminCreateSecret: (data: Record<string, unknown>) =>
+    request<{ result: IntegrationSecret }>("/api/flake/catalog/admin/secrets", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  adminUpdateSecret: (secretId: string, data: Record<string, unknown>) =>
+    request<{ result: IntegrationSecret }>(`/api/flake/catalog/admin/secrets/${secretId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  adminDeleteSecret: (secretId: string) =>
+    request<void>(`/api/flake/catalog/admin/secrets/${secretId}`, {
+      method: "DELETE",
+    }),
+
+  adminListItemWebhooks: (itemId: string) =>
+    request<{ result: CatalogWebhookAttachment[] }>(
+      `/api/flake/catalog/admin/items/${itemId}/webhooks`
+    ),
+
+  adminAttachItemWebhook: (itemId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogWebhookAttachment }>(
+      `/api/flake/catalog/admin/items/${itemId}/webhooks`,
+      { method: "POST", body: JSON.stringify(data) }
+    ),
+
+  adminUpdateItemWebhook: (itemId: string, attachmentId: string, data: Record<string, unknown>) =>
+    request<{ result: CatalogWebhookAttachment }>(
+      `/api/flake/catalog/admin/items/${itemId}/webhooks/${attachmentId}`,
+      { method: "PATCH", body: JSON.stringify(data) }
+    ),
+
+  adminDetachItemWebhook: (itemId: string, attachmentId: string) =>
+    request<void>(`/api/flake/catalog/admin/items/${itemId}/webhooks/${attachmentId}`, {
+      method: "DELETE",
+    }),
+
+  adminPayloadPreview: (template?: string) => {
+    const qs = new URLSearchParams();
+    if (template) qs.set("template", template);
+    const suffix = qs.toString() ? `?${qs}` : "";
+    return request<{
+      result: {
+        preview: Record<string, unknown> | string;
+        variables: { name: string; description: string }[];
+      };
+    }>(`/api/flake/catalog/admin/payload-preview${suffix}`);
+  },
+};
+
+export type CatalogChoice = { value: string; label: string; record?: Record<string, unknown> };
+
+export type TableInfo = { name: string };
+export type TableField = { name: string; type: string };
+
+export type CatalogVariable = {
+  sys_id: string;
+  cat_item: string;
+  name: string;
+  question_text: string;
+  type: string;
+  mandatory: boolean;
+  default_value: string;
+  order: number;
+  reference_table: string;
+  reference_filter: string;
+  choice_list: CatalogChoice[];
+  help_text: string;
+  read_only: boolean;
+  hidden: boolean;
+  active: boolean;
+};
+
+export type CatalogCondition = {
+  sys_id: string;
+  variable: string;
+  condition_type: string;
+  depends_on: string;
+  operator: string;
+  value: string;
+  filter_override: string;
+  active: boolean;
+};
+
+export type CatalogItemSummary = {
+  sys_id: string;
+  name: string;
+  short_description: string;
+  description?: string;
+  price: string;
+  category?: string;
+  subcategory?: string;
+  icon?: string;
+  order?: number;
+  catalog_sys_id?: string;
+  fulfillment_group?: string;
+  active?: boolean;
+};
+
+export type CatalogItemDetail = CatalogItemSummary & {
+  variables: CatalogVariable[];
+  conditions: CatalogCondition[];
+};
+
+export type CatalogWebhook = {
+  sys_id: string;
+  name: string;
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  description?: string;
+  active: boolean;
+  has_secret?: boolean;
+};
+
+export type IntegrationSecret = {
+  sys_id: string;
+  name: string;
+  description?: string;
+  active: boolean;
+  has_value?: boolean;
+};
+
+export type CatalogWebhookAttachment = {
+  sys_id: string;
+  cat_item: string;
+  webhook: string;
+  payload_template: string;
+  trigger_on: string;
+  active: boolean;
+  payload_preview?: Record<string, unknown> | string;
+  webhook_name?: string;
+  webhook_url?: string;
+  webhook_method?: string;
+  webhook_active?: boolean;
 };
 
 export const STATE_LABELS: Record<string, string> = {

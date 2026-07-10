@@ -10,6 +10,7 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 from app.api.health import router as health_router
 from app.api.flake.attachment import router as attachment_router
 from app.api.flake.catalog import router as catalog_router
+from app.api.flake.catalog_admin import router as catalog_admin_router
 from app.api.flake.cmdb import router as cmdb_router
 from app.api.flake.oauth import router as oauth_router
 from app.api.flake.schema import router as schema_router
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     app.include_router(cmdb_router)
     app.include_router(schema_router)
     app.include_router(catalog_router)
+    app.include_router(catalog_admin_router)
     app.include_router(v1_router)
 
     @app.exception_handler(InvalidFieldNameError)

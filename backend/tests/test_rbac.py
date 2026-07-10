@@ -27,6 +27,77 @@ def test_has_permission_write_implies_delete_check():
     assert has_permission(perms, "records.incident.delete")
 
 
+def test_has_permission_secrets_hierarchy():
+    assert has_permission({"secrets.read"}, "secrets.read")
+    assert not has_permission({"secrets.read"}, "secrets.write")
+    assert not has_permission({"secrets.read"}, "secrets.admin")
+
+    assert has_permission({"secrets.write"}, "secrets.read")
+    assert has_permission({"secrets.write"}, "secrets.write")
+    assert not has_permission({"secrets.write"}, "secrets.admin")
+
+    assert has_permission({"secrets.admin"}, "secrets.read")
+    assert has_permission({"secrets.admin"}, "secrets.write")
+    assert has_permission({"secrets.admin"}, "secrets.admin")
+
+
+@pytest.mark.asyncio
+async def test_platform_secrets_read_denied_without_permission():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user1", user_name="alice", auth_method="jwt")
+
+    async def mock_execute(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [["records.*.write"]]
+        return result
+
+    db.execute = mock_execute
+
+    with pytest.raises(HTTPException) as exc:
+        await assert_platform_action(db, auth, "sys_secret", "read")
+    assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_platform_secrets_write_allowed_with_write_or_admin():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user1", user_name="alice", auth_method="jwt")
+
+    async def mock_execute_write(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [["secrets.write"]]
+        return result
+
+    db.execute = mock_execute_write
+    await assert_platform_action(db, auth, "sys_secret", "write")
+
+    async def mock_execute_admin(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [["secrets.admin"]]
+        return result
+
+    db.execute = mock_execute_admin
+    await assert_platform_action(db, auth, "sys_secret", "write")
+    await assert_platform_action(db, auth, "sys_secret", "manage")
+
+
+@pytest.mark.asyncio
+async def test_platform_secrets_manage_denied_with_write_only():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user1", user_name="alice", auth_method="jwt")
+
+    async def mock_execute(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = [["secrets.write"]]
+        return result
+
+    db.execute = mock_execute
+
+    with pytest.raises(HTTPException) as exc:
+        await assert_platform_action(db, auth, "sys_secret", "manage")
+    assert exc.value.status_code == 403
+
+
 @pytest.mark.asyncio
 async def test_resolve_owner_has_write():
     db = AsyncMock()

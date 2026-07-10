@@ -64,6 +64,11 @@
   --of-alert-error-bg: #3d1515;
   --of-alert-error-text: #f5a8a8;
   --of-on-primary: #fff;
+  --of-tooltip-shadow:
+    0 10px 28px color-mix(in srgb, #000 42%, transparent),
+    0 4px 14px color-mix(in srgb, var(--of-primary) 14%, transparent),
+    0 2px 8px color-mix(in srgb, #000 24%, transparent),
+    0 0 0 1px color-mix(in srgb, #fff 8%, transparent);
 }
 
 [data-theme="light"] {
@@ -103,6 +108,11 @@
   --of-alert-error-bg: #fce8e4;
   --of-alert-error-text: #b33a1a;
   --of-on-primary: #fff;
+  --of-tooltip-shadow:
+    0 10px 28px color-mix(in srgb, #18181b 14%, transparent),
+    0 4px 14px color-mix(in srgb, var(--of-primary) 10%, transparent),
+    0 2px 8px color-mix(in srgb, #18181b 7%, transparent),
+    0 0 0 1px color-mix(in srgb, #18181b 6%, transparent);
 }
 
 [data-layout-density="compact"] {
@@ -248,22 +258,24 @@ a:hover {
 button,
 .btn {
   cursor: pointer;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--of-radius);
   padding: var(--of-density-input-padding-y) 1rem;
   font-family: var(--of-font-ui);
   font-size: 0.875rem;
   font-weight: 600;
-  transition: background 0.15s, opacity 0.15s;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .btn-primary {
   background: var(--of-primary);
-  color: white;
+  color: var(--of-on-primary);
+  border-color: var(--of-primary);
 }
 
 .btn-primary:hover {
   background: var(--of-primary-dark);
+  border-color: var(--of-primary-dark);
 }
 
 .btn-primary:disabled,
@@ -275,17 +287,83 @@ button,
 .btn-primary:disabled:hover,
 .btn-primary[disabled]:hover {
   background: var(--of-primary);
+  border-color: var(--of-primary);
 }
 
+/* Sub-actions: surface fill + accent outline; solid primary fill on hover */
 .btn-secondary {
-  background: var(--of-surface-hover);
-  color: var(--of-text);
-  border: 1px solid var(--of-border);
+  background: var(--of-surface);
+  color: var(--of-primary-light);
+  border-color: var(--of-primary);
 }
 
+.btn-secondary:hover {
+  background: var(--of-primary);
+  color: var(--of-on-primary);
+  border-color: var(--of-primary);
+}
+
+.btn-secondary:disabled,
+.btn-secondary[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-secondary:disabled:hover,
+.btn-secondary[disabled]:hover {
+  background: var(--of-surface);
+  color: var(--of-primary-light);
+  border-color: var(--of-primary);
+}
+
+/* Destructive sub-actions: surface fill + danger outline; solid danger fill on hover */
 .btn-danger {
+  background: var(--of-surface);
+  color: var(--of-danger);
+  border-color: var(--of-danger);
+}
+
+.btn-danger:hover {
   background: var(--of-danger);
   color: white;
+  border-color: var(--of-danger);
+}
+
+.btn-danger:disabled,
+.btn-danger[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-danger:disabled:hover,
+.btn-danger[disabled]:hover {
+  background: var(--of-surface);
+  color: var(--of-danger);
+  border-color: var(--of-danger);
+}
+
+/* Main destructive actions (confirm dialogs, bulk delete CTAs) */
+.btn-danger-solid {
+  background: var(--of-danger);
+  color: white;
+  border-color: var(--of-danger);
+}
+
+.btn-danger-solid:hover {
+  background: color-mix(in srgb, var(--of-danger) 85%, #000);
+  border-color: color-mix(in srgb, var(--of-danger) 85%, #000);
+}
+
+.btn-danger-solid:disabled,
+.btn-danger-solid[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-danger-solid:disabled:hover,
+.btn-danger-solid[disabled]:hover {
+  background: var(--of-danger);
+  border-color: var(--of-danger);
 }
 
 input,
@@ -299,6 +377,35 @@ textarea {
   font-family: var(--of-font-ui);
   font-size: 0.875rem;
   width: 100%;
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2.25rem;
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.875rem;
+}
+
+:root select,
+[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+[data-theme="light"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2318181b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--of-primary);
+  cursor: pointer;
 }
 
 input:focus,
@@ -455,4 +562,139 @@ tr:hover td {
 .empty-state {
   text-align: center;
   color: var(--of-text-muted);
+}
+
+.field-label-with-tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.field-label-with-tooltip label {
+  margin-bottom: 0;
+}
+
+.field-tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.field-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  border: 1px solid var(--of-border);
+  background: var(--of-surface);
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  padding: 0;
+}
+
+.field-tooltip-trigger:hover,
+.field-tooltip-trigger:focus-visible {
+  color: var(--of-text);
+  border-color: color-mix(in srgb, var(--of-primary) 45%, var(--of-border));
+}
+
+.field-tooltip {
+  position: fixed;
+  z-index: 1100;
+  transform: translate(-50%, -100%);
+  width: max-content;
+  max-height: min(18rem, calc(100vh - 2rem));
+  overflow: auto;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--of-radius);
+  border: 1px solid var(--of-border);
+  background: var(--of-surface);
+  box-shadow: var(--of-tooltip-shadow);
+  color: var(--of-text);
+  font-family: var(--of-font-ui);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.field-tooltip-plain {
+  margin: 0;
+  color: var(--of-text-muted);
+}
+
+.field-tooltip strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--of-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.field-tooltip p {
+  margin: 0 0 0.5rem;
+  color: var(--of-text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.field-tooltip p:last-child {
+  margin-bottom: 0;
+}
+
+.field-tooltip ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--of-text-muted);
+}
+
+.field-tooltip li {
+  margin-bottom: 0.25rem;
+}
+
+.field-tooltip li:last-child {
+  margin-bottom: 0;
+}
+
+.field-tooltip code {
+  font-family: var(--of-font-mono);
+  font-size: 0.78em;
+  background: var(--of-bg);
+  border: 1px solid var(--of-border);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+  color: var(--of-text);
+}
+
+.field-tooltip-rich.markdown-body {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.field-tooltip-rich.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.field-tooltip-rich.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.field-tooltip-rich.markdown-body p,
+.field-tooltip-rich.markdown-body ul,
+.field-tooltip-rich.markdown-body ol {
+  margin: 0.35rem 0;
+  color: var(--of-text-muted);
+}
+
+.field-tooltip-rich.markdown-body strong {
+  display: inline;
+  margin: 0;
+  color: var(--of-text);
 }

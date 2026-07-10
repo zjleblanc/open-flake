@@ -10,6 +10,7 @@ import {
 } from "../utils/attachmentUtils";
 import { formatDateValue } from "../utils/formatDisplayValue";
 import { AttachmentsIcon } from "./DetailIcons";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ExpandableDetailSection } from "./ExpandableDetailSection";
 
 interface RecordAttachmentsSectionProps {
@@ -120,6 +121,9 @@ export function RecordAttachmentsSection({
   const { dateDisplayFormat } = useUserPreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedPreviewId, setExpandedPreviewId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(
+    null
+  );
 
   const { data: attachments = [], isLoading } = useQuery({
     queryKey: ["attachments", resource, sysId],
@@ -144,14 +148,9 @@ export function RecordAttachmentsSection({
       if (expandedPreviewId === attachmentSysId) {
         setExpandedPreviewId(null);
       }
+      setPendingDelete(null);
     },
   });
-
-  const handleDelete = (attachment: AttachmentRecord) => {
-    const confirmed = window.confirm(`Delete "${attachment.file_name}"?`);
-    if (!confirmed) return;
-    deleteMutation.mutate(attachment.sys_id);
-  };
 
   const countLabel = isLoading ? "…" : String(attachments.length);
 
@@ -163,9 +162,9 @@ export function RecordAttachmentsSection({
       accent="info"
       count={countLabel}
     >
-      {isLoading && <p className="text-muted text-sm">Loading attachments…</p>}
+      {isLoading && <p className="empty-state">Loading attachments…</p>}
       {!isLoading && attachments.length === 0 && (
-        <p className="text-muted text-sm">No attachments yet.</p>
+        <p className="empty-state">No attachments yet</p>
       )}
 
       <ul className="attachment-list">
@@ -201,9 +200,14 @@ export function RecordAttachmentsSection({
                   {canManageAttachments && (
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm attachment-delete-btn"
+                      className="btn btn-danger btn-sm"
                       disabled={deleteMutation.isPending}
-                      onClick={() => handleDelete(attachment)}
+                      onClick={() =>
+                        setPendingDelete({
+                          id: attachment.sys_id,
+                          label: attachment.file_name,
+                        })
+                      }
                     >
                       Delete
                     </button>
@@ -255,6 +259,21 @@ export function RecordAttachmentsSection({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete attachment"
+        message={
+          pendingDelete
+            ? `Are you sure you want to permanently delete "${pendingDelete.label}"? This action cannot be undone.`
+            : ""
+        }
+        onConfirm={() => {
+          if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+        }}
+        onCancel={() => setPendingDelete(null)}
+        isPending={deleteMutation.isPending}
+      />
     </ExpandableDetailSection>
   );
 }

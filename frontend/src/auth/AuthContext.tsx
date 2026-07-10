@@ -27,6 +27,13 @@ function permissionMatch(permissions: string[], required: string): boolean {
   if (required.endsWith(".read") && permissions.includes("records.*.read")) {
     return required.startsWith("records.");
   }
+  // secrets.admin ⊃ secrets.write ⊃ secrets.read
+  if (required === "secrets.read") {
+    return permissions.includes("secrets.write") || permissions.includes("secrets.admin");
+  }
+  if (required === "secrets.write") {
+    return permissions.includes("secrets.admin");
+  }
   return false;
 }
 

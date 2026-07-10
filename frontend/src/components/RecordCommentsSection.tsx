@@ -44,7 +44,7 @@ export function RecordCommentsSection({
       accent="accent"
       count={comments.length}
     >
-      {comments.length === 0 && <p className="text-muted text-sm">No comments yet.</p>}
+      {comments.length === 0 && <p className="empty-state">No comments yet</p>}
       <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {comments.map((c) => (
           <li

@@ -130,6 +130,39 @@ button.nav-link {
   color: var(--of-primary-light);
 }
 
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.nav-group-toggle {
+  width: 100%;
+}
+
+.nav-group-chevron {
+  margin-left: auto;
+  display: flex;
+  opacity: 0.7;
+  transition: transform 0.15s ease;
+}
+
+.nav-group-chevron.open {
+  transform: rotate(180deg);
+}
+
+.nav-sublinks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-left: 0.75rem;
+}
+
+.nav-sublink {
+  font-weight: 500;
+  padding-left: 0.85rem;
+}
+
 .main-column {
   flex: 1;
   min-width: 0;
@@ -558,6 +591,13 @@ button.nav-link {
   border-radius: var(--of-radius);
   background: var(--of-surface);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--of-bg) 55%, transparent);
+}
+
+.integration-popover,
+.catalog-form-popover {
+  width: min(48rem, calc(100vw - 2rem));
+  max-height: min(44rem, calc(100vh - 3rem));
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 
 .share-popover-header {
@@ -1423,10 +1463,6 @@ button.nav-link {
   gap: 0.5rem;
 }
 
-.attachment-delete-btn {
-  color: var(--of-danger, #c0392b);
-}
-
 .attachment-preview-panel {
   margin-top: 0.75rem;
   padding: 0.75rem;
@@ -1601,22 +1637,6 @@ button.nav-link {
 .record-list-filter select {
   width: auto;
   min-width: 10rem;
-  padding-right: 2.25rem;
-  appearance: none;
-  -webkit-appearance: none;
-  background-color: var(--of-bg);
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 0.875rem;
-}
-
-:root .record-list-filter select,
-[data-theme="dark"] .record-list-filter select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23f2f2f2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-}
-
-[data-theme="light"] .record-list-filter select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2318181b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
 .record-list-filter input[type="search"] {

@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-07-10 — Service catalog with webhooks, secrets, and consistent UI
+
+### Added
+
+- Service Catalog browse, order, and admin builder flows (items, variables, reference filters, markdown descriptions).
+- Catalog webhook destinations, item webhook attachments with payload templates, and HMAC signing support.
+- Integration secrets store with `{{secret:name}}` injection for webhook headers; RBAC permissions for secrets and catalog admin.
+- Frontend pages for catalog browse/order/admin, webhooks, and secrets; shared builders for variables, filters, and attach-integration.
+- Shared `FieldTooltip` (portal, exclusive open, scroll dismiss, optional markdown) and markdown Edit/Preview tabs.
+- `backend/tests/test_catalog.py` and `backend/tests/test_secrets.py`; catalog/webhook seed coverage in lab data.
+
+### Changed
+
+- Global button roles: solid primary for main actions, accent-outline secondary for sub-actions, danger-outline for Delete/Remove, solid danger for confirm/bulk CTAs.
+- All deletes of persisted data open `ConfirmDialog` (no immediate mutate, no `window.confirm`).
+- Native selects use a global custom chevron with right padding; form grids keep inputs aligned when tooltip labels are mixed with plain labels.
+- Empty tables and section empties use centered `.empty-state` copy (`No {items} yet`); loading states use `.empty-state`.
+- Tooltip elevation uses theme-aware `--of-tooltip-shadow` with a subtle primary tint.
+- `frontend/STYLE.md` documents buttons, tooltips, empty states, selects, confirm dialogs, and an enforcement checklist.
+
 ## 2026-06-10 — Account-backed display preferences with themes and layout density
 
 ### Added

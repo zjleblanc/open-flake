@@ -20,11 +20,15 @@ from app.models import (
     CmdbRelCi,
     CmdbRelType,
     Incident,
+    ItemOptionNew,
     Problem,
     ProblemTask,
     RecordAccessGrant,
     ScRequest,
+    ScReqItem,
     ScTask,
+    ServiceCatalog,
+    ServiceCatalogItem,
     StdChangeProducerVersion,
     SysAttachment,
     SysComment,
@@ -32,6 +36,7 @@ from app.models import (
     SysUserGrMember,
     SysUserGroup,
 )
+from app.utils.ids import new_sys_id
 from app.startup import run_migrations, seed_data
 
 logger = logging.getLogger(__name__)
@@ -68,6 +73,7 @@ LAB_USER_NAMES = frozenset(
 
 _LAB_TICKET_MODELS: tuple[tuple[str, type], ...] = (
     ("sc_task", ScTask),
+    ("sc_req_item", ScReqItem),
     ("sc_request", ScRequest),
     ("change_task", ChangeTask),
     ("change_request", ChangeRequest),
@@ -849,6 +855,129 @@ async def _seed_changes(session, ctx: LabContext) -> None:
     )
 
 
+async def _seed_catalog_items(session, ctx: LabContext) -> None:
+    """Seed catalog items with form variables (Provision VM demo)."""
+    catalog_result = await session.execute(
+        select(ServiceCatalog).where(ServiceCatalog.title == "IT Services")
+    )
+    catalog = catalog_result.scalar_one_or_none()
+    if not catalog:
+        catalog = ServiceCatalog(
+            sys_id=new_sys_id(),
+            title="IT Services",
+            description="Standard IT service catalog",
+            active=True,
+        )
+        session.add(catalog)
+        await session.flush()
+
+    infra_group = ctx.groups.get("Infrastructure & Operations")
+    provision_desc = (
+        "### Order a virtual machine which will be deployed to AWS\n\n"
+        "- EC2 instance created in AWS from RHEL base image\n"
+        "- CI created in CMDB\n"
+        "- Latest patches applied\n"
+        "- Apache httpd installed\n"
+        "- Default website deployed\n"
+    )
+
+    existing_item = await session.execute(
+        select(ServiceCatalogItem).where(
+            ServiceCatalogItem.catalog_sys_id == catalog.sys_id,
+            ServiceCatalogItem.name == "Provision VM",
+        )
+    )
+    item = existing_item.scalar_one_or_none()
+    if not item:
+        item = ServiceCatalogItem(
+            sys_id=new_sys_id(),
+            catalog_sys_id=catalog.sys_id,
+            name="Provision VM",
+            short_description="Order a virtual machine which will be deployed to AWS",
+            description=provision_desc,
+            active=True,
+            price="0",
+            category="Infrastructure",
+            subcategory="Compute",
+            fulfillment_group=infra_group,
+            order=10,
+        )
+        session.add(item)
+        await session.flush()
+    else:
+        item.short_description = "Order a virtual machine which will be deployed to AWS"
+        item.description = provision_desc
+        item.fulfillment_group = infra_group
+        item.category = "Infrastructure"
+        item.subcategory = "Compute"
+        item.active = True
+        await session.flush()
+
+    variables = [
+        {
+            "name": "sn_vm_name",
+            "question_text": "Name of server",
+            "type": "string",
+            "mandatory": True,
+            "order": 100,
+            "choice_list": [],
+        },
+        {
+            "name": "sn_target_platform",
+            "question_text": "Target Platform",
+            "type": "select_box",
+            "mandatory": True,
+            "order": 200,
+            "choice_list": [
+                {"value": "rhel_10", "label": "RHEL 10"},
+                {"value": "rhel_9", "label": "RHEL 9"},
+                {"value": "windows_22", "label": "Windows Server 2022"},
+            ],
+        },
+        {
+            "name": "sn_aws_region",
+            "question_text": "AWS Region",
+            "type": "select_box",
+            "mandatory": True,
+            "order": 300,
+            "choice_list": [
+                {"value": "us-east-2", "label": "us-east-2"},
+                {"value": "us-west-1", "label": "us-west-1"},
+            ],
+        },
+    ]
+    for var in variables:
+        existing_var = await session.execute(
+            select(ItemOptionNew).where(
+                ItemOptionNew.cat_item == item.sys_id,
+                ItemOptionNew.name == var["name"],
+            )
+        )
+        row = existing_var.scalar_one_or_none()
+        if row:
+            row.question_text = var["question_text"]
+            row.type = var["type"]
+            row.mandatory = var["mandatory"]
+            row.order = var["order"]
+            row.choice_list = var["choice_list"]
+            row.active = True
+        else:
+            session.add(
+                ItemOptionNew(
+                    sys_id=new_sys_id(),
+                    cat_item=item.sys_id,
+                    name=var["name"],
+                    question_text=var["question_text"],
+                    type=var["type"],
+                    mandatory=var["mandatory"],
+                    order=var["order"],
+                    choice_list=var["choice_list"],
+                    active=True,
+                )
+            )
+    await session.flush()
+
+
 async def _seed_service_requests(session, ctx: LabContext) -> None:
     desk = ctx.groups[LAB_MARKER_GROUP]
 
@@ -956,6 +1085,7 @@ async def seed_lab(*, ensure_base: bool = True, force: bool = False, hard: bool 
         await _seed_incidents(session, ctx)
         await _seed_problems(session, ctx)
         await _seed_changes(session, ctx)
+        await _seed_catalog_items(session, ctx)
         await _seed_service_requests(session, ctx)
 
         await session.commit()

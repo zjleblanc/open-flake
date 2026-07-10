@@ -372,7 +372,7 @@ export function ConfigurationItemDetailPage() {
   usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
 
   if (isLoading || !data) {
-    return <p>Loading...</p>;
+    return <p className="empty-state">Loading…</p>;
   }
 
   const handleSave = () => {
@@ -552,7 +552,7 @@ export function ConfigurationItemDetailPage() {
           )}
 
           {!permissions?.write && otherPropertyKeys.length === 0 && (
-            <p className="text-muted text-sm">No additional properties.</p>
+            <p className="empty-state">No additional properties yet</p>
           )}
 
           {permissions?.write && (

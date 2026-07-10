@@ -7,16 +7,25 @@ from app.models import (
     CmdbRelCi,
     CmdbRelType,
     Incident,
+    ItemOptionNew,
+    ItemOptionNewCondition,
     Problem,
     ProblemTask,
     RecordAccessGrant,
+    ScCatItemWebhook,
+    ScItemOption,
+    ScReqItem,
     ScRequest,
     ScTask,
+    ScWebhook,
+    ScWebhookLog,
+    ServiceCatalogItem,
     StdChangeProducerVersion,
     SysAttachment,
     SysComment,
     SysGroupRole,
     SysRole,
+    SysSecret,
     SysUser,
     SysUserGrMember,
     SysUserGroup,
@@ -33,7 +42,16 @@ TABLE_MODELS: dict[str, type] = {
     "sys_user_group": SysUserGroup,
     "sys_user_grmember": SysUserGrMember,
     "sc_request": ScRequest,
+    "sc_req_item": ScReqItem,
     "sc_task": ScTask,
+    "sc_cat_item": ServiceCatalogItem,
+    "item_option_new": ItemOptionNew,
+    "item_option_new_condition": ItemOptionNewCondition,
+    "sc_item_option": ScItemOption,
+    "sc_webhook": ScWebhook,
+    "sc_cat_item_webhook": ScCatItemWebhook,
+    "sc_webhook_log": ScWebhookLog,
+    "sys_secret": SysSecret,
     "cmdb_rel_type": CmdbRelType,
     "cmdb_rel_ci": CmdbRelCi,
     "std_change_producer_version": StdChangeProducerVersion,
@@ -52,6 +70,7 @@ RBAC_RECORD_TABLES = {
     "change_task",
     "cmdb_ci",
     "sc_request",
+    "sc_req_item",
     "sc_task",
 }
 
@@ -70,6 +89,11 @@ PLATFORM_TABLES: dict[str, dict[str, str]] = {
         "read": "groups.read",
         "write": "groups.manage",
     },
+    "sys_secret": {
+        "read": "secrets.read",
+        "write": "secrets.write",
+        "manage": "secrets.admin",
+    },
 }
 
 PLATFORM_ADMIN_PERMISSIONS = [
@@ -81,6 +105,9 @@ PLATFORM_ADMIN_PERMISSIONS = [
     "groups.read",
     "groups.write",
     "groups.manage",
+    "secrets.read",
+    "secrets.write",
+    "secrets.admin",
 ]
 
 NUMBER_PREFIXES: dict[str, str] = {
@@ -90,6 +117,7 @@ NUMBER_PREFIXES: dict[str, str] = {
     "change_request": "CHG",
     "change_task": "CTASK",
     "sc_request": "REQ",
+    "sc_req_item": "RITM",
     "sc_task": "SCTASK",
 }
 
@@ -182,6 +210,17 @@ REFERENCE_FIELDS: dict[str, set[str]] = {
         "business_service",
         "opened_by",
     },
+    "sc_req_item": {
+        "request",
+        "cat_item",
+        "assigned_to",
+        "assignment_group",
+        "owner",
+        "owner_group",
+        "cmdb_ci",
+        "business_service",
+        "opened_by",
+    },
     "sc_task": {
         "request",
         "assigned_to",
@@ -193,6 +232,31 @@ REFERENCE_FIELDS: dict[str, set[str]] = {
         "cat_item",
         "request_item",
     },
+    "sc_cat_item": {
+        "fulfillment_group",
+    },
+    "item_option_new": {
+        "cat_item",
+    },
+    "item_option_new_condition": {
+        "variable",
+        "depends_on",
+    },
+    "sc_item_option": {
+        "item_option_new",
+        "sc_req_item",
+    },
+    "sc_webhook": set(),
+    "sc_cat_item_webhook": {
+        "cat_item",
+        "webhook",
+    },
+    "sc_webhook_log": {
+        "webhook_id",
+        "attachment_id",
+        "sc_req_item",
+    },
+    "sys_secret": set(),
     "sys_user": {"manager"},
     "sys_user_group": {"owner", "manager", "parent"},
     "sys_user_grmember": {"user_sys_id", "group_sys_id"},

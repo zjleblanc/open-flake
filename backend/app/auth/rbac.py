@@ -44,6 +44,13 @@ def has_permission(user_permissions: set[str], required: str) -> bool:
             return True
         if required.endswith(".read") and "records.*.read" in user_permissions:
             return True
+    # secrets.admin ⊃ secrets.write ⊃ secrets.read
+    if required == "secrets.read":
+        if "secrets.write" in user_permissions or "secrets.admin" in user_permissions:
+            return True
+    if required == "secrets.write":
+        if "secrets.admin" in user_permissions:
+            return True
     return False
 
 
@@ -303,6 +310,19 @@ async def assert_can_create_record(
 
     if table in PLATFORM_TABLES:
         await assert_platform_action(db, auth, table, "write")
+
+
+async def can_read_table(db: AsyncSession, auth: AuthContext, table: str) -> bool:
+    """Return True if the user may list/reference the given table."""
+    perms = await get_user_permissions(db, auth.user_sys_id)
+    if has_permission(perms, "records.*.read") or has_permission(perms, "records.*.write"):
+        return True
+    if table in RBAC_RECORD_TABLES:
+        return False
+    if table in PLATFORM_TABLES:
+        required = PLATFORM_TABLES[table].get("read")
+        return required is not None and has_permission(perms, required)
+    return True
 
 
 async def assert_grant_management(

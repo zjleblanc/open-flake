@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Boolean, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext
@@ -27,10 +27,14 @@ from app.api.flake.attachment import (
 )
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence, SysUser
-from app.query.parser import QueryCondition
+from app.query.parser import QueryCondition, apply_condition_groups
 from app.utils.ids import new_sys_id
 
 settings = get_settings()
+
+
+def _apply_conditions(query, model, conditions: list[QueryCondition]):
+    return apply_condition_groups(query, model, conditions)
 
 
 def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[str, Any]:
@@ -58,6 +62,8 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             data[col.name] = val.isoformat()
         elif isinstance(val, bool):
             data[col.name] = "true" if val else "false"
+        elif isinstance(val, (dict, list)):
+            data[col.name] = val
         else:
             data[col.name] = str(val)
 
@@ -95,6 +101,16 @@ def _ref_table(field: str, table: str | None = None) -> str:
         "change_request": "change_request",
         "problem": "problem",
         "request": "sc_request",
+        "cat_item": "sc_cat_item",
+        "request_item": "sc_req_item",
+        "sc_req_item": "sc_req_item",
+        "item_option_new": "item_option_new",
+        "variable": "item_option_new",
+        "depends_on": "item_option_new",
+        "webhook_id": "sc_webhook",
+        "webhook": "sc_webhook",
+        "attachment_id": "sc_cat_item_webhook",
+        "fulfillment_group": "sys_user_group",
         "cmdb_ci": "cmdb_ci",
         "business_service": "cmdb_ci",
         "duplicate_of": "problem",
@@ -121,6 +137,12 @@ def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
             other.update(value)
             continue
         if key in known_cols and key != "other":
+            col = TABLE_MODELS[table].__table__.columns.get(key)
+            if col is not None and isinstance(col.type, Boolean):
+                if isinstance(value, str):
+                    value = value.strip().lower() in {"true", "1", "yes"}
+                else:
+                    value = bool(value)
             result[key] = value
         elif key not in known_cols:
             other[key] = value
@@ -185,22 +207,6 @@ async def next_number(db: AsyncSession, table: str) -> str | None:
         await db.flush()
     seq.last_value += 1
     return f"{prefix}{seq.last_value:07d}"
-
-
-def _apply_conditions(query, model, conditions: list[QueryCondition]):
-    for cond in conditions:
-        col = getattr(model, cond.field, None)
-        if col is None:
-            continue
-        if cond.operator == "=":
-            query = query.where(col == cond.value)
-        elif cond.operator == "IN":
-            values = [part.strip() for part in cond.value.split(",") if part.strip()]
-            if values:
-                query = query.where(col.in_(values))
-        elif cond.operator == "LIKE":
-            query = query.where(col.ilike(f"%{cond.value}%"))
-    return query
 
 
 async def list_records(
@@ -464,6 +470,8 @@ async def update_record(
             await assert_platform_action(db, auth, table, "manage", record=record)
         elif table == "sys_user_grmember":
             await assert_platform_action(db, auth, table, "write", record=record)
+        elif table in PLATFORM_TABLES:
+            await assert_platform_action(db, auth, table, "write", record=record)
 
     flat = _flatten_payload(payload, table)
     if table == "sys_user" and flat.get("user_password"):
@@ -527,6 +535,8 @@ async def delete_record(
                         await assert_record_action(db, auth, parent_table, parent, "write")
         elif table == "sys_user_grmember":
             await assert_platform_action(db, auth, table, "write", record=record)
+        elif table == "sys_secret":
+            await assert_platform_action(db, auth, table, "manage", record=record)
         elif table == "sys_attachment":
             await _assert_attachment_parent_access(
                 db,
@@ -535,6 +545,8 @@ async def delete_record(
                 record.table_sys_id,
                 "write",
             )
+        elif table in PLATFORM_TABLES:
+            await assert_platform_action(db, auth, table, "write", record=record)
 
     if table == "sys_attachment":
         result = _model_to_dict(record, table, exclude_links=False)

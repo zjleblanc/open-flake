@@ -146,7 +146,9 @@ TABLE_ENDPOINTS = {
     "users": "sys_user",
     "groups": "sys_user_group",
     "catalog-requests": "sc_request",
+    "catalog-request-items": "sc_req_item",
     "catalog-tasks": "sc_task",
+    "catalog-items": "sc_cat_item",
 }
 
 

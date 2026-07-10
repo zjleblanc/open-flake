@@ -126,12 +126,20 @@ export function SettingsPage() {
             </tr>
           </thead>
           <tbody>
-            {(apiKeys.data || []).map((k) => (
-              <tr key={k.sys_id}>
-                <td>{k.name}</td>
-                <td>{k.active ? "Active" : "Inactive"}</td>
+            {(apiKeys.data || []).length === 0 ? (
+              <tr>
+                <td colSpan={2} className="empty-state">
+                  No API keys yet
+                </td>
               </tr>
-            ))}
+            ) : (
+              (apiKeys.data || []).map((k) => (
+                <tr key={k.sys_id}>
+                  <td>{k.name}</td>
+                  <td>{k.active ? "Active" : "Inactive"}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -165,13 +173,21 @@ export function SettingsPage() {
             </tr>
           </thead>
           <tbody>
-            {(oauthClients.data || []).map((c) => (
-              <tr key={c.sys_id}>
-                <td>{c.name}</td>
-                <td>{c.client_id}</td>
-                <td>{c.active ? "Active" : "Inactive"}</td>
+            {(oauthClients.data || []).length === 0 ? (
+              <tr>
+                <td colSpan={3} className="empty-state">
+                  No OAuth clients yet
+                </td>
               </tr>
-            ))}
+            ) : (
+              (oauthClients.data || []).map((c) => (
+                <tr key={c.sys_id}>
+                  <td>{c.name}</td>
+                  <td>{c.client_id}</td>
+                  <td>{c.active ? "Active" : "Inactive"}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

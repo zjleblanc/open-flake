@@ -13,7 +13,7 @@ export function DashboardPage() {
     queryFn: api.dashboard,
   });
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <p className="empty-state">Loading…</p>;
 
   return (
     <div>

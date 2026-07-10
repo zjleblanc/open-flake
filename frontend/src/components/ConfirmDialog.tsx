@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   message: string;
   error?: string | null;
   confirmLabel?: string;
+  pendingLabel?: string;
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
@@ -20,6 +21,7 @@ export function ConfirmDialog({
   message,
   error,
   confirmLabel = "Delete",
+  pendingLabel,
   cancelLabel = "Cancel",
   onConfirm,
   onCancel,
@@ -37,6 +39,8 @@ export function ConfirmDialog({
   }, [open, isPending, onCancel]);
 
   if (!open) return null;
+
+  const busyLabel = pendingLabel || `${confirmLabel}…`;
 
   return (
     <Portal>
@@ -60,8 +64,8 @@ export function ConfirmDialog({
             <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={isPending}>
               {cancelLabel}
             </button>
-            <button type="button" className="btn btn-danger" onClick={onConfirm} disabled={isPending}>
-              {isPending ? "Deleting…" : confirmLabel}
+            <button type="button" className="btn btn-danger-solid" onClick={onConfirm} disabled={isPending}>
+              {isPending ? busyLabel : confirmLabel}
             </button>
           </div>
         </div>

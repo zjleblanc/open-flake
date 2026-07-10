@@ -28,7 +28,7 @@ from app.domain.cmdb.registry import (
 from app.domain.errors import InvalidFieldNameError
 from app.events.bus import RecordEvent, emit
 from app.models import CmdbCi, SysUser
-from app.query.parser import QueryCondition
+from app.query.parser import QueryCondition, apply_condition_groups
 from app.utils.ids import new_sys_id
 
 
@@ -46,19 +46,7 @@ async def _resolve_audit_username(
 
 
 def _apply_conditions(query, conditions: list[QueryCondition]):
-    for cond in conditions:
-        col = getattr(CmdbCi, cond.field, None)
-        if col is None:
-            continue
-        if cond.operator == "=":
-            query = query.where(col == cond.value)
-        elif cond.operator == "IN":
-            values = [part.strip() for part in cond.value.split(",") if part.strip()]
-            if values:
-                query = query.where(col.in_(values))
-        elif cond.operator == "LIKE":
-            query = query.where(col.ilike(f"%{cond.value}%"))
-    return query
+    return apply_condition_groups(query, CmdbCi, conditions)
 
 
 def class_filter_conditions(class_name: str | None) -> list[QueryCondition]:

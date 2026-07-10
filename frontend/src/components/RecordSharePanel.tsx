@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getRecordPermissions, type RecordPermissions } from "../api/client";
 import { EmptyValue, isEmptyDisplayValue } from "./EmptyValue";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 function refValue(field: unknown): string {
   if (!field) return "";
@@ -35,6 +36,9 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
   const [granteeId, setGranteeId] = useState("");
   const [owner, setOwner] = useState(refValue(record.owner));
   const [ownerGroup, setOwnerGroup] = useState(refValue(record.owner_group));
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; label: string } | null>(
+    null
+  );
 
   useEffect(() => {
     setOwner(refValue(record.owner));
@@ -89,6 +93,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
     mutationFn: (grantSysId: string) => api.deleteGrant(resource, sysId, grantSysId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["grants", resource, sysId] });
+      setPendingDelete(null);
     },
   });
 
@@ -186,7 +191,7 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           </p>
 
           {grants.length === 0 ? (
-            <p className="text-muted text-sm">No additional access grants.</p>
+            <p className="empty-state">No access grants yet</p>
           ) : (
             <ul className="sharing-grant-list">
               {grants.map((g) => {
@@ -205,9 +210,14 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
                       </span>
                     </div>
                     <button
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-danger btn-sm"
                       type="button"
-                      onClick={() => deleteMutation.mutate(g.sys_id)}
+                      onClick={() =>
+                        setPendingDelete({
+                          id: g.sys_id,
+                          label: `${granteeKind}: ${grantee}`,
+                        })
+                      }
                       disabled={deleteMutation.isPending}
                     >
                       Remove
@@ -272,6 +282,22 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           </div>
         </section>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Remove access"
+        message={
+          pendingDelete
+            ? `Are you sure you want to remove access for "${pendingDelete.label}"?`
+            : ""
+        }
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+        }}
+        onCancel={() => setPendingDelete(null)}
+        isPending={deleteMutation.isPending}
+      />
     </div>
   );
 }

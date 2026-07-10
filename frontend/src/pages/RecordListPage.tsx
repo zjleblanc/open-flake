@@ -169,7 +169,7 @@ export function RecordListPage({
         {selected.size > 0 && (
           <button
             type="button"
-            className="btn btn-danger"
+            className="btn btn-danger-solid"
             onClick={() => setConfirmOpen(true)}
             disabled={bulkDeleteMutation.isPending}
           >
@@ -188,7 +188,7 @@ export function RecordListPage({
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, actions: headerActions });
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading) return <p className="empty-state">Loading…</p>;
 
   const columnCount = columns.length + (hasDeletable ? 1 : 0);
 

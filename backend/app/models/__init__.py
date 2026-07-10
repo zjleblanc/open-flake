@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -476,11 +476,157 @@ class ServiceCatalog(Base):
 
 
 class ServiceCatalogItem(Base):
-    __tablename__ = "service_catalog_item"
+    """Catalog item definition (ServiceNow sc_cat_item)."""
+
+    __tablename__ = "sc_cat_item"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    catalog_sys_id: Mapped[str] = mapped_column(String(32))
-    name: Mapped[str] = mapped_column(String(256))
+    catalog_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+    name: Mapped[str] = mapped_column(String(256), index=True)
     short_description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    active: Mapped[bool] = mapped_column(default=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     price: Mapped[str] = mapped_column(String(32), default="0")
+    category: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    subcategory: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    fulfillment_group: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    order: Mapped[int] = mapped_column(Integer, default=100)
+    icon: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ItemOptionNew(Base, TimestampMixin):
+    """Catalog item variable / form field definition."""
+
+    __tablename__ = "item_option_new"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    cat_item: Mapped[str] = mapped_column(String(32), index=True)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    question_text: Mapped[str] = mapped_column(String(512), default="")
+    type: Mapped[str] = mapped_column(String(32), default="string")
+    mandatory: Mapped[bool] = mapped_column(Boolean, default=False)
+    default_value: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    order: Mapped[int] = mapped_column(Integer, default=100)
+    reference_table: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    reference_filter: Mapped[str | None] = mapped_column(Text, nullable=True)
+    choice_list: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
+    help_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    read_only: Mapped[bool] = mapped_column(Boolean, default=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ItemOptionNewCondition(Base, TimestampMixin):
+    """Inter-field dependency rules for catalog variables."""
+
+    __tablename__ = "item_option_new_condition"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    variable: Mapped[str] = mapped_column(String(32), index=True)
+    condition_type: Mapped[str] = mapped_column(String(32), default="visibility")
+    depends_on: Mapped[str] = mapped_column(String(32), index=True)
+    operator: Mapped[str] = mapped_column(String(16), default="=")
+    value: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    filter_override: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ScReqItem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+    """Requested catalog item (ServiceNow sc_req_item / RITM)."""
+
+    __tablename__ = "sc_req_item"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    number: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    request: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    cat_item: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    state: Mapped[str] = mapped_column(String(8), default="1")
+    stage: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    price: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    short_description: Mapped[str] = mapped_column(String(512), default="")
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    approval: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    urgency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    impact: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    opened_by: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    sys_class_name: Mapped[str] = mapped_column(String(64), default="sc_req_item")
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ScItemOption(Base, TimestampMixin):
+    """Submitted variable value for a requested item."""
+
+    __tablename__ = "sc_item_option"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    item_option_new: Mapped[str] = mapped_column(String(32), index=True)
+    sc_req_item: Mapped[str] = mapped_column(String(32), index=True)
+    value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class SysSecret(Base, TimestampMixin):
+    """Named credential for outbound integrations (referenced as {{secret:name}})."""
+
+    __tablename__ = "sys_secret"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ScWebhook(Base, TimestampMixin):
+    """Standalone outbound webhook destination (reusable across catalog items)."""
+
+    __tablename__ = "sc_webhook"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(256), index=True)
+    url: Mapped[str] = mapped_column(String(1024))
+    method: Mapped[str] = mapped_column(String(8), default="POST")
+    headers: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ScCatItemWebhook(Base, TimestampMixin):
+    """Attaches a standalone webhook to a catalog item with optional payload override."""
+
+    __tablename__ = "sc_cat_item_webhook"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    cat_item: Mapped[str] = mapped_column(String(32), index=True)
+    webhook: Mapped[str] = mapped_column(String(32), index=True)
+    payload_template: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trigger_on: Mapped[str] = mapped_column(String(32), default="order")
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class ScWebhookLog(Base, TimestampMixin):
+    """Delivery log for catalog item webhooks."""
+
+    __tablename__ = "sc_webhook_log"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    webhook_id: Mapped[str] = mapped_column(String(32), index=True)
+    attachment_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    sc_req_item: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, default=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")

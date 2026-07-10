@@ -39,7 +39,7 @@ export function RecordDeleteButton({
     <>
       <button
         type="button"
-        className="btn btn-danger"
+        className="btn btn-danger-solid"
         onClick={() => {
           setError(null);
           setConfirmOpen(true);

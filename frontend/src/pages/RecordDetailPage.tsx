@@ -138,7 +138,7 @@ export function RecordDetailPage({
   usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
 
   if (isLoading || !data) {
-    return <p>Loading...</p>;
+    return <p className="empty-state">Loading…</p>;
   }
 
   return (

@@ -99,15 +99,23 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {(users.data?.records || []).map((u) => (
-                <tr key={u.sys_id}>
-                  <td>{u.user_name}</td>
-                  <td>
-                    {u.first_name} {u.last_name}
+              {(users.data?.records || []).length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="empty-state">
+                    No users yet
                   </td>
-                  <td>{u.email}</td>
                 </tr>
-              ))}
+              ) : (
+                (users.data?.records || []).map((u) => (
+                  <tr key={u.sys_id}>
+                    <td>{u.user_name}</td>
+                    <td>
+                      {u.first_name} {u.last_name}
+                    </td>
+                    <td>{u.email}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -125,21 +133,29 @@ export function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {(groups.data?.records || []).map((g) => (
-                <tr key={g.sys_id}>
-                  <td>{g.name}</td>
-                  <td>{g.description}</td>
-                  <td>
-                    {isEmptyDisplayValue(g.owner) ? (
-                      <EmptyValue />
-                    ) : typeof g.owner === "object" ? (
-                      (g.owner as { value?: string }).value
-                    ) : (
-                      g.owner
-                    )}
+              {(groups.data?.records || []).length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="empty-state">
+                    No groups yet
                   </td>
                 </tr>
-              ))}
+              ) : (
+                (groups.data?.records || []).map((g) => (
+                  <tr key={g.sys_id}>
+                    <td>{g.name}</td>
+                    <td>{g.description}</td>
+                    <td>
+                      {isEmptyDisplayValue(g.owner) ? (
+                        <EmptyValue />
+                      ) : typeof g.owner === "object" ? (
+                        (g.owner as { value?: string }).value
+                      ) : (
+                        g.owner
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

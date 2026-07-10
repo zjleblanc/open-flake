@@ -1,4 +1,5 @@
 import logging
+import json
 from contextlib import asynccontextmanager
 
 from sqlalchemy import select, text
@@ -26,6 +27,7 @@ from app.models import (
     Problem,
     ProblemTask,
     ScRequest,
+    ScReqItem,
     ScTask,
     ServiceCatalog,
     ServiceCatalogItem,
@@ -60,8 +62,119 @@ RBAC_BACKFILL_MODELS = {
     "change_task": ChangeTask,
     "cmdb_ci": CmdbCi,
     "sc_request": ScRequest,
+    "sc_req_item": ScReqItem,
     "sc_task": ScTask,
 }
+
+
+async def _migrate_service_catalog_item_table(conn) -> None:
+    """Rename legacy service_catalog_item table to sc_cat_item when upgrading."""
+    result = await conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'service_catalog_item'"
+        )
+    )
+    if result.scalar_one_or_none() is None:
+        return
+    existing = await conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'sc_cat_item'"
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+    await conn.execute(text("ALTER TABLE service_catalog_item RENAME TO sc_cat_item"))
+    logger.info("Renamed service_catalog_item -> sc_cat_item")
+
+
+async def _migrate_legacy_item_webhooks(conn) -> None:
+    """Split embedded sc_cat_item_webhook destinations into standalone sc_webhook rows."""
+    tables = await conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'sc_cat_item_webhook'"
+        )
+    )
+    if tables.scalar_one_or_none() is None:
+        return
+
+    url_col = await conn.execute(
+        text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' "
+            "AND table_name = 'sc_cat_item_webhook' "
+            "AND column_name = 'url'"
+        )
+    )
+    if url_col.scalar_one_or_none() is None:
+        return
+
+    await conn.execute(
+        text(
+            "CREATE TABLE IF NOT EXISTS sc_webhook ("
+            "sys_id VARCHAR(32) PRIMARY KEY, "
+            "name VARCHAR(256), "
+            "url VARCHAR(1024), "
+            "method VARCHAR(8) DEFAULT 'POST', "
+            "headers JSONB DEFAULT '{}'::jsonb, "
+            "secret VARCHAR(256), "
+            "active BOOLEAN DEFAULT TRUE, "
+            "description TEXT, "
+            "other JSONB DEFAULT '{}'::jsonb, "
+            "sys_created_on TIMESTAMPTZ DEFAULT now(), "
+            "sys_updated_on TIMESTAMPTZ DEFAULT now(), "
+            "sys_created_by VARCHAR(128), "
+            "sys_updated_by VARCHAR(128)"
+            ")"
+        )
+    )
+    await conn.execute(
+        text(
+            "ALTER TABLE sc_cat_item_webhook "
+            "ADD COLUMN IF NOT EXISTS webhook VARCHAR(32)"
+        )
+    )
+
+    rows = await conn.execute(
+        text(
+            "SELECT sys_id, name, url, method, headers, secret, active "
+            "FROM sc_cat_item_webhook "
+            "WHERE (webhook IS NULL OR webhook = '') AND COALESCE(url, '') != ''"
+        )
+    )
+    migrated = 0
+    for row in rows.mappings().all():
+        webhook_id = new_sys_id()
+        headers = row["headers"] if isinstance(row["headers"], dict) else {}
+        await conn.execute(
+            text(
+                "INSERT INTO sc_webhook "
+                "(sys_id, name, url, method, headers, secret, active) "
+                "VALUES (:sys_id, :name, :url, :method, CAST(:headers AS jsonb), "
+                ":secret, :active)"
+            ),
+            {
+                "sys_id": webhook_id,
+                "name": row["name"] or "Migrated webhook",
+                "url": row["url"],
+                "method": row["method"] or "POST",
+                "headers": json.dumps(headers),
+                "secret": row["secret"],
+                "active": True if row["active"] is None else bool(row["active"]),
+            },
+        )
+        await conn.execute(
+            text(
+                "UPDATE sc_cat_item_webhook SET webhook = :webhook_id "
+                "WHERE sys_id = :sys_id"
+            ),
+            {"webhook_id": webhook_id, "sys_id": row["sys_id"]},
+        )
+        migrated += 1
+    if migrated:
+        logger.info("Migrated %s legacy catalog item webhooks to sc_webhook", migrated)
 
 
 async def _migrate_cmdb_other_to_attributes(conn) -> None:
@@ -88,6 +201,8 @@ async def _migrate_cmdb_other_to_attributes(conn) -> None:
 
 async def run_migrations():
     async with db.engine.begin() as conn:
+        await _migrate_service_catalog_item_table(conn)
+        await _migrate_legacy_item_webhooks(conn)
         await conn.run_sync(Base.metadata.create_all)
         for table, column, col_type in [
             *RBAC_COLUMN_MIGRATIONS,
@@ -149,6 +264,14 @@ async def ensure_rbac_roles():
             )
             session.add(role)
             await session.flush()
+        else:
+            current = list(role.permissions or [])
+            missing = [p for p in PLATFORM_ADMIN_PERMISSIONS if p not in current]
+            if missing:
+                role.permissions = current + missing
+                logger.info(
+                    "Added permissions to platform_admin: %s", ", ".join(missing)
+                )
 
         admin_group = (
             await session.execute(select(SysUserGroup).where(SysUserGroup.name == "admin"))
@@ -183,7 +306,7 @@ async def ensure_rbac_roles():
 
 
 async def _ensure_number_sequences(session) -> None:
-    for prefix in ["INC", "PRB", "PTASK", "CHG", "CTASK", "REQ", "SCTASK"]:
+    for prefix in ["INC", "PRB", "PTASK", "CHG", "CTASK", "REQ", "RITM", "SCTASK"]:
         existing = await session.execute(
             select(NumberSequence).where(NumberSequence.prefix == prefix)
         )
@@ -341,7 +464,7 @@ async def seed_data():
             )
         )
 
-        for prefix in ["INC", "PRB", "PTASK", "CHG", "CTASK", "REQ", "SCTASK"]:
+        for prefix in ["INC", "PRB", "PTASK", "CHG", "CTASK", "REQ", "RITM", "SCTASK"]:
             session.add(NumberSequence(prefix=prefix, last_value=0))
 
         session.add(
@@ -374,6 +497,7 @@ async def seed_data():
                 catalog_sys_id=catalog_id,
                 name="New Laptop Request",
                 short_description="Request a new laptop",
+                description="Request a standard corporate laptop for a new or existing employee.",
                 price="0",
             )
         )
@@ -383,6 +507,7 @@ async def seed_data():
                 catalog_sys_id=catalog_id,
                 name="VPN Access",
                 short_description="Request VPN access",
+                description="Request remote VPN access for corporate network resources.",
                 price="0",
             )
         )
@@ -415,6 +540,9 @@ async def lifespan(app):
     await ensure_cmdb_class_metadata()
     await backfill_audit_usernames()
     await seed_data()
+    from app.domain.catalog.webhooks import register_webhook_subscriber
+
+    register_webhook_subscriber()
     async with db.async_session_factory() as session:
         orphans = await purge_orphan_attachments(session)
         stale_files = await purge_stale_attachment_files(session)
