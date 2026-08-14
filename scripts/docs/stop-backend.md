@@ -25,8 +25,9 @@ Handles uvicorn `--reload` parent and child processes.
 
 ## VS Code integration
 
-`.vscode/launch.json` references a **Stop Backend Server** post-debug task that runs this script after backend debug sessions end.
+`.vscode/launch.json` references a **Stop Backend Server** post-debug task that runs this script after backend debug sessions end. `.vscode/tasks.json` also includes it in the **Stop Full Stack (Backend + Frontend)** task alongside [stop-frontend.sh](stop-frontend.md).
 
 ## Related
 
 - [start-backend.sh](start-backend.md) — start the dev server
+- [stop-frontend.sh](stop-frontend.md) — stop the paired frontend dev server

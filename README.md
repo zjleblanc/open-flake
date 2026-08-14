@@ -57,6 +57,8 @@ For production installs from pre-built Quay images with HTTPS, see [docs/install
 | [ensure-postgres.sh](scripts/docs/ensure-postgres.md) | Start PostgreSQL in Podman for local dev |
 | [start-backend.sh](scripts/docs/start-backend.md) | Run the FastAPI backend with hot reload |
 | [stop-backend.sh](scripts/docs/stop-backend.md) | Stop the local uvicorn dev server |
+| [start-frontend.sh](scripts/docs/start-frontend.md) | Run the Vite frontend dev server |
+| [stop-frontend.sh](scripts/docs/stop-frontend.md) | Stop the local Vite dev server |
 
 ## License
 

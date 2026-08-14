@@ -57,6 +57,12 @@ cd backend && uvicorn app.main:app --reload --port 8000
 
 Helper scripts: [scripts/docs/ensure-postgres.md](../scripts/docs/ensure-postgres.md), [scripts/docs/start-backend.md](../scripts/docs/start-backend.md), [scripts/docs/stop-backend.md](../scripts/docs/stop-backend.md).
 
+## Run the API and frontend together
+
+In VS Code or Cursor, run the **Start Full Stack (Backend + Frontend)** task (Command Palette → "Tasks: Run Task") to launch the backend and frontend dev servers side by side in one step. **Stop Full Stack (Backend + Frontend)** tears both down. Individual **Start Backend Server** / **Start Frontend Server** and **Stop Backend Server** / **Stop Frontend Server** tasks are also available for running either half on its own.
+
+From the terminal, run the equivalent scripts in two panes: [scripts/docs/start-backend.md](../scripts/docs/start-backend.md) and [scripts/docs/start-frontend.md](../scripts/docs/start-frontend.md).
+
 ## Lab seed data (optional)
 
 After the base seed runs (on first backend startup), populate a demo ITIL environment with users, groups, CMDB CIs, incidents, problems, changes, and catalog requests:
@@ -78,6 +84,8 @@ Creates an **Acme Corp** lab with Linux/Windows servers, network devices, ITIL a
 cd frontend
 npm run dev
 ```
+
+Or from the repository root: [scripts/docs/start-frontend.md](../scripts/docs/start-frontend.md) / [scripts/docs/stop-frontend.md](../scripts/docs/stop-frontend.md).
 
 Frontend lint and format scripts: `npm run lint`, `npm run format`, `npm run typecheck`.
 

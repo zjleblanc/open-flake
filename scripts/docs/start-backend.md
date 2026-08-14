@@ -54,4 +54,5 @@ DATABASE_URL=postgresql+asyncpg://openflake:openflake@localhost:5432/openflake
 
 - [ensure-postgres.sh](ensure-postgres.md) — start the database
 - [stop-backend.sh](stop-backend.md) — stop uvicorn on port 8000
+- [start-frontend.sh](start-frontend.md) — run the Vite frontend alongside the API
 - [Development](../../docs/development.md)

@@ -64,6 +64,63 @@
         "showReuseMessage": false,
         "close": true
       }
+    },
+    {
+      "label": "Start Frontend Server",
+      "type": "process",
+      "command": "/bin/bash",
+      "args": ["${workspaceFolder}/scripts/start-frontend.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "VITE v",
+          "endsPattern": "Local:"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "openflake"
+      },
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Stop Frontend Server",
+      "type": "process",
+      "command": "/bin/bash",
+      "args": ["${workspaceFolder}/scripts/stop-frontend.sh"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "close": true
+      }
+    },
+    {
+      "label": "Start Full Stack (Backend + Frontend)",
+      "dependsOn": ["Start Backend Server", "Start Frontend Server"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Full Stack (Backend + Frontend)",
+      "dependsOn": ["Stop Backend Server", "Stop Frontend Server"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
     }
   ]
 }

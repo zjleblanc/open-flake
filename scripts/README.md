@@ -14,6 +14,8 @@ Helper scripts for local development, container deployment, and image publishing
 | [ensure-postgres.sh](docs/ensure-postgres.md) | Start PostgreSQL in Podman for local dev |
 | [start-backend.sh](docs/start-backend.md) | Run the FastAPI backend with hot reload |
 | [stop-backend.sh](docs/stop-backend.md) | Stop the local uvicorn dev server |
+| [start-frontend.sh](docs/start-frontend.md) | Run the Vite frontend dev server |
+| [stop-frontend.sh](docs/stop-frontend.md) | Stop the local Vite dev server |
 
 ## Quick reference
 
@@ -31,6 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/zjleblanc/open-flake/main/scripts/p
 ```bash
 ./scripts/ensure-postgres.sh
 ./scripts/start-backend.sh
+./scripts/start-frontend.sh
 ```
 
 **Publish a release (maintainers):**
@@ -49,6 +52,8 @@ QUAY_USERNAME=... QUAY_TOKEN=... ./scripts/publish-images.sh --push --tag v0.1.0
 - [ensure-postgres.sh](#ensure-postgressh)
 - [start-backend.sh](#start-backendsh)
 - [stop-backend.sh](#stop-backendsh)
+- [start-frontend.sh](#start-frontendsh)
+- [stop-frontend.sh](#stop-frontendsh)
 
 ## podman-install.sh
 
@@ -717,6 +722,7 @@ DATABASE_URL=postgresql+asyncpg://openflake:openflake@localhost:5432/openflake
 
 - [ensure-postgres.sh](#ensure-postgressh) — start the database
 - [stop-backend.sh](#stop-backendsh) — stop uvicorn on port 8000
+- [start-frontend.sh](#start-frontendsh) — run the Vite frontend alongside the API
 - [Development](../../docs/development.md)
 
 ---
@@ -748,8 +754,84 @@ Handles uvicorn `--reload` parent and child processes.
 
 ### VS Code integration
 
-`.vscode/launch.json` references a **Stop Backend Server** post-debug task that runs this script after backend debug sessions end.
+`.vscode/launch.json` references a **Stop Backend Server** post-debug task that runs this script after backend debug sessions end. `.vscode/tasks.json` also includes it in the **Stop Full Stack (Backend + Frontend)** task alongside [stop-frontend.sh](#stop-frontendsh).
 
 ### Related
 
 - [start-backend.sh](#start-backendsh) — start the dev server
+- [stop-frontend.sh](#stop-frontendsh) — stop the paired frontend dev server
+
+---
+
+## start-frontend.sh
+
+Run the OpenFlake Vite frontend dev server locally. Intended for development alongside the FastAPI backend.
+
+### Prerequisites
+
+- **Node.js** and frontend dependencies installed:
+
+```bash
+cd frontend && npm install
+```
+
+### Usage
+
+From the repository root:
+
+```bash
+./scripts/start-frontend.sh
+```
+
+The dev server binds to `http://localhost:5173` with hot module reload. Requests to `/api`, `/oauth_token.do`, and `/health` are proxied to the backend on `http://localhost:8000`.
+
+VS Code tasks in `.vscode/tasks.json` use this workflow; [stop-frontend.sh](#stop-frontendsh) tears down Vite after debug sessions.
+
+### Environment
+
+For HTTPS during local development, run `npm run dev:https` directly instead — see [SSL / HTTPS — Local development HTTPS](../../docs/ssl-https.md#local-development-https).
+
+### Troubleshooting
+
+**`node_modules` not found:** Run `npm install` in `frontend/` as shown in Prerequisites.
+
+**API requests failing:** Start the backend first — see [start-backend.sh](#start-backendsh).
+
+### Related
+
+- [start-backend.sh](#start-backendsh) — run the API alongside the frontend
+- [stop-frontend.sh](#stop-frontendsh) — stop the dev server on port 5173
+- [Development](../../docs/development.md)
+
+---
+
+## stop-frontend.sh
+
+Stop the local OpenFlake Vite development server listening on port 5173. Used by VS Code post-task teardown and manual cleanup after [start-frontend.sh](#start-frontendsh).
+
+### Prerequisites
+
+- None. Uses `lsof` when available, otherwise `pkill`.
+
+### Usage
+
+From the repository root:
+
+```bash
+./scripts/stop-frontend.sh
+```
+
+Safe to run when no server is active — exits silently if nothing is listening.
+
+### Behavior
+
+1. Find PIDs listening on TCP port 5173 via `lsof` and send `TERM`, then `KILL` if needed
+2. Fall back to `pkill` matching `vite`
+
+### VS Code integration
+
+`.vscode/tasks.json` defines a **Stop Frontend Server** task that runs this script, and a **Stop Full Stack (Backend + Frontend)** task that runs it alongside [stop-backend.sh](#stop-backendsh).
+
+### Related
+
+- [start-frontend.sh](#start-frontendsh) — start the dev server
