@@ -185,6 +185,8 @@ async def test_order_catalog_item_creates_request_and_ritm():
         created.append((table, record))
         return record
 
+    webhook_delivery = AsyncMock(return_value=[])
+
     with (
         patch(
             "app.domain.catalog.ordering.load_active_variables",
@@ -193,6 +195,10 @@ async def test_order_catalog_item_creates_request_and_ritm():
         patch(
             "app.domain.catalog.ordering.create_record",
             new=AsyncMock(side_effect=fake_create),
+        ),
+        patch(
+            "app.domain.catalog.ordering.deliver_webhooks_for_ritm",
+            new=webhook_delivery,
         ),
     ):
         result = await order_catalog_item(
@@ -220,6 +226,52 @@ async def test_order_catalog_item_creates_request_and_ritm():
     assert result["variables"]["sn_vm_name"] == "lab-web-99"
     assert result["request_item"]["cat_item"] == "item1"
     assert result["request_item"]["cmdb_ci"] == "ci1"
+
+    # Webhook delivery happens after all sc_item_option rows exist, using the
+    # same session and the freshly created RITM (not a stale/empty one).
+    webhook_delivery.assert_awaited_once()
+    call_args, call_kwargs = webhook_delivery.await_args
+    assert call_args[0] is db
+    assert call_args[1]["cat_item"] == "item1"
+    assert call_kwargs["trigger_on"] == "order"
+
+
+@pytest.mark.asyncio
+async def test_on_record_event_skips_create_but_delivers_state_change():
+    """Create events must not trigger delivery here, since order_catalog_item
+
+    delivers "order" webhooks itself once sc_item_option rows are flushed; only
+    doing it here would race the option inserts and always see empty variables.
+    """
+    from app.domain.catalog.webhooks import _on_record_event
+    from app.events.bus import RecordEvent
+
+    delivery = AsyncMock(return_value=[])
+    session = AsyncMock()
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
+    session_factory = MagicMock(return_value=session)
+
+    create_event = RecordEvent(
+        action="create", table="sc_req_item", sys_id="ritm1", record={"sys_id": "ritm1"}
+    )
+    update_event = RecordEvent(
+        action="update", table="sc_req_item", sys_id="ritm1", record={"sys_id": "ritm1"}
+    )
+
+    with (
+        patch("app.domain.catalog.webhooks.deliver_webhooks_for_ritm", new=delivery),
+        patch("app.domain.catalog.webhooks.db_module.async_session_factory", session_factory),
+    ):
+        await _on_record_event(create_event)
+        delivery.assert_not_awaited()
+
+        await _on_record_event(update_event)
+        delivery.assert_awaited_once()
+        call_args, call_kwargs = delivery.await_args
+        assert call_args[1] == {"sys_id": "ritm1"}
+        assert call_kwargs["trigger_on"] == "state_change"
+        session.commit.assert_awaited_once()
 
 
 @pytest.mark.asyncio

@@ -302,16 +302,16 @@ async def deliver_webhooks_for_ritm(
 async def _on_record_event(event: RecordEvent) -> None:
     if event.table != "sc_req_item":
         return
-    if event.action == "create":
-        trigger = "order"
-    elif event.action == "update":
-        trigger = "state_change"
-    else:
+    # "create" (order) delivery is handled explicitly by order_catalog_item, using
+    # the same session that has the sc_item_option rows flushed, so variables are
+    # visible. Delivering here instead would race the option inserts and always
+    # see an empty variables map.
+    if event.action != "update":
         return
 
     async with db_module.async_session_factory() as session:
         try:
-            await deliver_webhooks_for_ritm(session, event.record, trigger_on=trigger)
+            await deliver_webhooks_for_ritm(session, event.record, trigger_on="state_change")
             await session.commit()
         except Exception:
             await session.rollback()

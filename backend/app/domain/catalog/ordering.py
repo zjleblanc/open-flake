@@ -8,6 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.domain.catalog.webhooks import deliver_webhooks_for_ritm
 from app.domain.table_service import create_record
 from app.models import ItemOptionNew, ServiceCatalogItem
 
@@ -198,6 +199,10 @@ async def order_catalog_item(
             user_sys_id,
         )
         option_records.append(option)
+
+    # Deliver "order" webhooks here (rather than from the generic sc_req_item create
+    # event) so sc_item_option rows are already flushed and visible in this session.
+    await deliver_webhooks_for_ritm(db, ritm, trigger_on="order")
 
     task = None
     if create_fulfillment_task:
