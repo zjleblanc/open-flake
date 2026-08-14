@@ -130,7 +130,7 @@ async def _migrate_legacy_item_webhooks(conn) -> None:
         )
     )
     await conn.execute(
-        text("ALTER TABLE sc_cat_item_webhook " "ADD COLUMN IF NOT EXISTS webhook VARCHAR(32)")
+        text("ALTER TABLE sc_cat_item_webhook ADD COLUMN IF NOT EXISTS webhook VARCHAR(32)")
     )
 
     rows = await conn.execute(
@@ -162,7 +162,7 @@ async def _migrate_legacy_item_webhooks(conn) -> None:
             },
         )
         await conn.execute(
-            text("UPDATE sc_cat_item_webhook SET webhook = :webhook_id " "WHERE sys_id = :sys_id"),
+            text("UPDATE sc_cat_item_webhook SET webhook = :webhook_id WHERE sys_id = :sys_id"),
             {"webhook_id": webhook_id, "sys_id": row["sys_id"]},
         )
         migrated += 1

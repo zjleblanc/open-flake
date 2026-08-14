@@ -178,7 +178,7 @@ async def test_order_catalog_item_creates_request_and_ritm():
 
     async def fake_create(db_arg, table, payload, user_sys_id, *args, **kwargs):
         record = {
-            "sys_id": f"{table}-{len(created)+1}",
+            "sys_id": f"{table}-{len(created) + 1}",
             "number": f"{table.upper()}0000001",
             **payload,
         }
