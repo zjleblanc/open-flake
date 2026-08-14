@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-14 — Nest catalog requests in the sidebar and add browse layouts
+
+### Added
+
+- Service Catalog sidebar group with Requests and Requested Items nested underneath; the catalog label stays a link and only the chevron expands the submenu (expanded by default).
+- Card and list view toggle on the catalog landing, with the chosen layout remembered in the browser.
+- Category grouping on the catalog landing (category, then subcategory) using a tree shape that can deepen later.
+
+### Changed
+
+- Catalog item names and short descriptions use distinct heading and body styling instead of inheriting muted `h3` color.
+
 ## 2026-07-10 — Pre-commit lint pipeline and inner-loop quality guardrails
 
 ### Added

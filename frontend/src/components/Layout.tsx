@@ -33,6 +33,7 @@ type NavGroup = {
   id: string;
   label: string;
   icon: ReactNode;
+  to?: string;
   permission?: string;
   children: NavLeaf[];
 };
@@ -45,9 +46,16 @@ function isNavGroup(entry: NavEntry): entry is NavGroup {
 
 const NAV: NavEntry[] = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
-  { to: '/catalog', label: 'Service Catalog', icon: <CatalogIcon /> },
-  { to: '/requests', label: 'Requests', icon: <RequestIcon /> },
-  { to: '/requested-items', label: 'Requested Items', icon: <RequestedItemIcon /> },
+  {
+    id: 'catalog',
+    label: 'Service Catalog',
+    icon: <CatalogIcon />,
+    to: '/catalog',
+    children: [
+      { to: '/requests', label: 'Requests', icon: <RequestIcon /> },
+      { to: '/requested-items', label: 'Requested Items', icon: <RequestedItemIcon /> },
+    ],
+  },
   { to: '/incidents', label: 'Incidents', icon: <IncidentIcon /> },
   { to: '/problems', label: 'Problems', icon: <ProblemIcon /> },
   { to: '/changes', label: 'Changes', icon: <ChangeIcon /> },
@@ -121,6 +129,7 @@ export function Layout() {
   const { sidebarExpanded, setSidebarExpanded } = useUserPreferences();
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    catalog: true,
     integrations: true,
   });
 
@@ -175,16 +184,20 @@ export function Layout() {
                 (child) =>
                   location.pathname === child.to || location.pathname.startsWith(`${child.to}/`),
               );
+              const parentActive = Boolean(
+                item.to &&
+                (location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)),
+              );
               const expanded = openGroups[item.id] ?? childActive;
 
               if (!sidebarExpanded) {
-                const firstChild = item.children[0];
+                const target = item.to ?? item.children[0].to;
                 return (
                   <NavLink
                     key={item.id}
-                    to={firstChild.to}
+                    to={target}
                     title={item.label}
-                    className={() => `nav-link${childActive ? ' active' : ''}`}
+                    className={() => `nav-link${parentActive || childActive ? ' active' : ''}`}
                   >
                     <span className="nav-link-icon">{item.icon}</span>
                     <span className="nav-link-label">{item.label}</span>
@@ -194,18 +207,42 @@ export function Layout() {
 
               return (
                 <div key={item.id} className="nav-group">
-                  <button
-                    type="button"
-                    className={`nav-link nav-group-toggle${childActive ? ' active' : ''}`}
-                    onClick={() => toggleGroup(item.id)}
-                    aria-expanded={expanded}
-                  >
-                    <span className="nav-link-icon">{item.icon}</span>
-                    <span className="nav-link-label">{item.label}</span>
-                    <span className={`nav-group-chevron${expanded ? ' open' : ''}`}>
-                      <ChevronDownIcon />
-                    </span>
-                  </button>
+                  {item.to ? (
+                    <div className="nav-group-row">
+                      <NavLink
+                        to={item.to}
+                        title={item.label}
+                        className={({ isActive }) =>
+                          `nav-link nav-group-link${isActive ? ' active' : ''}`
+                        }
+                      >
+                        <span className="nav-link-icon">{item.icon}</span>
+                        <span className="nav-link-label">{item.label}</span>
+                      </NavLink>
+                      <button
+                        type="button"
+                        className={`nav-group-chevron-btn${expanded ? ' open' : ''}`}
+                        onClick={() => toggleGroup(item.id)}
+                        aria-expanded={expanded}
+                        aria-label={expanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
+                      >
+                        <ChevronDownIcon />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`nav-link nav-group-toggle${childActive ? ' active' : ''}`}
+                      onClick={() => toggleGroup(item.id)}
+                      aria-expanded={expanded}
+                    >
+                      <span className="nav-link-icon">{item.icon}</span>
+                      <span className="nav-link-label">{item.label}</span>
+                      <span className={`nav-group-chevron${expanded ? ' open' : ''}`}>
+                        <ChevronDownIcon />
+                      </span>
+                    </button>
+                  )}
                   {expanded ? (
                     <div className="nav-sublinks">
                       {item.children.map((child) => (

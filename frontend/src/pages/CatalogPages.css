@@ -1,20 +1,150 @@
+.catalog-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.catalog-browse .section-header-row {
+  margin-bottom: 0;
+}
+
 .catalog-browse-intro {
+  margin: 0;
+  max-width: 38rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.55;
   color: var(--of-text-muted);
-  margin-bottom: 1.25rem;
+}
+
+.catalog-view-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 0.1875rem;
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 55%, var(--of-surface));
+  border: 1px solid var(--of-border);
+}
+
+.catalog-view-toggle-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: calc(var(--of-radius) - 2px);
+  background: transparent;
+  color: var(--of-text-muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.catalog-view-toggle-option:hover,
+.catalog-view-toggle-option:focus-visible {
+  color: var(--of-text);
+}
+
+.catalog-view-toggle-option--active {
+  background: var(--of-primary);
+  color: var(--of-on-primary);
+}
+
+.catalog-view-toggle-option--active:hover {
+  color: var(--of-on-primary);
+}
+
+.catalog-category-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.catalog-category {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.catalog-category--nested {
+  margin-left: 0.25rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid color-mix(in srgb, var(--of-primary) 35%, var(--of-border));
+}
+
+.catalog-category-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.catalog-category-title {
+  margin: 0;
+  font-family: var(--of-font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--of-primary-light);
+}
+
+.catalog-category-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--of-text-muted);
+}
+
+.catalog-item-title {
+  margin: 0;
+  font-family: var(--of-font-heading);
+  font-weight: 700;
+  font-size: 1.0625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--of-text);
+  line-height: 1.3;
+}
+
+.catalog-item-title--compact {
+  font-size: 0.9375rem;
+  letter-spacing: 0.03em;
+}
+
+.catalog-item-title-link {
+  color: inherit;
+}
+
+.catalog-item-title-link:hover .catalog-item-title {
+  color: var(--of-primary-light);
+}
+
+.catalog-item-description {
+  margin: 0;
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--of-text-muted);
 }
 
 .catalog-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1rem;
 }
 
 .catalog-card {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
   background: var(--of-surface);
   border: 1px solid var(--of-border);
+  border-left: 3px solid var(--of-primary);
   border-radius: var(--of-radius);
-  padding: 1.25rem;
+  padding: 1.15rem 1.25rem 1.2rem;
   text-decoration: none;
   color: inherit;
   transition:
@@ -27,27 +157,25 @@
   box-shadow: 0 0 0 1px var(--of-primary);
 }
 
-.catalog-card h3 {
-  margin: 0 0 0.5rem;
-  font-family: var(--of-font-heading);
-  font-size: 1rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.catalog-card:hover .catalog-item-title {
+  color: var(--of-primary-light);
 }
 
-.catalog-card p {
-  margin: 0;
-  color: var(--of-text-muted);
-  font-size: 0.9rem;
+.catalog-card .catalog-item-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.catalog-card-meta {
-  display: inline-block;
-  margin-top: 0.75rem;
-  font-size: 0.75rem;
-  color: var(--of-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.catalog-item-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.catalog-item-table-card .catalog-item-description {
+  max-width: 42rem;
 }
 
 .catalog-item-page,

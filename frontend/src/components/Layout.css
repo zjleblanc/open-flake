@@ -136,6 +136,17 @@ button.nav-link {
   gap: 0.15rem;
 }
 
+.nav-group-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.125rem;
+}
+
+.nav-group-link {
+  flex: 1;
+  min-width: 0;
+}
+
 .nav-group-toggle {
   width: 100%;
 }
@@ -149,6 +160,36 @@ button.nav-link {
 
 .nav-group-chevron.open {
   transform: rotate(180deg);
+}
+
+.nav-group-chevron-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--of-radius);
+  background: transparent;
+  color: var(--of-sidebar-text);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.nav-group-chevron-btn svg {
+  transition: transform 0.15s ease;
+}
+
+.nav-group-chevron-btn.open svg {
+  transform: rotate(180deg);
+}
+
+.nav-group-chevron-btn:hover,
+.nav-group-chevron-btn:focus-visible {
+  background: var(--of-sidebar-active-bg);
+  color: var(--of-text);
+  opacity: 1;
 }
 
 .nav-sublinks {
