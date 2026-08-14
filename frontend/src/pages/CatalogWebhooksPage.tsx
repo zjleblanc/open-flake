@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { FieldTooltip } from '../components/FieldTooltip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TemplateAutocomplete } from '../components/TemplateAutocomplete';
 import './CatalogPages.css';
 
 type HeaderRow = { key: string; value: string };
@@ -87,7 +88,7 @@ export function CatalogWebhooksPage() {
 
   const secretsQuery = useQuery({
     queryKey: ['integration-secrets'],
-    queryFn: () => api.adminListSecrets(),
+    queryFn: () => api.listSecrets(),
     enabled: canReadSecrets,
   });
 
@@ -392,11 +393,11 @@ export function CatalogWebhooksPage() {
                     value={row.key}
                     onChange={(e) => updateHeaderRow(index, 'key', e.target.value)}
                   />
-                  <input
-                    aria-label={`Header value ${index + 1}`}
+                  <TemplateAutocomplete
+                    ariaLabel={`Header value ${index + 1}`}
                     placeholder="Bearer {{secret:aap_token}}"
                     value={row.value}
-                    onChange={(e) => updateHeaderRow(index, 'value', e.target.value)}
+                    onChange={(value) => updateHeaderRow(index, 'value', value)}
                   />
                   <button
                     type="button"

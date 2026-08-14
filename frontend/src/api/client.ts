@@ -406,23 +406,22 @@ export const api = {
       method: 'DELETE',
     }),
 
-  adminListSecrets: () =>
-    request<{ result: IntegrationSecret[] }>('/api/flake/catalog/admin/secrets'),
+  listSecrets: () => request<{ result: IntegrationSecret[] }>('/api/flake/secrets'),
 
-  adminCreateSecret: (data: Record<string, unknown>) =>
-    request<{ result: IntegrationSecret }>('/api/flake/catalog/admin/secrets', {
+  createSecret: (data: Record<string, unknown>) =>
+    request<{ result: IntegrationSecret }>('/api/flake/secrets', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
 
-  adminUpdateSecret: (secretId: string, data: Record<string, unknown>) =>
-    request<{ result: IntegrationSecret }>(`/api/flake/catalog/admin/secrets/${secretId}`, {
+  updateSecret: (secretId: string, data: Record<string, unknown>) =>
+    request<{ result: IntegrationSecret }>(`/api/flake/secrets/${secretId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
 
-  adminDeleteSecret: (secretId: string) =>
-    request<void>(`/api/flake/catalog/admin/secrets/${secretId}`, {
+  deleteSecret: (secretId: string) =>
+    request<void>(`/api/flake/secrets/${secretId}`, {
       method: 'DELETE',
     }),
 

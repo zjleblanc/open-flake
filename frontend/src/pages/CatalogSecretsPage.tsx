@@ -34,13 +34,13 @@ export function CatalogSecretsPage() {
     error: loadError,
   } = useQuery({
     queryKey: ['integration-secrets'],
-    queryFn: () => api.adminListSecrets(),
+    queryFn: () => api.listSecrets(),
     enabled: canRead,
   });
 
   const createMutation = useMutation({
     mutationFn: () =>
-      api.adminCreateSecret({
+      api.createSecret({
         name: form.name.trim(),
         value: form.value,
         description: form.description || undefined,
@@ -64,7 +64,7 @@ export function CatalogSecretsPage() {
       if (form.description !== baseline.description)
         patch.description = form.description || undefined;
       if (form.value) patch.value = form.value;
-      return api.adminUpdateSecret(editing!.sys_id, patch);
+      return api.updateSecret(editing!.sys_id, patch);
     },
     onSuccess: () => {
       setEditing(null);
@@ -81,7 +81,7 @@ export function CatalogSecretsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.adminDeleteSecret(id),
+    mutationFn: (id: string) => api.deleteSecret(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['integration-secrets'] });
       setPendingDelete(null);

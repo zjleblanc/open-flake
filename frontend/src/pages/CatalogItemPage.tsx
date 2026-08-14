@@ -65,7 +65,7 @@ export function CatalogItemPage() {
   const canAdmin = hasPermission('records.*.write');
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success, setSuccess] = useState<{ number: string; sysId: string } | null>(null);
 
   const {
     data,
@@ -142,16 +142,18 @@ export function CatalogItemPage() {
       }),
     onSuccess: (res) => {
       const result = res.result as {
+        request_id?: string;
         request_number?: string;
         request?: { number?: string; sys_id?: string };
       };
       const number = result.request_number || result.request?.number || '';
-      setSuccess(`Request ${number} created successfully.`);
+      const sysId = result.request_id || result.request?.sys_id || '';
+      setSuccess({ number, sysId });
       setError('');
     },
     onError: (err: Error) => {
       setError(err.message);
-      setSuccess('');
+      setSuccess(null);
     },
   });
 
@@ -275,7 +277,17 @@ export function CatalogItemPage() {
           ))}
 
           {error ? <p className="error">{error}</p> : null}
-          {success ? <p className="alert alert-success">{success}</p> : null}
+          {success ? (
+            <p className="alert alert-success">
+              Request{' '}
+              {success.sysId ? (
+                <Link to={`/requests/${success.sysId}`}>{success.number}</Link>
+              ) : (
+                success.number
+              )}{' '}
+              created successfully.
+            </p>
+          ) : null}
 
           <button type="submit" className="btn btn-primary" disabled={orderMutation.isPending}>
             {orderMutation.isPending ? 'Submitting…' : 'Order Now'}

@@ -13,6 +13,7 @@ from app.api.flake.catalog_admin import router as catalog_admin_router
 from app.api.flake.cmdb import router as cmdb_router
 from app.api.flake.oauth import router as oauth_router
 from app.api.flake.schema import router as schema_router
+from app.api.flake.secrets import router as secrets_router
 from app.api.flake.table import router as table_router
 from app.api.health import router as health_router
 from app.api.v1.router import router as v1_router
@@ -76,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(schema_router)
     app.include_router(catalog_router)
     app.include_router(catalog_admin_router)
+    app.include_router(secrets_router)
     app.include_router(v1_router)
 
     @app.exception_handler(InvalidFieldNameError)

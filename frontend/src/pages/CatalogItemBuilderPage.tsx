@@ -5,7 +5,13 @@ import { api, type CatalogVariable, type CatalogWebhookAttachment } from '../api
 import { AttachIntegrationPopover } from '../components/AttachIntegrationPopover';
 import { CatalogFilterConditionsPanel } from '../components/CatalogFilterConditionsPanel';
 import { CatalogVariablePopover } from '../components/CatalogVariablePopover';
-import { FieldsIcon, OverviewIcon, ShareIcon } from '../components/DetailIcons';
+import {
+  DeleteIcon,
+  EditIcon,
+  FieldsIcon,
+  OverviewIcon,
+  ShareIcon,
+} from '../components/DetailIcons';
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -361,14 +367,16 @@ export function CatalogItemBuilderPage() {
                         <td className="catalog-row-actions">
                           <button
                             type="button"
-                            className="btn btn-secondary btn-sm"
+                            className="btn-icon"
+                            aria-label={`Edit ${variable.question_text || variable.name}`}
                             onClick={() => setVariablePopover({ mode: 'edit', variable })}
                           >
-                            Edit
+                            <EditIcon size={14} />
                           </button>
                           <button
                             type="button"
-                            className="btn btn-danger btn-sm"
+                            className="btn-icon btn-icon-danger"
+                            aria-label={`Delete ${variable.question_text || variable.name}`}
                             onClick={() =>
                               setPendingDelete({
                                 kind: 'variable',
@@ -377,7 +385,7 @@ export function CatalogItemBuilderPage() {
                               })
                             }
                           >
-                            Delete
+                            <DeleteIcon size={14} />
                           </button>
                         </td>
                       </tr>
@@ -437,7 +445,8 @@ export function CatalogItemBuilderPage() {
                         <td className="catalog-row-actions">
                           <button
                             type="button"
-                            className="btn btn-secondary btn-sm"
+                            className="btn-icon"
+                            aria-label={`Edit ${attachment.webhook_name || attachment.webhook}`}
                             onClick={() =>
                               setIntegrationPopover({
                                 mode: 'edit',
@@ -445,11 +454,12 @@ export function CatalogItemBuilderPage() {
                               })
                             }
                           >
-                            Edit
+                            <EditIcon size={14} />
                           </button>
                           <button
                             type="button"
-                            className="btn btn-danger btn-sm"
+                            className="btn-icon btn-icon-danger"
+                            aria-label={`Delete ${attachment.webhook_name || attachment.webhook}`}
                             onClick={() =>
                               setPendingDelete({
                                 kind: 'process',
@@ -458,7 +468,7 @@ export function CatalogItemBuilderPage() {
                               })
                             }
                           >
-                            Delete
+                            <DeleteIcon size={14} />
                           </button>
                         </td>
                       </tr>

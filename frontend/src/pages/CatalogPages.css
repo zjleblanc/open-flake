@@ -333,6 +333,37 @@
   flex-wrap: wrap;
 }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: var(--of-surface);
+  color: var(--of-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.btn-icon:hover,
+.btn-icon:focus-visible {
+  background: var(--of-surface-hover);
+  color: var(--of-text);
+  border-color: color-mix(in srgb, var(--of-primary) 45%, var(--of-border));
+}
+
+.btn-icon-danger:hover,
+.btn-icon-danger:focus-visible {
+  color: var(--of-danger);
+  border-color: color-mix(in srgb, var(--of-danger) 45%, var(--of-border));
+}
+
 .catalog-row-active {
   background: color-mix(in srgb, var(--of-primary) 8%, transparent);
 }

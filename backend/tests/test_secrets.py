@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.api.flake.catalog_admin import _secret_dict
+from app.api.flake.secrets import _secret_dict
 from app.domain.secrets import (
     SecretResolutionError,
     extract_secret_names,

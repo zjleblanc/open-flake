@@ -42,6 +42,20 @@ const CHANGE_DETAIL_FIELDS = [
   { key: 'priority', label: 'Priority', readOnly: true },
 ];
 
+const REQUEST_DETAIL_FIELDS = [
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
+];
+
+const REQUESTED_ITEM_DETAIL_FIELDS = [
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
+];
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />;
   return <>{children}</>;
@@ -147,6 +161,44 @@ export function App() {
           }
         />
         <Route path="configuration-items/:sysId" element={<ConfigurationItemDetailPage />} />
+        <Route
+          path="requests"
+          element={
+            <RecordListPage resource="catalog-requests" title="Requests" basePath="/requests" />
+          }
+        />
+        <Route
+          path="requests/:sysId"
+          element={
+            <RecordDetailPage
+              resource="catalog-requests"
+              title="Requests"
+              listPath="/requests"
+              fields={REQUEST_DETAIL_FIELDS}
+            />
+          }
+        />
+        <Route
+          path="requested-items"
+          element={
+            <RecordListPage
+              resource="catalog-request-items"
+              title="Requested Items"
+              basePath="/requested-items"
+            />
+          }
+        />
+        <Route
+          path="requested-items/:sysId"
+          element={
+            <RecordDetailPage
+              resource="catalog-request-items"
+              title="Requested Items"
+              listPath="/requested-items"
+              fields={REQUESTED_ITEM_DETAIL_FIELDS}
+            />
+          }
+        />
         <Route path="catalog" element={<CatalogBrowsePage />} />
         <Route path="catalog/admin" element={<CatalogAdminListPage />} />
         <Route path="catalog/admin/:itemId" element={<CatalogItemBuilderPage />} />

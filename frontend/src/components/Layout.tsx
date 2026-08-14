@@ -11,6 +11,8 @@ import {
   IncidentIcon,
   IntegrationsIcon,
   ProblemIcon,
+  RequestedItemIcon,
+  RequestIcon,
   SecretIcon,
   SettingsIcon,
   UsersIcon,
@@ -44,6 +46,8 @@ function isNavGroup(entry: NavEntry): entry is NavGroup {
 const NAV: NavEntry[] = [
   { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/catalog', label: 'Service Catalog', icon: <CatalogIcon /> },
+  { to: '/requests', label: 'Requests', icon: <RequestIcon /> },
+  { to: '/requested-items', label: 'Requested Items', icon: <RequestedItemIcon /> },
   { to: '/incidents', label: 'Incidents', icon: <IncidentIcon /> },
   { to: '/problems', label: 'Problems', icon: <ProblemIcon /> },
   { to: '/changes', label: 'Changes', icon: <ChangeIcon /> },

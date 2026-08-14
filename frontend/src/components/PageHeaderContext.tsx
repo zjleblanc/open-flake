@@ -2,7 +2,6 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -75,11 +74,14 @@ export function usePageHeader({ breadcrumbs, badge, actions }: PageHeaderState) 
   const breadcrumbsRef = useRef(breadcrumbs);
   breadcrumbsRef.current = breadcrumbs;
 
+  // Set and clear in the same layout effect so that, when navigating between
+  // two pages that both call usePageHeader, the outgoing page's cleanup runs
+  // (synchronously, in the layout phase) before the incoming page's setup.
+  // Splitting these across a useLayoutEffect (set) and useEffect (clear)
+  // cleanup allowed the outgoing page's passive-effect cleanup to fire after
+  // the incoming page's layout effect, clobbering the newly-set header.
   useLayoutEffect(() => {
     setPageHeader({ breadcrumbs: breadcrumbsRef.current, badge, actions });
-  }, [breadcrumbKey, badge, actions, setPageHeader]);
-
-  useEffect(() => {
     return () => clearPageHeader();
-  }, [clearPageHeader]);
+  }, [breadcrumbKey, badge, actions, setPageHeader, clearPageHeader]);
 }

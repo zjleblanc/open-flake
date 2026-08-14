@@ -60,27 +60,27 @@ select = [
     "SIM",    # flake8-simplify
     "RUF",    # ruff-specific
 ]
-ignore = [
-    "B008",   # FastAPI Depends()/Query() in defaults is idiomatic
-    "E501",   # line length handled by formatter; long strings/URLs are fine
-    "S105",   # hardcoded password string (config defaults / test fixtures)
-    "S106",   # hardcoded password argument (config defaults / test fixtures)
-    "S108",   # hardcoded temp paths used intentionally in config/tests
-    "S603",   # subprocess call without shell=True
-    "S607",   # starting process with partial executable path
-    "SIM102", # nested ifs often clearer for auth/permission guards
-    "SIM108", # ternary not always clearer than if/else
-    "SIM117", # nested with patches are common and readable in tests
-]
+# No blanket `ignore = [...]` here -- every suppression below is scoped to the
+# specific file(s) where it is justified. See AGENTS.md for the reasoning.
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = [
+# Patterns are prefixed with "**/" so they match regardless of whether ruff is
+# invoked with a cwd of `backend/` (path like `app/api/...`) or the repo root,
+# as pre-commit does (path like `backend/app/api/...`).
+"**/app/api/**" = ["B008"] # FastAPI Depends()/Query() in defaults is idiomatic
+"**/app/auth/deps.py" = ["B008", "SIM102"] # Depends() defaults + nested auth guards read clearer un-merged
+"**/app/api/flake/catalog_admin.py" = ["SIM102"] # nested if permission guards read clearer un-merged
+"**/app/auth/rbac.py" = ["SIM102"] # nested if permission guards read clearer un-merged
+"**/app/domain/table_service.py" = ["E501", "SIM108"] # long URL template; ternary reads worse here
+"**/app/seed/lab.py" = ["E501", "S105"] # long seed-data strings; LAB_USER_PASSWORD is throwaway demo data
+"**/app/config.py" = ["S105"] # documented default/dev-only secret_key, not a real secret
+"**/app/startup.py" = ["S106"] # client_secret kwarg name false-positives as hardcoded password
+"**/tests/**" = [
     "S101",   # assert is fine in tests
     "B023",   # closures over loop vars are intentional in test mocks
-]
-"**/tests/**" = [
-    "S101",
-    "B023",
+    "S106",   # hardcoded password args are test fixtures, not real secrets
+    "S108",   # /tmp paths are fine in isolated test fixtures
+    "SIM117", # nested `with` blocks are common and readable in tests
 ]
 
 [tool.ruff.format]
