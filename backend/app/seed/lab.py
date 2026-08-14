@@ -853,6 +853,83 @@ async def _seed_changes(session, ctx: LabContext) -> None:
     )
 
 
+def _choices(pairs: list[tuple[str, str]]) -> list[dict]:
+    """Build a select_box/multi_select choice_list from (value, label) pairs."""
+    return [{"value": value, "label": label} for value, label in pairs]
+
+
+async def _upsert_catalog_item(
+    session,
+    catalog: ServiceCatalog,
+    *,
+    name: str,
+    short_description: str,
+    description: str,
+    category: str | None,
+    subcategory: str | None,
+    fulfillment_group: str | None,
+    order: int,
+    variables: list[dict],
+) -> ServiceCatalogItem:
+    """Create or update a catalog item and its variables idempotently."""
+    existing = await session.execute(
+        select(ServiceCatalogItem).where(
+            ServiceCatalogItem.catalog_sys_id == catalog.sys_id,
+            ServiceCatalogItem.name == name,
+        )
+    )
+    item: ServiceCatalogItem | None = existing.scalar_one_or_none()
+    if not item:
+        item = ServiceCatalogItem(sys_id=new_sys_id(), catalog_sys_id=catalog.sys_id, name=name)
+        session.add(item)
+
+    item.short_description = short_description
+    item.description = description
+    item.category = category
+    item.subcategory = subcategory
+    item.fulfillment_group = fulfillment_group
+    item.order = order
+    item.active = True
+    item.price = "0"
+    await session.flush()
+
+    for var in variables:
+        existing_var = await session.execute(
+            select(ItemOptionNew).where(
+                ItemOptionNew.cat_item == item.sys_id,
+                ItemOptionNew.name == var["name"],
+            )
+        )
+        row = existing_var.scalar_one_or_none()
+        fields = {
+            "question_text": var["question_text"],
+            "type": var["type"],
+            "mandatory": var.get("mandatory", False),
+            "order": var.get("order", 100),
+            "choice_list": var.get("choice_list", []),
+            "default_value": var.get("default_value"),
+            "reference_table": var.get("reference_table"),
+            "help_text": var.get("help_text"),
+            "read_only": var.get("read_only", False),
+        }
+        if row:
+            for key, value in fields.items():
+                setattr(row, key, value)
+            row.active = True
+        else:
+            session.add(
+                ItemOptionNew(
+                    sys_id=new_sys_id(),
+                    cat_item=item.sys_id,
+                    name=var["name"],
+                    active=True,
+                    **fields,
+                )
+            )
+    await session.flush()
+    return item
+
+
 async def _seed_catalog_items(session, ctx: LabContext) -> None:
     """Seed catalog items with form variables (Provision VM demo)."""
     catalog_result = await session.execute(
@@ -974,6 +1051,836 @@ async def _seed_catalog_items(session, ctx: LabContext) -> None:
                 )
             )
     await session.flush()
+
+    desk_group = ctx.groups.get(LAB_MARKER_GROUP)
+    network_group = ctx.groups.get("Network Operations")
+    security_group = ctx.groups.get("Security Operations")
+    app_support_group = ctx.groups.get("Application Support")
+
+    other_items: list[dict] = [
+        # Uncategorized — no category/subcategory.
+        {
+            "name": "Password Reset Self-Service",
+            "short_description": "Reset your own network or application password",
+            "description": (
+                "### Reset a forgotten or expired password\n\n"
+                "- Identity verified via MFA challenge\n"
+                "- Password synced across AD and SSO\n"
+                "- Notification sent on completion\n"
+            ),
+            "category": None,
+            "subcategory": None,
+            "fulfillment_group": desk_group,
+            "order": 5,
+            "variables": [
+                {
+                    "name": "username",
+                    "question_text": "Username",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 100,
+                },
+                {
+                    "name": "reset_reason",
+                    "question_text": "Reason for reset",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("forgotten", "Forgotten"),
+                            ("compromised", "Compromised"),
+                            ("expired", "Expired"),
+                            ("other", "Other"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "notify_email",
+                    "question_text": "Alternate notification email",
+                    "type": "email",
+                    "mandatory": False,
+                    "order": 300,
+                    "help_text": "Optional address to notify once the reset completes",
+                },
+            ],
+        },
+        # Hardware — single item, no subcategory.
+        {
+            "name": "New Laptop Request",
+            "short_description": "Request a new laptop",
+            "description": (
+                "### Request a standard corporate laptop for a new or existing employee\n\n"
+                "- Procured and imaged with the standard build\n"
+                "- Enrolled in MDM\n"
+                "- Shipped or handed off to the requestor\n"
+            ),
+            "category": "Hardware",
+            "subcategory": None,
+            "fulfillment_group": desk_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "laptop_model",
+                    "question_text": "Laptop model",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("mbp14", 'MacBook Pro 14"'),
+                            ("mbp16", 'MacBook Pro 16"'),
+                            ("thinkpad_x1", "ThinkPad X1 Carbon"),
+                            ("dell_xps15", "Dell XPS 15"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "business_justification",
+                    "question_text": "Business justification",
+                    "type": "text_area",
+                    "mandatory": True,
+                    "order": 200,
+                },
+                {
+                    "name": "needed_by",
+                    "question_text": "Needed by",
+                    "type": "date",
+                    "mandatory": True,
+                    "order": 300,
+                },
+                {
+                    "name": "include_dock",
+                    "question_text": "Include docking station",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 400,
+                    "default_value": "false",
+                },
+                {
+                    "name": "ship_to_office",
+                    "question_text": "Ship to office (uncheck to ship home)",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 500,
+                    "default_value": "true",
+                },
+            ],
+        },
+        # Network — multiple items, no subcategories.
+        {
+            "name": "VPN Access",
+            "short_description": "Request VPN access",
+            "description": (
+                "### Request remote VPN access for corporate network resources\n\n"
+                "- Profile provisioned in the VPN concentrator\n"
+                "- Access reviewed on the requested expiry date\n"
+            ),
+            "category": "Network",
+            "subcategory": None,
+            "fulfillment_group": network_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "vpn_profile",
+                    "question_text": "VPN profile",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("corporate", "Corporate"),
+                            ("development", "Development"),
+                            ("production", "Production"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "requestor_email",
+                    "question_text": "Requestor email",
+                    "type": "email",
+                    "mandatory": True,
+                    "order": 200,
+                },
+                {
+                    "name": "permanent_access",
+                    "question_text": "Permanent access",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 300,
+                },
+                {
+                    "name": "expiry_date",
+                    "question_text": "Access expiry date",
+                    "type": "date",
+                    "mandatory": False,
+                    "order": 400,
+                    "help_text": "Leave blank for permanent access",
+                },
+            ],
+        },
+        {
+            "name": "Firewall Rule Change",
+            "short_description": "Request a firewall rule addition or change",
+            "description": (
+                "### Request a firewall rule addition, removal, or modification\n\n"
+                "- Reviewed by Network Operations\n"
+                "- Applied during the next change window\n"
+            ),
+            "category": "Network",
+            "subcategory": None,
+            "fulfillment_group": network_group,
+            "order": 20,
+            "variables": [
+                {
+                    "name": "rule_action",
+                    "question_text": "Action",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("allow", "Allow"),
+                            ("deny", "Deny"),
+                            ("modify", "Modify existing"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "source_cidr",
+                    "question_text": "Source CIDR",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 200,
+                },
+                {
+                    "name": "destination_cidr",
+                    "question_text": "Destination CIDR",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 300,
+                },
+                {
+                    "name": "port_range",
+                    "question_text": "Port range",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 400,
+                    "help_text": "e.g. 443 or 8080-8090",
+                },
+                {
+                    "name": "protocol",
+                    "question_text": "Protocol",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 500,
+                    "choice_list": _choices(
+                        [
+                            ("tcp", "TCP"),
+                            ("udp", "UDP"),
+                            ("icmp", "ICMP"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "change_justification",
+                    "question_text": "Change justification",
+                    "type": "text_area",
+                    "mandatory": True,
+                    "order": 600,
+                },
+            ],
+        },
+        {
+            "name": "Request DNS Record",
+            "short_description": "Request a new or updated DNS record",
+            "description": (
+                "### Request a new or updated DNS record\n\n"
+                "- Created in the internal or external DNS zone\n"
+                "- Propagation verified before closure\n"
+            ),
+            "category": "Network",
+            "subcategory": None,
+            "fulfillment_group": network_group,
+            "order": 30,
+            "variables": [
+                {
+                    "name": "record_type",
+                    "question_text": "Record type",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("a", "A"),
+                            ("aaaa", "AAAA"),
+                            ("cname", "CNAME"),
+                            ("mx", "MX"),
+                            ("txt", "TXT"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "hostname",
+                    "question_text": "Hostname",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 200,
+                },
+                {
+                    "name": "record_value",
+                    "question_text": "Record value",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 300,
+                    "help_text": "IP address or target hostname",
+                },
+                {
+                    "name": "ttl",
+                    "question_text": "TTL (seconds)",
+                    "type": "integer",
+                    "mandatory": False,
+                    "order": 400,
+                    "default_value": "3600",
+                },
+            ],
+        },
+        # Infrastructure > Compute — single subcategory (alongside Provision VM).
+        {
+            "name": "Create AWS S3 Bucket",
+            "short_description": "Provision an S3 bucket for application or team storage",
+            "description": (
+                "### Provision an S3 bucket in AWS\n\n"
+                "- Bucket created with the requested access level\n"
+                "- Versioning and lifecycle rules applied as specified\n"
+                "- Owner notified once ready\n"
+            ),
+            "category": "Infrastructure",
+            "subcategory": "Compute",
+            "fulfillment_group": ctx.groups.get("Infrastructure & Operations"),
+            "order": 20,
+            "variables": [
+                {
+                    "name": "bucket_name",
+                    "question_text": "Bucket name",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 100,
+                },
+                {
+                    "name": "aws_region",
+                    "question_text": "AWS region",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("us-east-1", "us-east-1"),
+                            ("us-east-2", "us-east-2"),
+                            ("us-west-1", "us-west-1"),
+                            ("eu-west-1", "eu-west-1"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "access_level",
+                    "question_text": "Access level",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 300,
+                    "choice_list": _choices(
+                        [
+                            ("private", "Private"),
+                            ("team_ro", "Team read-only"),
+                            ("team_rw", "Team read-write"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "enable_versioning",
+                    "question_text": "Enable versioning",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 400,
+                    "default_value": "true",
+                },
+                {
+                    "name": "lifecycle_days",
+                    "question_text": "Lifecycle expiration (days)",
+                    "type": "integer",
+                    "mandatory": False,
+                    "order": 500,
+                    "help_text": "Days before objects expire (0 = never)",
+                },
+                {
+                    "name": "owner_email",
+                    "question_text": "Owner email",
+                    "type": "email",
+                    "mandatory": True,
+                    "order": 600,
+                },
+            ],
+        },
+        # Security > Access Management — first of two subcategories.
+        {
+            "name": "Request AD Group Membership",
+            "short_description": "Request membership in an Active Directory group",
+            "description": (
+                "### Request membership in an Active Directory security group\n\n"
+                "- Reviewed and approved by the group owner\n"
+                "- Access reviewed at the requested duration\n"
+            ),
+            "category": "Security",
+            "subcategory": "Access Management",
+            "fulfillment_group": security_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "target_group",
+                    "question_text": "Target group",
+                    "type": "reference",
+                    "mandatory": True,
+                    "order": 100,
+                    "reference_table": "sys_user_group",
+                },
+                {
+                    "name": "access_duration",
+                    "question_text": "Access duration",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("30d", "30 days"),
+                            ("90d", "90 days"),
+                            ("1y", "1 year"),
+                            ("permanent", "Permanent"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "manager_approval",
+                    "question_text": "Manager approval required",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 300,
+                    "default_value": "true",
+                    "read_only": True,
+                    "help_text": "Manager approval is required for all group access requests",
+                },
+                {
+                    "name": "justification",
+                    "question_text": "Business justification",
+                    "type": "text_area",
+                    "mandatory": True,
+                    "order": 400,
+                },
+            ],
+        },
+        {
+            "name": "Request Elevated Privileges",
+            "short_description": "Request temporary elevated system access",
+            "description": (
+                "### Request temporary elevated privileges\n\n"
+                "- Time-boxed to the requested duration\n"
+                "- Automatically revoked at expiration\n"
+                "- All activity logged for audit\n"
+            ),
+            "category": "Security",
+            "subcategory": "Access Management",
+            "fulfillment_group": security_group,
+            "order": 20,
+            "variables": [
+                {
+                    "name": "privilege_level",
+                    "question_text": "Privilege level",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("sudo", "sudo"),
+                            ("root", "root"),
+                            ("domain_admin", "Domain admin"),
+                            ("database_admin", "Database admin"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "target_systems",
+                    "question_text": "Target systems",
+                    "type": "multi_select",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("prod_servers", "Production servers"),
+                            ("staging_servers", "Staging servers"),
+                            ("db_cluster", "Database cluster"),
+                            ("cicd_pipeline", "CI/CD pipeline"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "duration_hours",
+                    "question_text": "Duration (hours)",
+                    "type": "integer",
+                    "mandatory": True,
+                    "order": 300,
+                    "help_text": "Maximum 72 hours",
+                },
+                {
+                    "name": "incident_reference",
+                    "question_text": "Related incident number",
+                    "type": "string",
+                    "mandatory": False,
+                    "order": 400,
+                    "help_text": "Related INC number if this is an emergency request",
+                },
+            ],
+        },
+        # Security > Compliance — second subcategory.
+        {
+            "name": "Request Security Exception",
+            "short_description": "Request a documented exception to a security policy",
+            "description": (
+                "### Request an exception to a security policy or control\n\n"
+                "- Reviewed by Security Operations\n"
+                "- Time-boxed with a defined end date\n"
+                "- Compensating controls tracked for the exception period\n"
+            ),
+            "category": "Security",
+            "subcategory": "Compliance",
+            "fulfillment_group": security_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "exception_type",
+                    "question_text": "Exception type",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("firewall_bypass", "Firewall bypass"),
+                            ("encryption_waiver", "Encryption waiver"),
+                            ("patch_deferral", "Patch deferral"),
+                            ("vendor_access", "Vendor access"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "risk_level",
+                    "question_text": "Risk level",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("low", "Low"),
+                            ("medium", "Medium"),
+                            ("high", "High"),
+                            ("critical", "Critical"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "exception_start",
+                    "question_text": "Exception start date",
+                    "type": "date",
+                    "mandatory": True,
+                    "order": 300,
+                },
+                {
+                    "name": "exception_end",
+                    "question_text": "Exception end date",
+                    "type": "date",
+                    "mandatory": True,
+                    "order": 400,
+                },
+                {
+                    "name": "compensating_controls",
+                    "question_text": "Compensating controls",
+                    "type": "text_area",
+                    "mandatory": True,
+                    "order": 500,
+                },
+                {
+                    "name": "ciso_aware",
+                    "question_text": "CISO notified",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 600,
+                    "help_text": "Has the CISO been notified of this exception?",
+                },
+            ],
+        },
+        # Software — top-level items (no subcategory) alongside subcategorized items below.
+        {
+            "name": "Install Licensed Software",
+            "short_description": "Install licensed software on a managed device",
+            "description": (
+                "### Install licensed software on a managed device\n\n"
+                "- License allocated from the available pool\n"
+                "- Installed remotely via endpoint management\n"
+            ),
+            "category": "Software",
+            "subcategory": None,
+            "fulfillment_group": app_support_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "software_title",
+                    "question_text": "Software title",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 100,
+                },
+                {
+                    "name": "version",
+                    "question_text": "Version",
+                    "type": "string",
+                    "mandatory": False,
+                    "order": 200,
+                    "help_text": "Leave blank for the latest version",
+                },
+                {
+                    "name": "license_key",
+                    "question_text": "License key",
+                    "type": "string",
+                    "mandatory": False,
+                    "order": 300,
+                },
+                {
+                    "name": "install_target",
+                    "question_text": "Target device",
+                    "type": "reference",
+                    "mandatory": True,
+                    "order": 400,
+                    "reference_table": "cmdb_ci",
+                    "help_text": "Configuration item the software will be installed on",
+                },
+                {
+                    "name": "install_date",
+                    "question_text": "Preferred install date",
+                    "type": "date",
+                    "mandatory": False,
+                    "order": 500,
+                },
+            ],
+        },
+        {
+            "name": "Request SaaS License",
+            "short_description": "Request a license seat for an approved SaaS application",
+            "description": (
+                "### Request a license seat for an approved SaaS application\n\n"
+                "- Seat assigned and billed to the requested cost center\n"
+                "- Manager notified once provisioned\n"
+            ),
+            "category": "Software",
+            "subcategory": None,
+            "fulfillment_group": app_support_group,
+            "order": 20,
+            "variables": [
+                {
+                    "name": "saas_product",
+                    "question_text": "SaaS product",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 100,
+                    "choice_list": _choices(
+                        [
+                            ("jira", "Jira"),
+                            ("confluence", "Confluence"),
+                            ("github_enterprise", "GitHub Enterprise"),
+                            ("figma", "Figma"),
+                            ("slack_enterprise", "Slack Enterprise"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "license_tier",
+                    "question_text": "License tier",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("standard", "Standard"),
+                            ("professional", "Professional"),
+                            ("enterprise", "Enterprise"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "seat_count",
+                    "question_text": "Number of seats",
+                    "type": "integer",
+                    "mandatory": True,
+                    "order": 300,
+                    "default_value": "1",
+                },
+                {
+                    "name": "cost_center",
+                    "question_text": "Cost center",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 400,
+                },
+                {
+                    "name": "manager_email",
+                    "question_text": "Manager email",
+                    "type": "email",
+                    "mandatory": True,
+                    "order": 500,
+                },
+                {
+                    "name": "billing_url",
+                    "question_text": "Vendor billing portal URL",
+                    "type": "url",
+                    "mandatory": False,
+                    "order": 600,
+                    "help_text": "Link to the vendor billing portal, if available",
+                },
+            ],
+        },
+        # Software > Development Tools — first subcategory.
+        {
+            "name": "Provision Git Repository",
+            "short_description": "Create a new Git repository from a starter template",
+            "description": (
+                "### Create a new Git repository\n\n"
+                "- Repository created with the requested visibility\n"
+                "- Starter template applied, if selected\n"
+                "- CI pipeline enabled on request\n"
+            ),
+            "category": "Software",
+            "subcategory": "Development Tools",
+            "fulfillment_group": app_support_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "repo_name",
+                    "question_text": "Repository name",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 100,
+                },
+                {
+                    "name": "repo_visibility",
+                    "question_text": "Visibility",
+                    "type": "select_box",
+                    "mandatory": True,
+                    "order": 200,
+                    "choice_list": _choices(
+                        [
+                            ("private", "Private"),
+                            ("internal", "Internal"),
+                            ("public", "Public"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "template",
+                    "question_text": "Starter template",
+                    "type": "select_box",
+                    "mandatory": False,
+                    "order": 300,
+                    "choice_list": _choices(
+                        [
+                            ("blank", "Blank"),
+                            ("python_service", "Python microservice"),
+                            ("node_api", "Node.js API"),
+                            ("react_frontend", "React frontend"),
+                            ("go_cli", "Go CLI"),
+                        ]
+                    ),
+                },
+                {
+                    "name": "enable_ci",
+                    "question_text": "Enable CI pipeline",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 400,
+                    "default_value": "true",
+                },
+                {
+                    "name": "team_access",
+                    "question_text": "Grant access to team",
+                    "type": "reference",
+                    "mandatory": False,
+                    "order": 500,
+                    "reference_table": "sys_user_group",
+                },
+            ],
+        },
+        # Software > Collaboration — second subcategory.
+        {
+            "name": "Create Shared Mailbox",
+            "short_description": "Create a shared team mailbox",
+            "description": (
+                "### Create a shared mailbox for a team or function\n\n"
+                "- Mailbox created and delegated to the requested group\n"
+                "- Optional auto-reply configured\n"
+            ),
+            "category": "Software",
+            "subcategory": "Collaboration",
+            "fulfillment_group": app_support_group,
+            "order": 10,
+            "variables": [
+                {
+                    "name": "mailbox_address",
+                    "question_text": "Mailbox address",
+                    "type": "email",
+                    "mandatory": True,
+                    "order": 100,
+                },
+                {
+                    "name": "display_name",
+                    "question_text": "Display name",
+                    "type": "string",
+                    "mandatory": True,
+                    "order": 200,
+                },
+                {
+                    "name": "auto_reply",
+                    "question_text": "Enable auto-reply",
+                    "type": "boolean",
+                    "mandatory": False,
+                    "order": 300,
+                },
+                {
+                    "name": "auto_reply_message",
+                    "question_text": "Auto-reply message",
+                    "type": "text_area",
+                    "mandatory": False,
+                    "order": 400,
+                },
+                {
+                    "name": "delegate_group",
+                    "question_text": "Delegate to group",
+                    "type": "reference",
+                    "mandatory": True,
+                    "order": 500,
+                    "reference_table": "sys_user_group",
+                },
+            ],
+        },
+    ]
+
+    for spec in other_items:
+        await _upsert_catalog_item(
+            session,
+            catalog,
+            name=spec["name"],
+            short_description=spec["short_description"],
+            description=spec["description"],
+            category=spec["category"],
+            subcategory=spec["subcategory"],
+            fulfillment_group=spec["fulfillment_group"],
+            order=spec["order"],
+            variables=spec["variables"],
+        )
 
 
 async def _seed_service_requests(session, ctx: LabContext) -> None:

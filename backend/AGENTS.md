@@ -33,3 +33,36 @@ Before adding any suppression:
 
 This applies to every linter/formatter config in this project (ruff, mypy,
 pylint, etc.) -- not just the current `ignore` list.
+
+## Annotate ORM query results, don't suppress `no-any-return`
+
+Helper functions in this codebase (e.g. `app/seed/lab.py`) commonly take an
+untyped `session` parameter. Because of that, `await session.execute(...)`
+resolves to `Any`, so `.scalar_one_or_none()` also resolves to `Any`. If that
+value is later `return`ed from a function with an explicit non-`Any` return
+type, mypy raises `no-any-return`.
+
+Fix this by giving the variable an explicit type annotation at the point
+it's assigned, rather than reaching for `# type: ignore` or `cast(...)`:
+
+```python
+# Bad -- mypy: no-any-return
+item = existing.scalar_one_or_none()
+if not item:
+    item = ServiceCatalogItem(...)
+...
+return item
+
+# Good -- annotation lets mypy narrow `item` to a non-Optional
+# ServiceCatalogItem after the `if not item: item = ...` branch.
+item: ServiceCatalogItem | None = existing.scalar_one_or_none()
+if not item:
+    item = ServiceCatalogItem(...)
+...
+return item
+```
+
+Run `../.venv/bin/python -m mypy --config-file pyproject.toml app` (or
+`make lint`) after adding any new helper that returns a model instance, since
+this class of error only surfaces on the `return` statement, not on the
+query itself.
