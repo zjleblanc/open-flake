@@ -14,9 +14,7 @@ setup:
 	$(PRE_COMMIT) install
 	@echo "Dev environment ready. Pre-commit hooks installed."
 
-# Idempotent: safe to re-run any time you need the backend venv, env file, and
-# local PostgreSQL up before running tests or the API.
-dev:
+db:
 	@test -d .venv || python3 -m venv .venv
 	$(PIP) install -e "backend/.[dev]"
 	@test -f backend/.env || cp backend/.env.example backend/.env
