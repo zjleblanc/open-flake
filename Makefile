@@ -1,7 +1,7 @@
 # OpenFlake developer task runner
 # Run `make setup` once after cloning to install deps and pre-commit hooks.
 
-.PHONY: setup dev lint format test check
+.PHONY: setup dev db db-seed db-reseed lint format test check
 
 PYTHON ?= .venv/bin/python
 PIP ?= .venv/bin/pip
@@ -21,6 +21,12 @@ db:
 	./scripts/ensure-postgres.sh
 	@echo "Local requirements ready: venv installed, backend/.env present, PostgreSQL running."
 	@echo "Next: 'make test' for backend tests, './scripts/start-backend.sh' for the API."
+
+db-seed: db
+	cd backend && ../$(PYTHON) -m app.seed.lab --env-file .env --force
+
+db-reseed: db
+	cd backend && ../$(PYTHON) -m app.seed.lab --env-file .env --force --hard
 
 lint:
 	cd backend && ../$(PYTHON) -m ruff check app tests
