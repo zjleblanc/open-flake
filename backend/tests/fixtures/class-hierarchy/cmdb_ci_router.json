@@ -1,0 +1,17 @@
+{
+  "target_table": "cmdb_ci_router",
+  "inheritance_path": [
+    "cmdb",
+    "cmdb_ci",
+    "cmdb_ci_vm_object",
+    "cmdb_ci_router"
+  ],
+  "fields": [
+    {
+      "name": "port_count",
+      "label": "Port Count",
+      "type": "integer",
+      "source_table": "cmdb_ci_router"
+    }
+  ]
+}

@@ -16,7 +16,7 @@ from app.domain.cmdb.registry import (
 from app.domain.errors import InvalidFieldNameError
 from app.models import CmdbClass
 
-HIERARCHY_DIR = Path(__file__).resolve().parents[2] / "docs" / "class-hierarchy"
+HIERARCHY_DIR = Path(__file__).resolve().parent / "fixtures" / "class-hierarchy"
 
 
 def _load_snapshot() -> None:

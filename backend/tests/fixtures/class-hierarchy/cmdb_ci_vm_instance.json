@@ -1,0 +1,18 @@
+---START_JSON_DATA---
+{
+  "target_table": "cmdb_ci_vm_instance",
+  "inheritance_path": [
+    "cmdb",
+    "cmdb_ci",
+    "cmdb_ci_vm_object",
+    "cmdb_ci_vm_instance"
+  ],
+  "fields": [
+    {
+      "name": "hypervisor",
+      "label": "Hypervisor",
+      "type": "string",
+      "source_table": "cmdb_ci_vm_instance"
+    }
+  ]
+}

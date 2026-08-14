@@ -1,0 +1,19 @@
+{
+  "target_table": "cmdb_ci_linux_server",
+  "inheritance_path": [
+    "cmdb",
+    "cmdb_ci",
+    "cmdb_ci_hardware",
+    "cmdb_ci_computer",
+    "cmdb_ci_server",
+    "cmdb_ci_linux_server"
+  ],
+  "fields": [
+    {
+      "name": "kernel_release",
+      "label": "Kernel Release",
+      "type": "string",
+      "source_table": "cmdb_ci_linux_server"
+    }
+  ]
+}
