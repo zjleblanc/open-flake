@@ -118,6 +118,20 @@ function CatalogItemTable({ items }: { items: CatalogItemSummary[] }) {
   );
 }
 
+function CategoryToggleIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function CatalogCategorySection({
   node,
   view,
@@ -127,24 +141,50 @@ function CatalogCategorySection({
   view: CatalogBrowseView;
   nested?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
   const total = countCatalogItems(node);
+  const hasChildren = node.children.length > 0;
 
   return (
     <section className={`catalog-category${nested ? ' catalog-category--nested' : ''}`}>
-      <header className="catalog-category-header">
+      <button
+        type="button"
+        className="catalog-category-header"
+        aria-expanded={!collapsed}
+        onClick={() => setCollapsed((prev) => !prev)}
+      >
         <h2 className="catalog-category-title">{node.label}</h2>
-        <span className="catalog-category-count">{total}</span>
-      </header>
-      {node.items.length > 0 ? (
-        view === 'card' ? (
-          <CatalogCardGrid items={node.items} />
-        ) : (
-          <CatalogItemTable items={node.items} />
-        )
+        <span className="catalog-category-header-trailing">
+          {collapsed ? <span className="catalog-category-count">{total}</span> : null}
+          <span
+            className={`catalog-category-toggle${collapsed ? ' catalog-category-toggle--collapsed' : ''}`}
+          >
+            <CategoryToggleIcon />
+          </span>
+        </span>
+      </button>
+      {!collapsed ? (
+        <>
+          {node.items.length > 0 ? (
+            <div
+              className={`catalog-category-items${hasChildren ? ' catalog-category-items--indented' : ''}`}
+            >
+              {view === 'card' ? (
+                <CatalogCardGrid items={node.items} />
+              ) : (
+                <CatalogItemTable items={node.items} />
+              )}
+            </div>
+          ) : null}
+          {hasChildren ? (
+            <div className="catalog-category-children">
+              {node.children.map((child) => (
+                <CatalogCategorySection key={child.id} node={child} view={view} nested />
+              ))}
+            </div>
+          ) : null}
+        </>
       ) : null}
-      {node.children.map((child) => (
-        <CatalogCategorySection key={child.id} node={child} view={view} nested />
-      ))}
     </section>
   );
 }

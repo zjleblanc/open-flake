@@ -58,6 +58,21 @@
 }
 
 .catalog-category-tree {
+  /* Single source of truth for the tree geometry: the connector's arm length
+     plus the gap before content defines the indent, so the tree line's
+     corner, the category title, and the first content element always line
+     up with the same, standardized amount of padding between them.
+     `--catalog-tree-header-height` is enforced (via min-height) on every
+     header row, so `--catalog-tree-elbow` -- exactly half of it -- reliably
+     lands connectors on the title's vertical center instead of guessing at
+     the row's natural (font-dependent) height. */
+  --catalog-tree-arm: 0.9rem;
+  --catalog-tree-gap: 0.45rem;
+  --catalog-tree-indent: calc(var(--catalog-tree-arm) + var(--catalog-tree-gap));
+  --catalog-tree-row-gap: 0.75rem;
+  --catalog-tree-header-height: 1.25rem;
+  --catalog-tree-elbow: calc(var(--catalog-tree-header-height) / 2);
+  --catalog-tree-line-color: color-mix(in srgb, var(--of-primary) 40%, var(--of-border));
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -66,19 +81,113 @@
 .catalog-category {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--catalog-tree-row-gap);
+}
+
+.catalog-category-children {
+  display: flex;
+  flex-direction: column;
+  gap: var(--catalog-tree-row-gap);
 }
 
 .catalog-category--nested {
-  margin-left: 0.25rem;
-  padding-left: 0.85rem;
-  border-left: 2px solid color-mix(in srgb, var(--of-primary) 35%, var(--of-border));
+  position: relative;
+  padding-left: var(--catalog-tree-indent);
+}
+
+/* Elbow connector: vertical line turning smoothly into a horizontal line,
+   like CLI `tree` output but with a rounded corner instead of a sharp one.
+   The line starts at the bottom edge of whatever precedes it (the parent
+   header, or the previous sibling's own content) and the arm ends exactly
+   `--catalog-tree-gap` before the title/content, at the subcategory title's
+   vertical center. */
+.catalog-category--nested::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(-1 * var(--catalog-tree-row-gap));
+  width: var(--catalog-tree-arm);
+  height: calc(var(--catalog-tree-row-gap) + var(--catalog-tree-elbow));
+  border-left: 2px solid var(--catalog-tree-line-color);
+  border-bottom: 2px solid var(--catalog-tree-line-color);
+  border-bottom-left-radius: 6px;
+}
+
+/* Trunk continuation: only drawn between siblings, so the last child's
+   connector ends in a smooth corner instead of continuing further down. */
+.catalog-category--nested:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: var(--catalog-tree-elbow);
+  bottom: calc(-1 * var(--catalog-tree-row-gap));
+  width: 2px;
+  background: var(--catalog-tree-line-color);
+}
+
+/* When a category has its own items AND subcategories, push those items to
+   the right (matching the standard tree indent) and draw a straight lead-in
+   trunk beside them, starting at the bottom edge of the category header
+   and running down to wherever the items block ends -- so the line reaches
+   the subcategories below regardless of how tall the items block is. */
+.catalog-category-items--indented {
+  position: relative;
+  padding-left: var(--catalog-tree-indent);
+}
+
+.catalog-category-items--indented::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: calc(-1 * var(--catalog-tree-row-gap));
+  bottom: 0;
+  width: 2px;
+  background: var(--catalog-tree-line-color);
 }
 
 .catalog-category-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.5rem;
+  width: 100%;
+  min-height: var(--catalog-tree-header-height);
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.catalog-category-header:hover .catalog-category-title,
+.catalog-category-header:focus-visible .catalog-category-title {
+  color: var(--of-primary);
+}
+
+.catalog-category-header-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.catalog-category-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: var(--of-text-muted);
+}
+
+.catalog-category-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+.catalog-category-toggle--collapsed svg {
+  transform: rotate(-90deg);
 }
 
 .catalog-category-title {
@@ -92,6 +201,9 @@
 }
 
 .catalog-category-count {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--of-bg) 55%, var(--of-surface));
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--of-text-muted);
@@ -632,4 +744,38 @@
   .catalog-filter-row {
     grid-template-columns: 1fr;
   }
+}
+
+.category-select {
+  position: relative;
+}
+
+.category-select select {
+  width: 100%;
+}
+
+.category-select-popover {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: max(100%, 16rem);
+  padding: 0.75rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: var(--of-surface);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 16%, transparent);
+}
+
+.category-select-popover input {
+  width: 100%;
+}
+
+.category-select-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }

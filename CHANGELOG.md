@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-14 — Collapsible catalog tree, category dropdowns, and standalone create
+
+### Added
+
+- Collapsible category and subcategory sections on the catalog landing; item counts appear only while a section is collapsed.
+- Rounded tree connectors that drop from the category title and meet the subcategory title at its vertical center.
+- Category and subcategory dropdowns on the item builder, prepopulated from existing catalog items, with a "+ New" popover to create a value. Subcategory stays disabled until a category is chosen.
+- `frontend/AGENTS.md` with pre-commit Prettier and ESLint expectations so agents format and lint before committing.
+
+### Changed
+
+- Creating a catalog item is a standalone Create button on the admin list; name and short description are filled in on the builder instead of an inline form.
+
 ## 2026-08-14 — Nest catalog requests in the sidebar and add browse layouts
 
 ### Added

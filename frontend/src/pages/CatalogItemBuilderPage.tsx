@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { api, type CatalogVariable, type CatalogWebhookAttachment } from '../api/client';
 import { AttachIntegrationPopover } from '../components/AttachIntegrationPopover';
+import { CategorySelect } from '../components/CategorySelect';
 import { CatalogFilterConditionsPanel } from '../components/CatalogFilterConditionsPanel';
 import { CatalogVariablePopover } from '../components/CatalogVariablePopover';
 import {
@@ -36,6 +37,7 @@ type ItemSnapshot = {
   description: string;
   price: string;
   category: string;
+  subcategory: string;
 };
 
 export function CatalogItemBuilderPage() {
@@ -47,6 +49,7 @@ export function CatalogItemBuilderPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('0');
   const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
   const [savedItem, setSavedItem] = useState<ItemSnapshot | null>(null);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [variablePopover, setVariablePopover] = useState<{
@@ -79,6 +82,14 @@ export function CatalogItemBuilderPage() {
     enabled: Boolean(itemId),
   });
 
+  // Category/subcategory options are derived from general catalog data (a read),
+  // so use the public catalog endpoint rather than an admin-gated one -- this also
+  // shares its cache with the browse page's identical query.
+  const allItemsQuery = useQuery({
+    queryKey: ['catalog-items'],
+    queryFn: () => api.listCatalogItems(),
+  });
+
   useEffect(() => {
     setInitialized(false);
   }, [itemId]);
@@ -92,15 +103,44 @@ export function CatalogItemBuilderPage() {
       description: item.description || '',
       price: item.price || '0',
       category: item.category || '',
+      subcategory: item.subcategory || '',
     };
     setName(snapshot.name);
     setShortDescription(snapshot.shortDescription);
     setDescription(snapshot.description);
     setPrice(snapshot.price);
     setCategory(snapshot.category);
+    setSubcategory(snapshot.subcategory);
     setSavedItem(snapshot);
     setInitialized(true);
   }, [itemQuery.data, initialized]);
+
+  const allItems = useMemo(() => allItemsQuery.data?.result || [], [allItemsQuery.data?.result]);
+
+  const categoryOptions = useMemo(() => {
+    const values = new Set<string>();
+    for (const item of allItems) {
+      const trimmed = item.category?.trim();
+      if (trimmed) values.add(trimmed);
+    }
+    return [...values].sort((a, b) => a.localeCompare(b));
+  }, [allItems]);
+
+  const subcategoryOptions = useMemo(() => {
+    if (!category.trim()) return [];
+    const values = new Set<string>();
+    for (const item of allItems) {
+      if (item.category?.trim() !== category.trim()) continue;
+      const trimmed = item.subcategory?.trim();
+      if (trimmed) values.add(trimmed);
+    }
+    return [...values].sort((a, b) => a.localeCompare(b));
+  }, [allItems, category]);
+
+  function onCategoryChange(next: string) {
+    setCategory(next);
+    setSubcategory('');
+  }
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -132,9 +172,10 @@ export function CatalogItemBuilderPage() {
       shortDescription !== savedItem.shortDescription ||
       description !== savedItem.description ||
       price !== savedItem.price ||
-      category !== savedItem.category
+      category !== savedItem.category ||
+      subcategory !== savedItem.subcategory
     );
-  }, [savedItem, name, shortDescription, description, price, category]);
+  }, [savedItem, name, shortDescription, description, price, category, subcategory]);
 
   const deleteVariable = useMutation({
     mutationFn: (varId: string) => api.adminDeleteVariable(itemId, varId),
@@ -190,9 +231,11 @@ export function CatalogItemBuilderPage() {
         description,
         price,
         category,
+        subcategory,
       });
-      setSavedItem({ name, shortDescription, description, price, category });
+      setSavedItem({ name, shortDescription, description, price, category, subcategory });
       queryClient.invalidateQueries({ queryKey: ['catalog-admin-item', itemId] });
+      queryClient.invalidateQueries({ queryKey: ['catalog-admin-items'] });
       queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
       setToast({ text: 'Changes saved.', type: 'success' });
     } catch (err) {
@@ -242,10 +285,26 @@ export function CatalogItemBuilderPage() {
                   </div>
                   <div className="form-group">
                     <label htmlFor="item-category">Category</label>
-                    <input
+                    <CategorySelect
                       id="item-category"
                       value={category}
-                      onChange={(e) => setCategory(e.target.value)}
+                      options={categoryOptions}
+                      onChange={onCategoryChange}
+                      placeholder="Select a category…"
+                      newEntryLabel="Category"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="item-subcategory">Subcategory</label>
+                    <CategorySelect
+                      id="item-subcategory"
+                      value={subcategory}
+                      options={subcategoryOptions}
+                      onChange={setSubcategory}
+                      placeholder="Select a subcategory…"
+                      newEntryLabel="Subcategory"
+                      disabled={!category.trim()}
+                      disabledPlaceholder="Select a category first"
                     />
                   </div>
                   <div className="form-group">
