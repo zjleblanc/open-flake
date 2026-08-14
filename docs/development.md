@@ -16,6 +16,14 @@ Copy env templates before starting services:
 cp backend/.env.example backend/.env
 ```
 
+## Stand up local requirements
+
+`make dev` idempotently prepares everything needed to test the backend locally: it creates `.venv` and installs backend dev dependencies if needed, copies `backend/.env` from the example if missing, and starts local PostgreSQL via [ensure-postgres.sh](../scripts/docs/ensure-postgres.md). Safe to re-run any time — it skips steps that are already done and leaves an already-running Postgres container alone.
+
+```bash
+make dev
+```
+
 ## Quality guardrails (pre-commit)
 
 Every commit runs the local quality pipeline via [pre-commit](https://pre-commit.com/):
@@ -32,6 +40,7 @@ Every commit runs the local quality pipeline via [pre-commit](https://pre-commit
 Useful Make targets:
 
 ```bash
+make dev      # Idempotently stand up venv, backend/.env, and local PostgreSQL
 make lint     # Ruff, mypy, ESLint, tsc
 make format   # Auto-fix Python and frontend formatting
 make test     # Backend pytest
