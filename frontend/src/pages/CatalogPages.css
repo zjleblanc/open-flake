@@ -26,6 +26,15 @@
   min-width: 0;
 }
 
+.catalog-search-filter-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--of-primary);
+  pointer-events: none;
+}
+
 .catalog-search-input {
   flex: 1 1 14rem;
   min-width: 10rem;

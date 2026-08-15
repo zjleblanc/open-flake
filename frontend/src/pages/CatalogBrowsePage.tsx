@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, type CatalogItemSummary } from '../api/client';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { useAuth } from '../auth/AuthContext';
-import { CardViewIcon, ListViewIcon } from '../components/NavIcons';
+import { CardViewIcon, FilterIcon, ListViewIcon } from '../components/NavIcons';
 import { DeleteIcon, EditIcon } from '../components/DetailIcons';
 import { ToggleSwitch } from '../components/DetailFieldControls';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -64,6 +64,9 @@ function CatalogSearchBar({
 }) {
   return (
     <div className="catalog-search-bar">
+      <span className="catalog-search-filter-icon" aria-hidden="true">
+        <FilterIcon size={18} />
+      </span>
       <FloatingLabelField
         id="catalog-search"
         label="Search by name"
