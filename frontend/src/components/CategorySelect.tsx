@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { OFSelect, type OFSelectOption } from './OFSelect';
 import '../pages/CatalogPages.css';
 
 const NEW_OPTION_VALUE = '__new__';
@@ -65,29 +66,29 @@ export function CategorySelect({
 
   const mergedOptions = value && !options.includes(value) ? [value, ...options] : options;
 
+  const selectOptions: OFSelectOption[] = mergedOptions.map((opt) => ({ value: opt, label: opt }));
+  if (!disabled) {
+    selectOptions.push({ value: NEW_OPTION_VALUE, label: `+ New ${newEntryLabel}` });
+  }
+
   return (
     <div className="category-select" ref={wrapperRef}>
-      <select
+      <OFSelect
         id={id}
+        options={selectOptions}
         value={value || ''}
         disabled={disabled}
-        onChange={(e) => {
-          if (e.target.value === NEW_OPTION_VALUE) {
+        placeholder={disabled ? disabledPlaceholder || placeholder : placeholder}
+        onChange={(next) => {
+          const nextValue = next as string;
+          if (nextValue === NEW_OPTION_VALUE) {
             setDraft('');
             setCreating(true);
           } else {
-            onChange(e.target.value);
+            onChange(nextValue);
           }
         }}
-      >
-        <option value="">{disabled ? disabledPlaceholder || placeholder : placeholder}</option>
-        {mergedOptions.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-        {!disabled ? <option value={NEW_OPTION_VALUE}>+ New {newEntryLabel}</option> : null}
-      </select>
+      />
       {creating ? (
         <div className="category-select-popover" role="dialog" aria-label={`New ${newEntryLabel}`}>
           <input

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type CatalogVariable } from '../api/client';
 import { Portal } from './Portal';
+import { OFSelect } from './OFSelect';
 import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
 import '../pages/CatalogPages.css';
@@ -230,11 +231,11 @@ export function CatalogVariablePopover({
               </div>
               <div className="form-group">
                 <label htmlFor="popover-var-type">Type</label>
-                <select
+                <OFSelect
                   id="popover-var-type"
                   value={form.type}
-                  onChange={(e) => {
-                    const type = e.target.value;
+                  onChange={(value) => {
+                    const type = value as string;
                     setForm((p) => ({
                       ...p,
                       type,
@@ -246,13 +247,8 @@ export function CatalogVariablePopover({
                             : [],
                     }));
                   }}
-                >
-                  {VARIABLE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
+                  options={VARIABLE_TYPES.map((type) => ({ value: type, label: type }))}
+                />
               </div>
               <div className="form-group">
                 <label htmlFor="popover-var-order">Order</label>
@@ -280,24 +276,21 @@ export function CatalogVariablePopover({
                 <>
                   <div className="form-group catalog-form-span">
                     <label htmlFor="popover-var-ref-table">Reference Table</label>
-                    <select
+                    <OFSelect
                       id="popover-var-ref-table"
+                      autocomplete
+                      placeholder="Select a table…"
                       value={form.reference_table}
-                      onChange={(e) =>
+                      onChange={(value) => {
+                        const nextTable = value as string;
                         setForm((p) => ({
                           ...p,
-                          reference_table: e.target.value,
-                          filter_rows: e.target.value === p.reference_table ? p.filter_rows : [],
-                        }))
-                      }
-                    >
-                      <option value="">Select a table…</option>
-                      {tables.map((table) => (
-                        <option key={table.name} value={table.name}>
-                          {table.name}
-                        </option>
-                      ))}
-                    </select>
+                          reference_table: nextTable,
+                          filter_rows: nextTable === p.reference_table ? p.filter_rows : [],
+                        }));
+                      }}
+                      options={tables.map((table) => ({ value: table.name, label: table.name }))}
+                    />
                     {tablesQuery.isLoading ? (
                       <p className="catalog-help-text">Loading tables…</p>
                     ) : null}

@@ -1710,7 +1710,7 @@ button.nav-link {
   white-space: nowrap;
 }
 
-.record-list-filter select {
+.record-list-filter-select {
   width: auto;
   min-width: 10rem;
 }

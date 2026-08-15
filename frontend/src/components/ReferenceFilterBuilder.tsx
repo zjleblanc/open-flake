@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
+import { OFSelect } from './OFSelect';
 import { FILTER_OPERATORS, emptyFilterRow, type FilterRow } from './filterBuilderUtils';
 
 interface ReferenceFilterBuilderProps {
@@ -61,31 +62,23 @@ export function ReferenceFilterBuilder({
             </button>
           ) : null}
           <div className="catalog-filter-row">
-            <select
+            <OFSelect
               aria-label={`Filter field ${index + 1}`}
+              size="sm"
+              placeholder="Field…"
               value={row.field}
               disabled={disabled}
-              onChange={(e) => updateRow(index, { field: e.target.value })}
-            >
-              <option value="">Field…</option>
-              {fields.map((field) => (
-                <option key={field.name} value={field.name}>
-                  {field.name}
-                </option>
-              ))}
-            </select>
-            <select
+              onChange={(value) => updateRow(index, { field: value as string })}
+              options={fields.map((field) => ({ value: field.name, label: field.name }))}
+            />
+            <OFSelect
               aria-label={`Filter operator ${index + 1}`}
+              size="sm"
               value={row.operator}
               disabled={disabled}
-              onChange={(e) => updateRow(index, { operator: e.target.value })}
-            >
-              {FILTER_OPERATORS.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => updateRow(index, { operator: value as string })}
+              options={FILTER_OPERATORS.map((op) => ({ value: op, label: op }))}
+            />
             {row.operator === 'ISEMPTY' || row.operator === 'ISNOTEMPTY' ? (
               <span className="catalog-filter-value-placeholder" />
             ) : (

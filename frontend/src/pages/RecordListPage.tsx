@@ -7,6 +7,7 @@ import { EmptyValue } from '../components/EmptyValue';
 import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { ToastBanner } from '../components/ToastBanner';
+import { OFSelect } from '../components/OFSelect';
 import '../components/Layout.css';
 
 interface RecordListProps {
@@ -255,17 +256,14 @@ export function RecordListPage({
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="record-list-filter">
           <label htmlFor={`filter-field-${resource}`}>Filter by</label>
-          <select
+          <OFSelect
             id={`filter-field-${resource}`}
+            size="sm"
+            className="record-list-filter-select"
             value={filterField}
-            onChange={(event) => setFilterField(event.target.value)}
-          >
-            {columns.map((column) => (
-              <option key={column.key} value={column.key}>
-                {column.label}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setFilterField(value as string)}
+            options={columns.map((column) => ({ value: column.key, label: column.label }))}
+          />
           <input
             type="search"
             value={filterText}

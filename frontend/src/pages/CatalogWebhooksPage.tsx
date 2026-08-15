@@ -7,6 +7,7 @@ import { usePageHeader } from '../components/PageHeaderContext';
 import { FieldTooltip } from '../components/FieldTooltip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TemplateAutocomplete } from '../components/TemplateAutocomplete';
+import { OFSelect } from '../components/OFSelect';
 import './CatalogPages.css';
 
 type HeaderRow = { key: string; value: string };
@@ -329,15 +330,16 @@ export function CatalogWebhooksPage() {
             </div>
             <div className="form-group">
               <label htmlFor="wh-method">Method</label>
-              <select
+              <OFSelect
                 id="wh-method"
                 value={form.method}
-                onChange={(e) => setForm({ ...form, method: e.target.value })}
-              >
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="PATCH">PATCH</option>
-              </select>
+                onChange={(value) => setForm({ ...form, method: value as string })}
+                options={[
+                  { value: 'POST', label: 'POST' },
+                  { value: 'PUT', label: 'PUT' },
+                  { value: 'PATCH', label: 'PATCH' },
+                ]}
+              />
             </div>
             <div className="form-group catalog-form-span">
               <label htmlFor="wh-url">URL</label>

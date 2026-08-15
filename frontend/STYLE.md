@@ -203,9 +203,46 @@ Edit/Preview (and any similar content-mode switcher) must use a `role="tablist"`
 ```
 
 Do **not** reuse `.toggle-group` with `.btn-secondary.active` for this pattern; that legacy approach is removed.
-#### Select chevrons use the global styled arrow
+#### Select boxes use `OFSelect`, not native `<select>`
 
-All `<select>` elements inherit a custom chevron from [`global.css`](./src/theme/global.css) (`appearance: none`, `padding-right: 2.25rem`, theme-aware SVG arrow inset `0.75rem` from the right edge). Do **not** rely on the OS default dropdown arrow, and do not re-declare chevron styles per page. Filter-bar selects may override width (`width: auto; min-width: …`) but must keep the global padding and arrow.
+All dropdown/select fields must use the shared [`OFSelect`](./src/components/OFSelect/OFSelect.tsx) component, not a raw `<select>`/`<option>` pair. `OFSelect` is a fully custom combobox (trigger + portal-rendered listbox, styled like [`TemplateAutocomplete`](./src/components/TemplateAutocomplete.tsx)) so behavior and theming stay consistent across the app, and so features unavailable to native selects (autocomplete filtering, tag-based multi-select) are available everywhere.
+
+```tsx
+import { OFSelect } from '../components/OFSelect';
+
+<OFSelect
+  id="wh-method"
+  aria-label="HTTP method"
+  options={[
+    { value: 'POST', label: 'POST' },
+    { value: 'PUT', label: 'PUT' },
+    { value: 'PATCH', label: 'PATCH' },
+  ]}
+  value={form.method}
+  onChange={(value) => setForm({ ...form, method: value as string })}
+/>
+```
+
+Props:
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `options` | `{ value, label, disabled? }[]` | — | Required |
+| `value` / `defaultValue` | `string \| string[]` | uncontrolled `''`/`[]` | Use `string[]` only when `multiple` |
+| `onChange` | `(value: string \| string[]) => void` | — | Cast the callback arg to `string` or `string[]` at the call site |
+| `size` | `'sm' \| 'md' \| 'lg'` | `'md'` | Match surrounding field density; filter bars typically use `sm` |
+| `theme` | `'primary' \| 'secondary'` | `'primary'` | `primary` for form fields/main filters; `secondary` for lower-emphasis inline controls |
+| `multiple` | `boolean` | `false` | Renders selections as removable tags in the trigger and keeps the listbox open on select |
+| `autocomplete` | `boolean` | `false` | Renders the trigger as a text input that filters `options` by label as the user types |
+| `disabled` | `boolean` | `false` | Dims the trigger and blocks interaction (matches `.btn:disabled` opacity) |
+| `placeholder` | `string` | `'Select…'` | Shown when nothing is selected |
+
+Rules:
+
+- Do not build a new native `<select>`, and do not hand-roll another custom dropdown — extend `OFSelect` if it's missing a capability you need.
+- Reference/async-loaded options (e.g. catalog variable choices) should still fetch via `useQuery` as before, but render results through `OFSelect`'s `options` prop instead of `<option>` children.
+- Catalog `multi_select` variables must render with `multiple` so shoppers can pick more than one value (previously these fell through to a plain text input).
+- Filter-bar instances that previously used `width: auto; min-width: …` on a native `<select>` should instead pass `size="sm"` and constrain width via a wrapping element, not by overriding `OFSelect`'s internal layout.
 
 #### Form grids keep inputs aligned when tooltips are mixed with plain labels
 
@@ -241,7 +278,7 @@ Before merging UI changes, verify:
 - [ ] Empty tables render `<td colSpan={N} className="empty-state">No {items} yet</td>`
 - [ ] Field guidance uses `FieldTooltip` (not muted paragraphs under inputs; not hand-rolled tooltip markup)
 - [ ] `catalog-help-text` appears only for transient loading/status copy
-- [ ] Selects use the global chevron (no OS-default arrow, no missing right padding)
+- [ ] Selects use `OFSelect` (no raw `<select>`/`<option>`, no hand-rolled dropdown)
 - [ ] Multi-column form grids keep inputs aligned when some labels have tooltips (`align-items: end`)
 - [ ] Loading states use `<p className="empty-state">…</p>`
 - [ ] Page body does not repeat breadcrumb identity as a redundant section title

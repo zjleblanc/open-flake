@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { api, type CatalogWebhook, type CatalogWebhookAttachment } from '../api/client';
 import { FieldTooltip } from './FieldTooltip';
 import { Portal } from './Portal';
+import { OFSelect } from './OFSelect';
 import '../pages/CatalogPages.css';
 import './Layout.css';
 
@@ -206,23 +207,21 @@ export function AttachIntegrationPopover({
                   {INTEGRATION_KINDS.find((k) => k.value === form.kind)?.description}
                 </FieldTooltip>
               </span>
-              <select
+              <OFSelect
                 id="integration-kind"
                 value={form.kind}
                 disabled={mode === 'edit'}
-                onChange={(e) =>
+                onChange={(value) =>
                   setForm((prev) => ({
                     ...prev,
-                    kind: e.target.value as IntegrationKind,
+                    kind: value as IntegrationKind,
                   }))
                 }
-              >
-                {INTEGRATION_KINDS.map((kind) => (
-                  <option key={kind.value} value={kind.value}>
-                    {kind.label}
-                  </option>
-                ))}
-              </select>
+                options={INTEGRATION_KINDS.map((kind) => ({
+                  value: kind.value,
+                  label: kind.label,
+                }))}
+              />
             </div>
 
             {form.kind === 'webhook' ? (
@@ -230,19 +229,18 @@ export function AttachIntegrationPopover({
                 <div className="catalog-form-grid">
                   <div className="form-group">
                     <label htmlFor="integration-webhook">Webhook</label>
-                    <select
+                    <OFSelect
                       id="integration-webhook"
+                      placeholder="Select configured webhook…"
                       value={form.webhook}
-                      onChange={(e) => setForm((prev) => ({ ...prev, webhook: e.target.value }))}
-                    >
-                      <option value="">Select configured webhook…</option>
-                      {webhooks.map((webhook) => (
-                        <option key={webhook.sys_id} value={webhook.sys_id}>
-                          {webhook.name}
-                          {webhook.active === false ? ' (inactive)' : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, webhook: value as string }))
+                      }
+                      options={webhooks.map((webhook) => ({
+                        value: webhook.sys_id,
+                        label: `${webhook.name}${webhook.active === false ? ' (inactive)' : ''}`,
+                      }))}
+                    />
                     {!webhooks.length ? (
                       <p className="catalog-help-text">
                         No webhooks yet. Create one under{' '}
@@ -255,15 +253,18 @@ export function AttachIntegrationPopover({
                   </div>
                   <div className="form-group">
                     <label htmlFor="integration-trigger">Trigger</label>
-                    <select
+                    <OFSelect
                       id="integration-trigger"
                       value={form.trigger_on}
-                      onChange={(e) => setForm((prev) => ({ ...prev, trigger_on: e.target.value }))}
-                    >
-                      <option value="order">On order</option>
-                      <option value="state_change">On state change</option>
-                      <option value="approval">On approval</option>
-                    </select>
+                      onChange={(value) =>
+                        setForm((prev) => ({ ...prev, trigger_on: value as string }))
+                      }
+                      options={[
+                        { value: 'order', label: 'On order' },
+                        { value: 'state_change', label: 'On state change' },
+                        { value: 'approval', label: 'On approval' },
+                      ]}
+                    />
                   </div>
                 </div>
 

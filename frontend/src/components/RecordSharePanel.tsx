@@ -4,6 +4,7 @@ import { api, getRecordPermissions, type RecordPermissions } from '../api/client
 import { EmptyValue } from './EmptyValue';
 import { isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { ConfirmDialog } from './ConfirmDialog';
+import { OFSelect } from './OFSelect';
 
 function refValue(field: unknown): string {
   if (!field) return '';
@@ -126,33 +127,31 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           <div className="share-ownership-form">
             <div className="form-group">
               <label htmlFor={`owner-${sysId}`}>Owner</label>
-              <select
+              <OFSelect
                 id={`owner-${sysId}`}
+                autocomplete
+                placeholder="None"
                 value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-              >
-                <option value="">None</option>
-                {(users.data?.records || []).map((u) => (
-                  <option key={u.sys_id} value={u.sys_id}>
-                    {u.user_name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setOwner(value as string)}
+                options={(users.data?.records || []).map((u) => ({
+                  value: u.sys_id,
+                  label: u.user_name,
+                }))}
+              />
             </div>
             <div className="form-group">
               <label htmlFor={`owner-group-${sysId}`}>Owner group</label>
-              <select
+              <OFSelect
                 id={`owner-group-${sysId}`}
+                autocomplete
+                placeholder="None"
                 value={ownerGroup}
-                onChange={(e) => setOwnerGroup(e.target.value)}
-              >
-                <option value="">None</option>
-                {(groups.data?.records || []).map((g) => (
-                  <option key={g.sys_id} value={g.sys_id}>
-                    {g.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setOwnerGroup(value as string)}
+                options={(groups.data?.records || []).map((g) => ({
+                  value: g.sys_id,
+                  label: g.name,
+                }))}
+              />
             </div>
             <button
               className="btn btn-secondary btn-sm"
@@ -230,45 +229,43 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           <div className="sharing-grant-form">
             <div className="form-group">
               <label htmlFor={`grant-level-${sysId}`}>Access level</label>
-              <select
+              <OFSelect
                 id={`grant-level-${sysId}`}
                 value={accessLevel}
-                onChange={(e) => setAccessLevel(e.target.value as 'view' | 'comment')}
-              >
-                <option value="view">View</option>
-                <option value="comment">Comment</option>
-              </select>
+                onChange={(value) => setAccessLevel(value as 'view' | 'comment')}
+                options={[
+                  { value: 'view', label: 'View' },
+                  { value: 'comment', label: 'Comment' },
+                ]}
+              />
             </div>
             <div className="form-group">
               <label htmlFor={`grantee-type-${sysId}`}>Grant to</label>
-              <select
+              <OFSelect
                 id={`grantee-type-${sysId}`}
                 value={granteeType}
-                onChange={(e) => {
-                  setGranteeType(e.target.value as 'user' | 'group');
+                onChange={(value) => {
+                  setGranteeType(value as 'user' | 'group');
                   setGranteeId('');
                 }}
-              >
-                <option value="user">User</option>
-                <option value="group">Group</option>
-              </select>
+                options={[
+                  { value: 'user', label: 'User' },
+                  { value: 'group', label: 'Group' },
+                ]}
+              />
             </div>
             <div className="form-group">
               <label htmlFor={`grantee-id-${sysId}`}>
                 {granteeType === 'user' ? 'User' : 'Group'}
               </label>
-              <select
+              <OFSelect
                 id={`grantee-id-${sysId}`}
+                autocomplete
+                placeholder="Select…"
                 value={granteeId}
-                onChange={(e) => setGranteeId(e.target.value)}
-              >
-                <option value="">Select…</option>
-                {granteeOptions.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setGranteeId(value as string)}
+                options={granteeOptions.map((o) => ({ value: o.id, label: o.label }))}
+              />
             </div>
             <button
               className="btn btn-primary"

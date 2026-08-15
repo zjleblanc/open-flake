@@ -4,6 +4,7 @@ import { api, type CatalogCondition, type CatalogVariable } from '../api/client'
 import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
 import { ConfirmDialog } from './ConfirmDialog';
+import { OFSelect } from './OFSelect';
 
 const CONDITION_OPERATORS = ['=', '!=', 'IN', 'NOT_IN', 'EMPTY', 'NOT_EMPTY'];
 
@@ -163,23 +164,23 @@ export function CatalogFilterConditionsPanel({
 
       <div className="form-group">
         <label htmlFor="filter-cond-variable">Reference Variable</label>
-        <select
+        <OFSelect
           id="filter-cond-variable"
           value={selectedVarId}
-          onChange={(e) => {
-            setSelectedVarId(e.target.value);
+          onChange={(value) => {
+            const nextVarId = value as string;
+            setSelectedVarId(nextVarId);
             setEditingId(null);
-            setForm(emptyConditionForm(e.target.value));
+            setForm(emptyConditionForm(nextVarId));
             setError('');
           }}
-        >
-          {referenceVariables.map((variable) => (
-            <option key={variable.sys_id} value={variable.sys_id}>
-              {variable.question_text || variable.name}
-              {variable.reference_table ? ` → ${variable.reference_table}` : ''}
-            </option>
-          ))}
-        </select>
+          options={referenceVariables.map((variable) => ({
+            value: variable.sys_id,
+            label: `${variable.question_text || variable.name}${
+              variable.reference_table ? ` → ${variable.reference_table}` : ''
+            }`,
+          }))}
+        />
       </div>
 
       <table className="data-table">
@@ -247,32 +248,25 @@ export function CatalogFilterConditionsPanel({
         <div className="catalog-form-grid">
           <div className="form-group">
             <label htmlFor="filter-cond-depends">Depends On</label>
-            <select
+            <OFSelect
               id="filter-cond-depends"
+              placeholder="Select field…"
               value={form.dependsOn}
-              onChange={(e) => setForm((p) => ({ ...p, dependsOn: e.target.value }))}
-            >
-              <option value="">Select field…</option>
-              {otherVariables.map((variable) => (
-                <option key={variable.sys_id} value={variable.sys_id}>
-                  {variable.question_text || variable.name}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setForm((p) => ({ ...p, dependsOn: value as string }))}
+              options={otherVariables.map((variable) => ({
+                value: variable.sys_id,
+                label: variable.question_text || variable.name,
+              }))}
+            />
           </div>
           <div className="form-group">
             <label htmlFor="filter-cond-operator">Operator</label>
-            <select
+            <OFSelect
               id="filter-cond-operator"
               value={form.operator}
-              onChange={(e) => setForm((p) => ({ ...p, operator: e.target.value }))}
-            >
-              {CONDITION_OPERATORS.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => setForm((p) => ({ ...p, operator: value as string }))}
+              options={CONDITION_OPERATORS.map((op) => ({ value: op, label: op }))}
+            />
           </div>
           {form.operator !== 'EMPTY' && form.operator !== 'NOT_EMPTY' ? (
             <div className="form-group">

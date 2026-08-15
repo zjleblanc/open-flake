@@ -18,6 +18,7 @@ import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection
 import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
+import { OFSelect } from '../components/OFSelect';
 import '../components/Layout.css';
 
 const RESOURCE = 'catalog-requests';
@@ -272,17 +273,15 @@ export function RequestDetailPage() {
                     >
                       <label htmlFor={`req-${field.key}`}>{field.label}</label>
                       {field.type === 'select-state' ? (
-                        <select
+                        <OFSelect
                           id={`req-${field.key}`}
                           value={form[field.key] ?? ''}
-                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                        >
-                          {Object.entries(STATE_LABELS).map(([val, label]) => (
-                            <option key={val} value={val}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(value) => setForm({ ...form, [field.key]: value as string })}
+                          options={Object.entries(STATE_LABELS).map(([val, label]) => ({
+                            value: val,
+                            label,
+                          }))}
+                        />
                       ) : field.type === 'textarea' ? (
                         <textarea
                           id={`req-${field.key}`}

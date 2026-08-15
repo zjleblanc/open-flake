@@ -5,6 +5,7 @@ import { api, type CatalogCondition, type CatalogVariable } from '../api/client'
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FieldTooltip } from '../components/FieldTooltip';
 import { ReferenceSelect } from '../components/ReferenceSelect';
+import { OFSelect } from '../components/OFSelect';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { useAuth } from '../auth/AuthContext';
 import './CatalogPages.css';
@@ -214,21 +215,38 @@ export function CatalogItemPage() {
                   rows={4}
                 />
               ) : variable.type === 'select_box' ? (
-                <select
+                <OFSelect
                   id={`var-${variable.name}`}
                   value={values[variable.name] ?? variable.default_value ?? ''}
                   disabled={variable.read_only}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [variable.name]: e.target.value }))
+                  onChange={(val) =>
+                    setValues((prev) => ({ ...prev, [variable.name]: val as string }))
                   }
-                >
-                  <option value="">Select…</option>
-                  {(variable.choice_list || []).map((choice) => (
-                    <option key={choice.value} value={choice.value}>
-                      {choice.label || choice.value}
-                    </option>
-                  ))}
-                </select>
+                  options={(variable.choice_list || []).map((choice) => ({
+                    value: choice.value,
+                    label: choice.label || choice.value,
+                  }))}
+                />
+              ) : variable.type === 'multi_select' ? (
+                <OFSelect
+                  id={`var-${variable.name}`}
+                  multiple
+                  disabled={variable.read_only}
+                  value={(values[variable.name] ?? variable.default_value ?? '')
+                    .split(',')
+                    .map((v) => v.trim())
+                    .filter(Boolean)}
+                  onChange={(val) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      [variable.name]: (val as string[]).join(','),
+                    }))
+                  }
+                  options={(variable.choice_list || []).map((choice) => ({
+                    value: choice.value,
+                    label: choice.label || choice.value,
+                  }))}
+                />
               ) : variable.type === 'boolean' ? (
                 <input
                   id={`var-${variable.name}`}

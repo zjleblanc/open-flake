@@ -8,6 +8,7 @@ import { CardViewIcon, ListViewIcon } from '../components/NavIcons';
 import { DeleteIcon, EditIcon } from '../components/DetailIcons';
 import { ToggleSwitch } from '../components/DetailFieldControls';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { OFSelect } from '../components/OFSelect';
 import {
   buildCatalogCategoryTree,
   UNCATEGORIZED_ID,
@@ -51,11 +52,11 @@ function CatalogSearchBar({
 }: {
   searchText: string;
   onSearchTextChange: (value: string) => void;
-  category: string;
-  onCategoryChange: (value: string) => void;
+  category: string[];
+  onCategoryChange: (value: string[]) => void;
   categoryOptions: string[];
-  subcategory: string;
-  onSubcategoryChange: (value: string) => void;
+  subcategory: string[];
+  onSubcategoryChange: (value: string[]) => void;
   subcategoryOptions: string[];
   onClear: () => void;
   isFiltered: boolean;
@@ -70,31 +71,25 @@ function CatalogSearchBar({
         aria-label="Search services by name"
         className="catalog-search-input"
       />
-      <select
-        value={category}
-        onChange={(event) => onCategoryChange(event.target.value)}
+      <OFSelect
+        multiple
+        className="catalog-filter-select"
         aria-label="Filter by category"
-      >
-        <option value="">All categories</option>
-        {categoryOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <select
-        value={subcategory}
-        onChange={(event) => onSubcategoryChange(event.target.value)}
+        placeholder="All categories"
+        value={category}
+        onChange={(value) => onCategoryChange(value as string[])}
+        options={categoryOptions.map((option) => ({ value: option, label: option }))}
+      />
+      <OFSelect
+        multiple
+        className="catalog-filter-select"
         aria-label="Filter by subcategory"
+        placeholder="All subcategories"
+        value={subcategory}
+        onChange={(value) => onSubcategoryChange(value as string[])}
         disabled={subcategoryOptions.length === 0}
-      >
-        <option value="">All subcategories</option>
-        {subcategoryOptions.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        options={subcategoryOptions.map((option) => ({ value: option, label: option }))}
+      />
       {isFiltered ? (
         <button type="button" className="btn btn-secondary btn-sm" onClick={onClear}>
           Clear
@@ -437,8 +432,8 @@ export function CatalogBrowsePage() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<CatalogBrowseView>(readStoredView);
   const [searchText, setSearchText] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [subcategoryFilter, setSubcategoryFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string[]>([]);
   const [managing, setManaging] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<CatalogItemSummary | null>(null);
 
@@ -544,57 +539,71 @@ export function CatalogBrowsePage() {
     () =>
       sortedUnique(
         (items || [])
-          .filter((i) => !categoryFilter || i.category?.trim() === categoryFilter)
+          .filter(
+            (i) => categoryFilter.length === 0 || categoryFilter.includes(i.category?.trim() || ''),
+          )
           .map((i) => i.subcategory),
       ),
     [items, categoryFilter],
   );
 
   const handleCategoryChange = useCallback(
-    (next: string) => {
+    (next: string[]) => {
       setCategoryFilter(next);
-      if (subcategoryFilter) {
-        const stillValid = (items || []).some(
-          (i) =>
-            i.subcategory?.trim() === subcategoryFilter && (!next || i.category?.trim() === next),
+      if (subcategoryFilter.length > 0) {
+        const stillValid = subcategoryFilter.filter((sub) =>
+          (items || []).some(
+            (i) =>
+              i.subcategory?.trim() === sub &&
+              (next.length === 0 || next.includes(i.category?.trim() || '')),
+          ),
         );
-        if (!stillValid) setSubcategoryFilter('');
+        if (stillValid.length !== subcategoryFilter.length) setSubcategoryFilter(stillValid);
       }
     },
     [items, subcategoryFilter],
   );
 
   const handleSubcategoryChange = useCallback(
-    (next: string) => {
+    (next: string[]) => {
       setSubcategoryFilter(next);
-      // If no category is selected yet, infer it from the chosen subcategory
-      // when it unambiguously belongs to a single category.
-      if (next && !categoryFilter) {
+      // If no category is selected yet, infer it from the chosen subcategories
+      // when they unambiguously belong to a single category.
+      if (next.length > 0 && categoryFilter.length === 0) {
         const owningCategories = sortedUnique(
-          (items || []).filter((i) => i.subcategory?.trim() === next).map((i) => i.category),
+          (items || [])
+            .filter((i) => next.includes(i.subcategory?.trim() || ''))
+            .map((i) => i.category),
         );
         if (owningCategories.length === 1) {
-          setCategoryFilter(owningCategories[0]);
+          setCategoryFilter(owningCategories);
         }
       }
     },
     [items, categoryFilter],
   );
 
-  const isFiltered = Boolean(searchText.trim() || categoryFilter || subcategoryFilter);
+  const isFiltered = Boolean(
+    searchText.trim() || categoryFilter.length > 0 || subcategoryFilter.length > 0,
+  );
 
   const clearFilters = useCallback(() => {
     setSearchText('');
-    setCategoryFilter('');
-    setSubcategoryFilter('');
+    setCategoryFilter([]);
+    setSubcategoryFilter([]);
   }, []);
 
   const filteredItems = useMemo(() => {
     const query = searchText.trim().toLowerCase();
     return (items || []).filter((item) => {
       if (query && !item.name.toLowerCase().includes(query)) return false;
-      if (categoryFilter && item.category?.trim() !== categoryFilter) return false;
-      if (subcategoryFilter && item.subcategory?.trim() !== subcategoryFilter) return false;
+      if (categoryFilter.length > 0 && !categoryFilter.includes(item.category?.trim() || ''))
+        return false;
+      if (
+        subcategoryFilter.length > 0 &&
+        !subcategoryFilter.includes(item.subcategory?.trim() || '')
+      )
+        return false;
       return true;
     });
   }, [items, searchText, categoryFilter, subcategoryFilter]);

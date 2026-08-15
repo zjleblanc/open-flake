@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type CatalogChoice } from '../api/client';
+import { OFSelect, type OFSelectOption } from './OFSelect';
 
 interface ReferenceSelectProps {
   itemId: string;
@@ -29,21 +30,21 @@ export function ReferenceSelect({
   const options: CatalogChoice[] = optionsQuery.data?.result?.options || [];
   const selectedStillValid = !value || options.some((opt) => opt.value === value);
 
+  const selectOptions: OFSelectOption[] = options.map((option) => ({
+    value: option.value,
+    label: option.label || option.value,
+  }));
+
   return (
     <div className="catalog-reference-select">
-      <select
+      <OFSelect
         id={id}
+        options={selectOptions}
         value={selectedStillValid ? value : ''}
         disabled={disabled || optionsQuery.isLoading}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{optionsQuery.isLoading ? 'Loading…' : 'Select…'}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label || option.value}
-          </option>
-        ))}
-      </select>
+        placeholder={optionsQuery.isLoading ? 'Loading…' : 'Select…'}
+        onChange={(next) => onChange(next as string)}
+      />
       {optionsQuery.isLoading ? (
         <span className="catalog-reference-loading">Loading options…</span>
       ) : null}
