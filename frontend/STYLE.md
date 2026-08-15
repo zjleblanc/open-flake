@@ -30,7 +30,10 @@ All colors are defined as CSS custom properties in [`global.css`](./src/theme/gl
 | `--of-accent` | Links, stat values, secondary emphasis |
 | `--of-accent-dark` | Link hover |
 | `--of-danger` | Errors, destructive actions |
+| `--of-danger-dark` | Darker danger (e.g. light-theme icon accents) |
+| `--of-danger-light` | Lighter danger (e.g. dark-theme icon accents) |
 | `--of-success` | Resolved states |
+| `--of-switch-success` | Checked toggle / switch track accent |
 | `--of-info` | Informational highlights |
 | `--of-gradient` | Sidebar and login page background |
 | `--of-sidebar-text` | Inactive sidebar navigation links |

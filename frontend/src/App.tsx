@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { getToken } from './api/client';
-import { CatalogAdminListPage } from './pages/CatalogAdminListPage';
 import { CatalogBrowsePage } from './pages/CatalogBrowsePage';
 import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
 import { CatalogItemPage } from './pages/CatalogItemPage';
@@ -168,7 +167,7 @@ export function App() {
         />
         <Route path="requested-items/:sysId" element={<RequestedItemDetailPage />} />
         <Route path="catalog" element={<CatalogBrowsePage />} />
-        <Route path="catalog/admin" element={<CatalogAdminListPage />} />
+        <Route path="catalog/admin" element={<Navigate to="/catalog" replace />} />
         <Route path="catalog/admin/:itemId" element={<CatalogItemBuilderPage />} />
         <Route path="catalog/webhooks" element={<Navigate to="/integrations/webhooks" replace />} />
         <Route path="catalog/:itemId" element={<CatalogItemPage />} />

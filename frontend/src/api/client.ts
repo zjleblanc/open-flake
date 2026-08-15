@@ -335,6 +335,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  adminDeleteCatalogItem: (itemId: string) =>
+    request<void>(`/api/flake/catalog/admin/items/${itemId}`, { method: 'DELETE' }),
+
   adminListVariables: (itemId: string) =>
     request<{ result: CatalogVariable[] }>(`/api/flake/catalog/admin/items/${itemId}/variables`),
 

@@ -1,17 +1,27 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, type CatalogItemSummary } from '../api/client';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { useAuth } from '../auth/AuthContext';
 import { CardViewIcon, ListViewIcon } from '../components/NavIcons';
+import { DeleteIcon, EditIcon } from '../components/DetailIcons';
+import { ToggleSwitch } from '../components/DetailFieldControls';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import {
   buildCatalogCategoryTree,
-  countCatalogItems,
   UNCATEGORIZED_ID,
   type CatalogCategoryNode,
 } from './catalogBrowseTree';
 import './CatalogPages.css';
+
+const ADMIN_ITEMS_QUERY_KEY = ['catalog-admin-items'];
+const PUBLIC_ITEMS_QUERY_KEY = ['catalog-items'];
+
+type CatalogManageHandlers = {
+  onToggleActive: (item: CatalogItemSummary, active: boolean) => void;
+  onRequestDelete: (item: CatalogItemSummary) => void;
+};
 
 export type CatalogBrowseView = 'card' | 'list';
 
@@ -127,153 +137,268 @@ function CatalogViewToggle({
   );
 }
 
-function CatalogCompactItemList({ items }: { items: CatalogItemSummary[] }) {
+function CatalogManageActions({
+  item,
+  manage,
+  stacked = false,
+}: {
+  item: CatalogItemSummary;
+  manage: CatalogManageHandlers;
+  stacked?: boolean;
+}) {
+  const active = item.active !== false;
+  return (
+    <span className={`catalog-manage-actions${stacked ? ' catalog-manage-actions--stacked' : ''}`}>
+      <ToggleSwitch
+        id={`catalog-manage-active-${item.sys_id}`}
+        checked={active}
+        onChange={(checked) => manage.onToggleActive(item, checked)}
+        label="Active"
+      />
+      <span className="catalog-manage-actions-icons">
+        <Link
+          to={`/catalog/admin/${item.sys_id}`}
+          className="btn-icon catalog-manage-edit"
+          aria-label={`Edit ${item.name}`}
+        >
+          <EditIcon size={14} />
+        </Link>
+        <button
+          type="button"
+          className="btn-icon btn-icon-danger catalog-manage-delete"
+          aria-label={`Delete ${item.name}`}
+          onClick={() => manage.onRequestDelete(item)}
+        >
+          <DeleteIcon size={14} />
+        </button>
+      </span>
+    </span>
+  );
+}
+
+function CatalogCompactItemList({
+  items,
+  manage,
+}: {
+  items: CatalogItemSummary[];
+  manage?: CatalogManageHandlers;
+}) {
   return (
     <ul className="catalog-compact-item-list">
-      {items.map((item) => (
-        <li key={item.sys_id} className="catalog-compact-item">
-          <Link to={`/catalog/${item.sys_id}`} className="catalog-compact-item-link">
-            <span className="catalog-compact-item-title">{item.name}</span>
-            {item.short_description ? (
-              <span className="catalog-compact-item-desc">{item.short_description}</span>
-            ) : null}
-          </Link>
-        </li>
-      ))}
+      {items.map((item) => {
+        const inactive = Boolean(manage) && item.active === false;
+        return (
+          <li
+            key={item.sys_id}
+            className={`catalog-compact-item${inactive ? ' catalog-item--inactive' : ''}`}
+          >
+            <Link to={`/catalog/${item.sys_id}`} className="catalog-compact-item-link">
+              <span className="catalog-compact-item-title">{item.name}</span>
+              {item.short_description ? (
+                <span className="catalog-compact-item-desc">{item.short_description}</span>
+              ) : null}
+            </Link>
+            {manage ? <CatalogManageActions item={item} manage={manage} stacked /> : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function CatalogCategoryCard({ node }: { node: CatalogCategoryNode }) {
+function CatalogCategoryCard({
+  node,
+  manage,
+}: {
+  node: CatalogCategoryNode;
+  manage?: CatalogManageHandlers;
+}) {
   return (
     <div className="card catalog-compact-category">
       <h2 className="catalog-compact-category-title">{node.label}</h2>
-      {node.items.length > 0 ? <CatalogCompactItemList items={node.items} /> : null}
+      {node.items.length > 0 ? <CatalogCompactItemList items={node.items} manage={manage} /> : null}
       {node.children.map((sub) => (
         <div key={sub.id} className="catalog-compact-subcategory">
           <h3 className="catalog-compact-subcategory-title">{sub.label}</h3>
-          <CatalogCompactItemList items={sub.items} />
+          <CatalogCompactItemList items={sub.items} manage={manage} />
         </div>
       ))}
     </div>
   );
 }
 
-function CatalogItemTable({ items }: { items: CatalogItemSummary[] }) {
+function CatalogItemCell({ item }: { item: CatalogItemSummary }) {
+  return (
+    <td className="catalog-item-table-item-cell">
+      <Link to={`/catalog/${item.sys_id}`} className="catalog-item-table-item-link">
+        <span className="catalog-item-title catalog-item-title--compact">{item.name}</span>
+        {item.short_description ? (
+          <span className="catalog-item-table-item-desc">{item.short_description}</span>
+        ) : null}
+      </Link>
+    </td>
+  );
+}
+
+function CatalogItemTableRows({
+  items,
+  manage,
+}: {
+  items: CatalogItemSummary[];
+  manage?: CatalogManageHandlers;
+}) {
+  return (
+    <table className="catalog-item-table catalog-item-table--compact">
+      <tbody>
+        {items.map((item) => {
+          const inactive = Boolean(manage) && item.active === false;
+          return (
+            <tr key={item.sys_id} className={inactive ? 'catalog-item--inactive' : undefined}>
+              <CatalogItemCell item={item} />
+              {manage ? (
+                <td className="catalog-item-table-manage-cell">
+                  <CatalogManageActions item={item} manage={manage} />
+                </td>
+              ) : null}
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function CatalogItemTable({
+  items,
+  manage,
+}: {
+  items: CatalogItemSummary[];
+  manage?: CatalogManageHandlers;
+}) {
   return (
     <div className="card catalog-item-table-card">
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Short description</th>
-          </tr>
-        </thead>
+      <CatalogItemTableRows items={items} manage={manage} />
+    </div>
+  );
+}
+
+function GeneralItemsIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2.5" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+type CategoryTableRow = {
+  item: CatalogItemSummary;
+  subcategoryLabel: string;
+  isGroupStart: boolean;
+  groupSize: number;
+};
+
+function buildCategoryTableRows(node: CatalogCategoryNode): CategoryTableRow[] {
+  const rows: CategoryTableRow[] = [];
+  const appendGroup = (label: string, items: CatalogItemSummary[]) => {
+    items.forEach((item, index) => {
+      rows.push({
+        item,
+        subcategoryLabel: label,
+        isGroupStart: index === 0,
+        groupSize: items.length,
+      });
+    });
+  };
+  // Items filed directly under the category (no subcategory) form their own
+  // unlabelled group, rendered before the labelled subcategory groups.
+  if (node.items.length > 0) appendGroup('', node.items);
+  for (const sub of node.children) {
+    appendGroup(sub.label, sub.items);
+  }
+  return rows;
+}
+
+function CatalogCategoryGroupedTable({
+  node,
+  manage,
+}: {
+  node: CatalogCategoryNode;
+  manage?: CatalogManageHandlers;
+}) {
+  const rows = buildCategoryTableRows(node);
+  return (
+    <div className="catalog-item-table-wrap">
+      <table className="catalog-item-table catalog-item-table--compact catalog-item-table--grouped">
         <tbody>
-          {items.map((item) => (
-            <tr key={item.sys_id}>
-              <td>
-                <Link to={`/catalog/${item.sys_id}`} className="catalog-item-title-link">
-                  <span className="catalog-item-title catalog-item-title--compact">
-                    {item.name}
-                  </span>
-                </Link>
-              </td>
-              <td>
-                {item.short_description ? (
-                  <p className="catalog-item-description">{item.short_description}</p>
-                ) : (
-                  <span className="empty-value">—</span>
-                )}
-              </td>
-            </tr>
-          ))}
+          {rows.map(({ item, subcategoryLabel, isGroupStart, groupSize }) => {
+            const inactive = Boolean(manage) && item.active === false;
+            return (
+              <tr key={item.sys_id} className={inactive ? 'catalog-item--inactive' : undefined}>
+                {isGroupStart ? (
+                  <td rowSpan={groupSize} className="catalog-item-table-subcategory-cell">
+                    {subcategoryLabel ? (
+                      <span className="catalog-item-table-subcategory-label">
+                        {subcategoryLabel}
+                      </span>
+                    ) : (
+                      <span
+                        className="catalog-item-table-subcategory-general"
+                        title="General (no subcategory)"
+                        aria-label="General, no subcategory"
+                      >
+                        <GeneralItemsIcon />
+                      </span>
+                    )}
+                  </td>
+                ) : null}
+                <CatalogItemCell item={item} />
+                {manage ? (
+                  <td className="catalog-item-table-manage-cell">
+                    <CatalogManageActions item={item} manage={manage} />
+                  </td>
+                ) : null}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
-function CategoryToggleIcon() {
-  return (
-    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CatalogCategorySection({
+function CatalogCategoryListCard({
   node,
-  nested = false,
+  manage,
 }: {
   node: CatalogCategoryNode;
-  nested?: boolean;
+  manage?: CatalogManageHandlers;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const total = countCatalogItems(node);
-  const hasChildren = node.children.length > 0;
-
   return (
-    <section className={`catalog-category${nested ? ' catalog-category--nested' : ''}`}>
-      <button
-        type="button"
-        className="catalog-category-header"
-        aria-expanded={!collapsed}
-        onClick={() => setCollapsed((prev) => !prev)}
-      >
-        <h2 className="catalog-category-title">{node.label}</h2>
-        <span className="catalog-category-header-trailing">
-          {collapsed ? <span className="catalog-category-count">{total}</span> : null}
-          <span
-            className={`catalog-category-toggle${collapsed ? ' catalog-category-toggle--collapsed' : ''}`}
-          >
-            <CategoryToggleIcon />
-          </span>
-        </span>
-      </button>
-      {!collapsed ? (
-        <>
-          {node.items.length > 0 ? (
-            <div
-              className={`catalog-category-items${hasChildren ? ' catalog-category-items--indented' : ''}`}
-            >
-              <CatalogItemTable items={node.items} />
-            </div>
-          ) : null}
-          {hasChildren ? (
-            <div className="catalog-category-children">
-              {node.children.map((child) => (
-                <CatalogCategorySection key={child.id} node={child} nested />
-              ))}
-            </div>
-          ) : null}
-        </>
-      ) : null}
-    </section>
+    <div className="card catalog-compact-category">
+      <h2 className="catalog-compact-category-title">{node.label}</h2>
+      <CatalogCategoryGroupedTable node={node} manage={manage} />
+    </div>
   );
 }
 
 function CatalogBrowseResults({
   nodes,
   view,
+  manage,
 }: {
   nodes: CatalogCategoryNode[];
   view: CatalogBrowseView;
+  manage?: CatalogManageHandlers;
 }) {
   const flattenUncategorized =
     nodes.length === 1 && nodes[0].id === UNCATEGORIZED_ID && nodes[0].children.length === 0;
 
   if (flattenUncategorized) {
     return view === 'card' ? (
-      <CatalogCompactItemList items={nodes[0].items} />
+      <CatalogCompactItemList items={nodes[0].items} manage={manage} />
     ) : (
-      <CatalogItemTable items={nodes[0].items} />
+      <CatalogItemTable items={nodes[0].items} manage={manage} />
     );
   }
 
@@ -281,16 +406,16 @@ function CatalogBrowseResults({
     return (
       <div className="catalog-compact-grid">
         {nodes.map((node) => (
-          <CatalogCategoryCard key={node.id} node={node} />
+          <CatalogCategoryCard key={node.id} node={node} manage={manage} />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="catalog-category-tree">
+    <div className="catalog-compact-list-stack">
       {nodes.map((node) => (
-        <CatalogCategorySection key={node.id} node={node} />
+        <CatalogCategoryListCard key={node.id} node={node} manage={manage} />
       ))}
     </div>
   );
@@ -308,10 +433,14 @@ function sortedUnique(values: (string | undefined)[]): string[] {
 export function CatalogBrowsePage() {
   const { hasPermission } = useAuth();
   const canAdmin = hasPermission('records.*.write');
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [view, setView] = useState<CatalogBrowseView>(readStoredView);
   const [searchText, setSearchText] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [subcategoryFilter, setSubcategoryFilter] = useState('');
+  const [managing, setManaging] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<CatalogItemSummary | null>(null);
 
   const onViewChange = useCallback((next: CatalogBrowseView) => {
     setView(next);
@@ -322,15 +451,77 @@ export function CatalogBrowsePage() {
     }
   }, []);
 
-  const headerActions = useMemo(
-    () =>
-      canAdmin ? (
-        <Link to="/catalog/admin" className="btn btn-primary">
-          Manage
-        </Link>
-      ) : null,
-    [canAdmin],
-  );
+  const createMutation = useMutation({
+    mutationFn: () => api.adminCreateCatalogItem({}),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PUBLIC_ITEMS_QUERY_KEY });
+      navigate(`/catalog/admin/${res.result.sys_id}`);
+    },
+  });
+
+  const toggleActiveMutation = useMutation({
+    mutationFn: ({ sys_id, active }: { sys_id: string; active: boolean }) =>
+      api.adminUpdateCatalogItem(sys_id, { active }),
+    onMutate: async ({ sys_id, active }) => {
+      await queryClient.cancelQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
+      const previous = queryClient.getQueryData<{ result: CatalogItemSummary[] }>(
+        ADMIN_ITEMS_QUERY_KEY,
+      );
+      if (previous) {
+        queryClient.setQueryData(ADMIN_ITEMS_QUERY_KEY, {
+          result: previous.result.map((entry) =>
+            entry.sys_id === sys_id ? { ...entry, active } : entry,
+          ),
+        });
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(ADMIN_ITEMS_QUERY_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PUBLIC_ITEMS_QUERY_KEY });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (sys_id: string) => api.adminDeleteCatalogItem(sys_id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PUBLIC_ITEMS_QUERY_KEY });
+      setPendingDelete(null);
+    },
+  });
+
+  const createItem = createMutation.mutate;
+  const creatingItem = createMutation.isPending;
+
+  const headerActions = useMemo(() => {
+    if (!canAdmin) return null;
+    return (
+      <>
+        {managing ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => createItem()}
+            disabled={creatingItem}
+          >
+            {creatingItem ? 'Creating…' : 'Create'}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={managing ? 'btn btn-secondary' : 'btn btn-primary'}
+          onClick={() => setManaging((prev) => !prev)}
+        >
+          {managing ? 'Done' : 'Manage'}
+        </button>
+      </>
+    );
+  }, [canAdmin, managing, createItem, creatingItem]);
 
   usePageHeader({
     breadcrumbs: [{ label: 'Service Catalog' }],
@@ -338,8 +529,8 @@ export function CatalogBrowsePage() {
   });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['catalog-items'],
-    queryFn: () => api.listCatalogItems(),
+    queryKey: managing ? ADMIN_ITEMS_QUERY_KEY : PUBLIC_ITEMS_QUERY_KEY,
+    queryFn: () => (managing ? api.adminListCatalogItems() : api.listCatalogItems()),
   });
 
   const items = data?.result;
@@ -410,6 +601,14 @@ export function CatalogBrowsePage() {
 
   const tree = useMemo(() => buildCatalogCategoryTree(filteredItems), [filteredItems]);
 
+  const manageHandlers: CatalogManageHandlers | undefined = managing
+    ? {
+        onToggleActive: (item, active) =>
+          toggleActiveMutation.mutate({ sys_id: item.sys_id, active }),
+        onRequestDelete: (item) => setPendingDelete(item),
+      }
+    : undefined;
+
   return (
     <div className="catalog-browse">
       <div className="section-header-row">
@@ -436,8 +635,23 @@ export function CatalogBrowsePage() {
       ) : !filteredItems.length ? (
         <p className="empty-state">No services match your search</p>
       ) : (
-        <CatalogBrowseResults nodes={tree} view={view} />
+        <CatalogBrowseResults nodes={tree} view={view} manage={manageHandlers} />
       )}
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete catalog item"
+        message={
+          pendingDelete
+            ? `Are you sure you want to delete "${pendingDelete.name}"? This action cannot be undone.`
+            : ''
+        }
+        error={deleteMutation.error ? (deleteMutation.error as Error).message : null}
+        isPending={deleteMutation.isPending}
+        onConfirm={() => {
+          if (pendingDelete) deleteMutation.mutate(pendingDelete.sys_id);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

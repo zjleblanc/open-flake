@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-15 — Inline catalog manage mode on browse
+
+### Added
+
+- Manage toggle on the service catalog browse page: when active, each item shows an Active switch plus edit and delete icon actions in the current card or list layout (no separate admin table).
+- Create action in the header while managing; delete opens a confirm dialog and uses a new `adminDeleteCatalogItem` API client method.
+- Theme tokens `--of-switch-success`, `--of-danger-light`, and `--of-danger-dark` for the Active switch and manage icon accents.
+
+### Changed
+
+- Removed the standalone catalog admin list page; `/catalog/admin` redirects to browse. Item builder breadcrumbs no longer include a Manage crumb.
+- Manage controls stay compact: stacked icons-over-Active in card view, inline in list view, with theme-aware icon colors.
+
+### Fixed
+
+- Catalog browse infinite re-render when header actions depended on the unstable `useMutation` object.
+
 ## 2026-08-14 — Compact catalog cards with search
 
 ### Added

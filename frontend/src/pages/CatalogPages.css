@@ -76,158 +76,6 @@
   color: var(--of-on-primary);
 }
 
-.catalog-category-tree {
-  /* Single source of truth for the tree geometry: the connector's arm length
-     plus the gap before content defines the indent, so the tree line's
-     corner, the category title, and the first content element always line
-     up with the same, standardized amount of padding between them.
-     `--catalog-tree-header-height` is enforced (via min-height) on every
-     header row, so `--catalog-tree-elbow` -- exactly half of it -- reliably
-     lands connectors on the title's vertical center instead of guessing at
-     the row's natural (font-dependent) height. */
-  --catalog-tree-arm: 0.9rem;
-  --catalog-tree-gap: 0.45rem;
-  --catalog-tree-indent: calc(var(--catalog-tree-arm) + var(--catalog-tree-gap));
-  --catalog-tree-row-gap: 0.75rem;
-  --catalog-tree-header-height: 1.25rem;
-  --catalog-tree-elbow: calc(var(--catalog-tree-header-height) / 2);
-  --catalog-tree-line-color: color-mix(in srgb, var(--of-primary) 40%, var(--of-border));
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.catalog-category {
-  display: flex;
-  flex-direction: column;
-  gap: var(--catalog-tree-row-gap);
-}
-
-.catalog-category-children {
-  display: flex;
-  flex-direction: column;
-  gap: var(--catalog-tree-row-gap);
-}
-
-.catalog-category--nested {
-  position: relative;
-  padding-left: var(--catalog-tree-indent);
-}
-
-/* Elbow connector: vertical line turning smoothly into a horizontal line,
-   like CLI `tree` output but with a rounded corner instead of a sharp one.
-   The line starts at the bottom edge of whatever precedes it (the parent
-   header, or the previous sibling's own content) and the arm ends exactly
-   `--catalog-tree-gap` before the title/content, at the subcategory title's
-   vertical center. */
-.catalog-category--nested::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: calc(-1 * var(--catalog-tree-row-gap));
-  width: var(--catalog-tree-arm);
-  height: calc(var(--catalog-tree-row-gap) + var(--catalog-tree-elbow));
-  border-left: 2px solid var(--catalog-tree-line-color);
-  border-bottom: 2px solid var(--catalog-tree-line-color);
-  border-bottom-left-radius: 6px;
-}
-
-/* Trunk continuation: only drawn between siblings, so the last child's
-   connector ends in a smooth corner instead of continuing further down. */
-.catalog-category--nested:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: var(--catalog-tree-elbow);
-  bottom: calc(-1 * var(--catalog-tree-row-gap));
-  width: 2px;
-  background: var(--catalog-tree-line-color);
-}
-
-/* When a category has its own items AND subcategories, push those items to
-   the right (matching the standard tree indent) and draw a straight lead-in
-   trunk beside them, starting at the bottom edge of the category header
-   and running down to wherever the items block ends -- so the line reaches
-   the subcategories below regardless of how tall the items block is. */
-.catalog-category-items--indented {
-  position: relative;
-  padding-left: var(--catalog-tree-indent);
-}
-
-.catalog-category-items--indented::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: calc(-1 * var(--catalog-tree-row-gap));
-  bottom: 0;
-  width: 2px;
-  background: var(--catalog-tree-line-color);
-}
-
-.catalog-category-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  min-height: var(--catalog-tree-header-height);
-  padding: 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-}
-
-.catalog-category-header:hover .catalog-category-title,
-.catalog-category-header:focus-visible .catalog-category-title {
-  color: var(--of-primary);
-}
-
-.catalog-category-header-trailing {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-
-.catalog-category-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 1rem;
-  height: 1rem;
-  color: var(--of-text-muted);
-}
-
-.catalog-category-toggle svg {
-  transition: transform 0.15s ease;
-}
-
-.catalog-category-toggle--collapsed svg {
-  transform: rotate(-90deg);
-}
-
-.catalog-category-title {
-  margin: 0;
-  font-family: var(--of-font-heading);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--of-primary-light);
-}
-
-.catalog-category-count {
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--of-bg) 55%, var(--of-surface));
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--of-text-muted);
-}
-
 .catalog-item-title {
   margin: 0;
   font-family: var(--of-font-heading);
@@ -314,6 +162,11 @@
   overflow: hidden;
 }
 
+.catalog-compact-item {
+  display: flex;
+  align-items: center;
+}
+
 .catalog-compact-item:not(:last-child) {
   border-bottom: 1px solid var(--of-border);
 }
@@ -324,8 +177,10 @@
 
 .catalog-compact-item-link {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
   padding: 0.45rem 0.75rem;
   overflow: hidden;
   text-decoration: none;
@@ -353,6 +208,68 @@
   font-family: var(--of-font-ui);
   font-size: 0.8125rem;
   color: var(--of-text-muted);
+}
+
+.catalog-manage-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 0.75rem;
+}
+
+.catalog-manage-actions-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.catalog-manage-actions--stacked {
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.catalog-manage-actions .toggle-switch {
+  gap: 0.3rem;
+  --toggle-accent: var(--of-switch-success);
+}
+
+.catalog-manage-actions .toggle-switch-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.catalog-manage-actions .toggle-switch-track {
+  width: 1.875rem;
+  height: 1.0625rem;
+}
+
+.catalog-manage-actions .toggle-switch-thumb {
+  width: 0.6875rem;
+  height: 0.6875rem;
+}
+
+.catalog-manage-actions .toggle-switch-input:checked + .toggle-switch-track .toggle-switch-thumb {
+  transform: translate(0.9375rem, -50%);
+}
+
+.catalog-item--inactive {
+  opacity: 0.55;
+}
+
+.catalog-item-table-manage-cell {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.catalog-compact-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .catalog-card-grid {
@@ -399,8 +316,78 @@
   overflow: hidden;
 }
 
-.catalog-item-table-card .catalog-item-description {
-  max-width: 42rem;
+.catalog-item-table-wrap {
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  overflow: hidden;
+}
+
+.catalog-item-table--compact th,
+.catalog-item-table--compact td {
+  padding: 0.35rem 0.75rem;
+}
+
+.catalog-item-table--compact .catalog-item-title--compact {
+  font-size: 0.875rem;
+}
+
+.catalog-item-table-item-cell {
+  /* `width: 100%` claims the remaining row space once the (unset-width)
+     subcategory column has taken exactly what its own content needs;
+     `max-width: 0` is the standard auto-layout-table trick that stops this
+     cell's own (nowrap) content from dictating a larger column width, so it
+     shrinks to whatever's actually left and the inner text can ellipsis. */
+  width: 100%;
+  max-width: 0;
+  overflow: hidden;
+}
+
+.catalog-item-table-item-link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.catalog-item-table-item-link:hover .catalog-item-title {
+  color: var(--of-primary-light);
+}
+
+.catalog-item-table-item-desc {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--of-font-ui);
+  font-size: 0.8125rem;
+  color: var(--of-text-muted);
+}
+
+.catalog-item-table-subcategory-cell {
+  vertical-align: middle;
+  text-align: right;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--of-bg) 55%, var(--of-surface));
+  border-right: 1px solid var(--of-border);
+}
+
+.catalog-item-table-subcategory-label {
+  font-family: var(--of-font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--of-primary-light);
+}
+
+.catalog-item-table-subcategory-general {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--of-primary-light);
+  cursor: default;
 }
 
 .catalog-item-page,
@@ -715,6 +702,44 @@
 .btn-icon-danger:focus-visible {
   color: var(--of-danger);
   border-color: color-mix(in srgb, var(--of-danger) 45%, var(--of-border));
+}
+
+.catalog-manage-edit,
+.catalog-manage-delete {
+  transition:
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.catalog-manage-edit {
+  color: var(--of-primary-light);
+}
+
+.catalog-manage-delete {
+  color: var(--of-danger-light);
+}
+
+[data-theme='light'] .catalog-manage-edit {
+  color: var(--of-primary-dark);
+}
+
+[data-theme='light'] .catalog-manage-delete {
+  color: var(--of-danger-dark);
+}
+
+.catalog-manage-edit:hover,
+.catalog-manage-edit:focus-visible {
+  color: var(--of-primary);
+  filter: none;
+  border-color: color-mix(in srgb, var(--of-primary) 55%, var(--of-border));
+}
+
+.catalog-manage-delete:hover,
+.catalog-manage-delete:focus-visible {
+  color: var(--of-danger);
+  filter: none;
+  border-color: color-mix(in srgb, var(--of-danger) 55%, var(--of-border));
 }
 
 .catalog-row-active {

@@ -143,11 +143,7 @@ export function CatalogItemBuilderPage() {
   }
 
   const headerBreadcrumbs = useMemo(
-    () => [
-      { label: 'Service Catalog', to: '/catalog' },
-      { label: 'Manage', to: '/catalog/admin' },
-      { label: name || 'Edit' },
-    ],
+    () => [{ label: 'Service Catalog', to: '/catalog' }, { label: name || 'Edit' }],
     [name],
   );
 

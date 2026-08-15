@@ -41,7 +41,10 @@
   --of-accent: #37a3a3;
   --of-accent-dark: #147878;
   --of-danger: #f0561d;
+  --of-danger-dark: #c44512;
+  --of-danger-light: #f58b5c;
   --of-success: #63993d;
+  --of-switch-success: #a0be40;
   --of-info: #0066cc;
   --of-gradient: linear-gradient(135deg, #000000 0%, #21134d 50%, #1b0d33 100%);
   --of-sidebar-text: var(--of-primary-light);
@@ -85,7 +88,10 @@
   --of-accent: #2a8585;
   --of-accent-dark: #1a6363;
   --of-danger: #d94a12;
+  --of-danger-dark: #a8380e;
+  --of-danger-light: #d94a12;
   --of-success: #4a7d2e;
+  --of-switch-success: #a0be40;
   --of-info: #0055aa;
   --of-gradient: linear-gradient(135deg, #ebe7f8 0%, #ddd4f3 50%, #d2c6ee 100%);
   --of-sidebar-text: #4a3299;
