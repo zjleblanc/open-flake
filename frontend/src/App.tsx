@@ -9,6 +9,7 @@ import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
 import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { RecordListPage } from './pages/RecordListPage';
 import { RequestDetailPage } from './pages/RequestDetailPage';
@@ -175,6 +176,7 @@ export function App() {
         <Route path="integrations/secrets" element={<CatalogSecretsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-15 — Snowfall error pages for 404 and failed fetches
+
+### Added
+
+- Catch-all `*` route that shows a cheeky 404 page ("Did you get lost in a blizzard?") with a CSS snowfall animation and a Go Home action, still inside the authenticated app shell.
+- Shared `Snowfall` overlay (~110 animated flakes with sway and tumble) reused by error views.
+- `FetchErrorView` for failed-fetch / render failures: serious tone, "Contact your OpenFlake administrator", error message in a monospace code block, and Retry.
+- Top-level `ErrorBoundary` around the app that falls back to `FetchErrorView` on unhandled render errors.
+
 ## 2026-08-15 — Opt-in floating labels for form fields
 
 ### Added

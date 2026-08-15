@@ -1,0 +1,63 @@
+.error-page {
+  position: relative;
+  min-height: 65vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  overflow: hidden;
+  border-radius: var(--of-radius);
+  background: var(--of-gradient);
+}
+
+.error-page-content {
+  position: relative;
+  z-index: 1;
+  max-width: 32rem;
+  text-align: center;
+}
+
+.error-page-eyebrow {
+  margin: 0 0 0.5rem;
+  font-family: var(--of-font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--of-primary-light);
+}
+
+.error-page-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.75rem;
+}
+
+.error-page-subtitle {
+  margin: 0 0 1.5rem;
+  color: var(--of-text-muted);
+  line-height: 1.5;
+}
+
+.error-page-code {
+  margin: 0 0 1.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 65%, var(--of-surface));
+  text-align: left;
+  overflow-x: auto;
+}
+
+.error-page-code code {
+  font-family: var(--of-font-mono);
+  font-size: 0.8125rem;
+  color: var(--of-danger-light);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.error-page-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}

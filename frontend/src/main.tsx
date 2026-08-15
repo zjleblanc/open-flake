@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { UserPreferencesProvider } from './settings/UserPreferencesContext';
 import {
   applyColorScheme,
@@ -32,11 +33,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider>
-          <UserPreferencesProvider>
-            <App />
-          </UserPreferencesProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <UserPreferencesProvider>
+              <App />
+            </UserPreferencesProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>,
