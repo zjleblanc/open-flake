@@ -505,6 +505,66 @@ tr:hover td {
   color: var(--of-text-muted);
 }
 
+/* Opt-in floating-label variant: use <FloatingLabelField> instead of
+   .form-group + <label> where this style is wanted. Not a default. */
+.floating-field {
+  position: relative;
+  margin-bottom: var(--of-density-form-group-margin);
+}
+
+.floating-field input,
+.floating-field textarea {
+  width: 100%;
+}
+
+.floating-field-label {
+  position: absolute;
+  top: 50%;
+  left: var(--of-density-input-padding-x);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: calc(100% - 2 * var(--of-density-input-padding-x));
+  padding: 0 0.3rem;
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  pointer-events: none;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    top 0.15s ease,
+    font-size 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.floating-field-label .field-tooltip-trigger {
+  pointer-events: auto;
+}
+
+.floating-field--multiline .floating-field-label {
+  top: 0.7rem;
+  transform: none;
+}
+
+.floating-field--active .floating-field-label {
+  top: 0;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--of-primary);
+  background: var(--of-surface);
+}
+
+.floating-field--disabled .floating-field-label {
+  opacity: 0.6;
+}
+
 .error {
   color: var(--of-danger);
   font-size: 0.875rem;

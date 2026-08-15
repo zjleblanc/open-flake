@@ -31,6 +31,12 @@
   min-width: 10rem;
 }
 
+.catalog-search-bar .catalog-search-input {
+  /* Overrides .floating-field's form-stack margin so it doesn't throw off
+     align-items: center against the filter selects in this inline bar. */
+  margin-bottom: 0;
+}
+
 .catalog-search-bar .catalog-filter-select {
   width: auto;
   min-width: 9rem;

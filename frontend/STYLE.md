@@ -236,6 +236,7 @@ Props:
 | `autocomplete` | `boolean` | `false` | Renders the trigger as a text input that filters `options` by label as the user types |
 | `disabled` | `boolean` | `false` | Dims the trigger and blocks interaction (matches `.btn:disabled` opacity) |
 | `placeholder` | `string` | `'Select…'` | Shown when nothing is selected |
+| `floatingLabel` | `string` | — | Opt-in; see [Floating labels (opt-in)](#floating-labels-opt-in) below |
 
 Rules:
 
@@ -243,6 +244,40 @@ Rules:
 - Reference/async-loaded options (e.g. catalog variable choices) should still fetch via `useQuery` as before, but render results through `OFSelect`'s `options` prop instead of `<option>` children.
 - Catalog `multi_select` variables must render with `multiple` so shoppers can pick more than one value (previously these fell through to a plain text input).
 - Filter-bar instances that previously used `width: auto; min-width: …` on a native `<select>` should instead pass `size="sm"` and constrain width via a wrapping element, not by overriding `OFSelect`'s internal layout.
+
+#### Floating labels (opt-in)
+
+The default field pattern is still `.form-group` + `<label>` + `<input>`/`<select>` — that remains the baseline for the whole app. Floating labels (the label rests inside the control like a placeholder, then floats up to sit centered on the top border, left-aligned, once the field is focused or filled) are an **opt-in stylistic variant**, adopted per field, not a migration.
+
+For text inputs/textareas, use [`FloatingLabelField`](./src/components/FloatingLabelField.tsx) instead of a `.form-group`:
+
+```tsx
+import { FloatingLabelField } from '../components/FloatingLabelField';
+
+<FloatingLabelField
+  id="username"
+  label="Username"
+  value={username}
+  onChange={setUsername}
+  autoComplete="username"
+/>
+```
+
+It supports `multiline` (renders a `<textarea>`), `required` (appends `" *"`, matching the existing `isMandatory` convention), and `tooltip` / `tooltipAriaLabel` (renders a `FieldTooltip` inline — the icon floats together with the label as a group, it never breaks off on its own).
+
+For `OFSelect`, pass `floatingLabel` instead of using a separate `<label>`:
+
+```tsx
+<OFSelect id="wh-method" floatingLabel="Method" options={methodOptions} value={method} onChange={...} />
+```
+
+When `floatingLabel` is set, `OFSelect` suppresses its own idle `placeholder` text (the floating label occupies that space instead), and the label floats up whenever the listbox is open or a value is selected.
+
+Rules:
+
+- Do not use floating labels as the default for new fields — keep `.form-group` + `<label>` unless there's a specific reason to opt in.
+- Never mix the two patterns for a single field (e.g. a floating label _and_ a separate `<label>` above it).
+- Both primitives assume the field sits on `var(--of-surface)` (cards, popovers) since the active-state label background masks the border behind it; pass `className` to override if a field sits directly on `var(--of-bg)`.
 
 #### Form grids keep inputs aligned when tooltips are mixed with plain labels
 

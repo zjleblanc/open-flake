@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setToken } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import { FloatingLabelField } from '../components/FloatingLabelField';
 import openFlakeSm from '../assets/images/open_flake_sm.png';
 import '../components/Layout.css';
 
@@ -38,25 +39,21 @@ export function LoginPage() {
           <p className="text-muted text-sm">Open-source ITSM platform</p>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </div>
+          <FloatingLabelField
+            id="username"
+            label="Username"
+            value={username}
+            onChange={setUsername}
+            autoComplete="username"
+          />
+          <FloatingLabelField
+            id="password"
+            label="Password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+          />
           {error && <p className="error">{error}</p>}
           <button
             type="submit"

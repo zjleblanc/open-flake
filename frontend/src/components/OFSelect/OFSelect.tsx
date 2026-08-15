@@ -35,6 +35,13 @@ export interface OFSelectProps {
   id?: string;
   'aria-label'?: string;
   className?: string;
+  /**
+   * Opt-in floating label: rests inside the control like a placeholder when
+   * closed/empty, then floats up onto the top border when open or when a
+   * value is selected. When set, the `placeholder` prop is suppressed in the
+   * idle state so the two don't overlap.
+   */
+  floatingLabel?: string;
 }
 
 function toArray(value: string | string[] | undefined): string[] {
@@ -56,6 +63,7 @@ export function OFSelect({
   autocomplete = false,
   id,
   className,
+  floatingLabel,
   ...rest
 }: OFSelectProps) {
   const generatedId = useId();
@@ -238,6 +246,8 @@ export function OFSelect({
       : undefined;
 
   const singleLabel = !multiple ? (selectedOptions[0]?.label ?? '') : '';
+  const labelActive = isOpen || selectedValues.length > 0;
+  const idlePlaceholder = floatingLabel ? '' : placeholder;
 
   function renderTags() {
     if (selectedOptions.length === 0) return null;
@@ -306,7 +316,7 @@ export function OFSelect({
             aria-label={ariaLabel}
             className="of-select-input"
             disabled={disabled}
-            placeholder={multiple && selectedOptions.length > 0 ? '' : placeholder}
+            placeholder={multiple && selectedOptions.length > 0 ? '' : idlePlaceholder}
             value={isOpen ? query : multiple ? '' : singleLabel}
             onFocus={handleInputFocus}
             onClick={openDropdown}
@@ -315,12 +325,20 @@ export function OFSelect({
           />
         ) : !multiple || selectedOptions.length === 0 ? (
           <span className={`of-select-value${singleLabel ? '' : ' of-select-placeholder'}`}>
-            {singleLabel || placeholder}
+            {singleLabel || idlePlaceholder}
           </span>
         ) : null}
 
         {!autocomplete ? <span className="of-select-chevron" aria-hidden="true" /> : null}
       </div>
+
+      {floatingLabel ? (
+        <span
+          className={`of-select-floating-label${labelActive ? ' of-select-floating-label--active' : ''}`}
+        >
+          {floatingLabel}
+        </span>
+      ) : null}
 
       {isOpen && position ? (
         <Portal>

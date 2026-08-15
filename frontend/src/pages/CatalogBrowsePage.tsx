@@ -9,6 +9,7 @@ import { DeleteIcon, EditIcon } from '../components/DetailIcons';
 import { ToggleSwitch } from '../components/DetailFieldControls';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OFSelect } from '../components/OFSelect';
+import { FloatingLabelField } from '../components/FloatingLabelField';
 import {
   buildCatalogCategoryTree,
   UNCATEGORIZED_ID,
@@ -63,19 +64,19 @@ function CatalogSearchBar({
 }) {
   return (
     <div className="catalog-search-bar">
-      <input
+      <FloatingLabelField
+        id="catalog-search"
+        label="Search by name"
         type="search"
         value={searchText}
-        onChange={(event) => onSearchTextChange(event.target.value)}
-        placeholder="Search services by name…"
-        aria-label="Search services by name"
+        onChange={onSearchTextChange}
         className="catalog-search-input"
       />
       <OFSelect
         multiple
         className="catalog-filter-select"
+        floatingLabel="Category"
         aria-label="Filter by category"
-        placeholder="All categories"
         value={category}
         onChange={(value) => onCategoryChange(value as string[])}
         options={categoryOptions.map((option) => ({ value: option, label: option }))}
@@ -83,8 +84,8 @@ function CatalogSearchBar({
       <OFSelect
         multiple
         className="catalog-filter-select"
+        floatingLabel="Subcategory"
         aria-label="Filter by subcategory"
-        placeholder="All subcategories"
         value={subcategory}
         onChange={(value) => onSubcategoryChange(value as string[])}
         disabled={subcategoryOptions.length === 0}

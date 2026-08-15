@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-15 — Opt-in floating labels for form fields
+
+### Added
+
+- `FloatingLabelField` for inputs and textareas: the label sits inside the control when idle, then floats onto the top border when focused or filled. Supports required marker and an optional `FieldTooltip` that moves with the label.
+- Optional `floatingLabel` prop on `OFSelect` with the same idle/active behavior; idle placeholder text is suppressed when the prop is set.
+- Floating-label styles in `global.css` and `OFSelect.css` (multiline idle position, disabled dimming, tooltip click-through).
+- STYLE.md section documenting floating labels as an opt-in variant; `.form-group` + static label remains the default.
+
+### Changed
+
+- Login username/password, catalog browse search/category/subcategory filters, and the webhooks Method select use floating labels where that style was chosen explicitly.
+
+### Fixed
+
+- Catalog search bar vertical alignment when the search field uses `FloatingLabelField` (scoped override of the form-stack bottom margin).
+
 ## 2026-08-15 — Inline catalog manage mode on browse
 
 ### Added

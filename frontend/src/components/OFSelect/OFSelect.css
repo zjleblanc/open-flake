@@ -120,6 +120,55 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2318181b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
 }
 
+/* Opt-in floating label (via the `floatingLabel` prop) */
+.of-select-floating-label {
+  position: absolute;
+  top: 50%;
+  left: var(--of-density-input-padding-x);
+  transform: translateY(-50%);
+  max-width: calc(100% - 2 * var(--of-density-input-padding-x) - 1.5rem);
+  padding: 0 0.3rem;
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  border-radius: 4px;
+  transition:
+    top 0.15s ease,
+    font-size 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.of-select--sm .of-select-floating-label {
+  left: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.of-select--lg .of-select-floating-label {
+  left: 1rem;
+  font-size: 1rem;
+}
+
+.of-select-floating-label--active {
+  top: 0;
+  font-size: 0.75rem;
+  color: var(--of-primary);
+  background: var(--of-surface);
+}
+
+.of-select--secondary .of-select-floating-label--active {
+  color: var(--of-accent);
+}
+
+.of-select--disabled .of-select-floating-label {
+  opacity: 0.6;
+}
+
 /* Multi-select tags */
 .of-select-tags {
   display: flex;

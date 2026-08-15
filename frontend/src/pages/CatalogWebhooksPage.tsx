@@ -329,9 +329,9 @@ export function CatalogWebhooksPage() {
               />
             </div>
             <div className="form-group">
-              <label htmlFor="wh-method">Method</label>
               <OFSelect
                 id="wh-method"
+                floatingLabel="Method"
                 value={form.method}
                 onChange={(value) => setForm({ ...form, method: value as string })}
                 options={[
