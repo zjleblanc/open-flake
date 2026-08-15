@@ -27,6 +27,73 @@ function readStoredView(): CatalogBrowseView {
   return 'card';
 }
 
+function CatalogSearchBar({
+  searchText,
+  onSearchTextChange,
+  category,
+  onCategoryChange,
+  categoryOptions,
+  subcategory,
+  onSubcategoryChange,
+  subcategoryOptions,
+  onClear,
+  isFiltered,
+}: {
+  searchText: string;
+  onSearchTextChange: (value: string) => void;
+  category: string;
+  onCategoryChange: (value: string) => void;
+  categoryOptions: string[];
+  subcategory: string;
+  onSubcategoryChange: (value: string) => void;
+  subcategoryOptions: string[];
+  onClear: () => void;
+  isFiltered: boolean;
+}) {
+  return (
+    <div className="catalog-search-bar">
+      <input
+        type="search"
+        value={searchText}
+        onChange={(event) => onSearchTextChange(event.target.value)}
+        placeholder="Search services by name…"
+        aria-label="Search services by name"
+        className="catalog-search-input"
+      />
+      <select
+        value={category}
+        onChange={(event) => onCategoryChange(event.target.value)}
+        aria-label="Filter by category"
+      >
+        <option value="">All categories</option>
+        {categoryOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      <select
+        value={subcategory}
+        onChange={(event) => onSubcategoryChange(event.target.value)}
+        aria-label="Filter by subcategory"
+        disabled={subcategoryOptions.length === 0}
+      >
+        <option value="">All subcategories</option>
+        {subcategoryOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+      {isFiltered ? (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onClear}>
+          Clear
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function CatalogViewToggle({
   view,
   onChange,
@@ -60,24 +127,33 @@ function CatalogViewToggle({
   );
 }
 
-function CatalogItemCopy({ item }: { item: CatalogItemSummary }) {
+function CatalogCompactItemList({ items }: { items: CatalogItemSummary[] }) {
   return (
-    <>
-      <h3 className="catalog-item-title">{item.name}</h3>
-      {item.short_description ? (
-        <p className="catalog-item-description">{item.short_description}</p>
-      ) : null}
-    </>
+    <ul className="catalog-compact-item-list">
+      {items.map((item) => (
+        <li key={item.sys_id} className="catalog-compact-item">
+          <Link to={`/catalog/${item.sys_id}`} className="catalog-compact-item-link">
+            <span className="catalog-compact-item-title">{item.name}</span>
+            {item.short_description ? (
+              <span className="catalog-compact-item-desc">{item.short_description}</span>
+            ) : null}
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function CatalogCardGrid({ items }: { items: CatalogItemSummary[] }) {
+function CatalogCategoryCard({ node }: { node: CatalogCategoryNode }) {
   return (
-    <div className="catalog-card-grid">
-      {items.map((item) => (
-        <Link key={item.sys_id} to={`/catalog/${item.sys_id}`} className="catalog-card">
-          <CatalogItemCopy item={item} />
-        </Link>
+    <div className="card catalog-compact-category">
+      <h2 className="catalog-compact-category-title">{node.label}</h2>
+      {node.items.length > 0 ? <CatalogCompactItemList items={node.items} /> : null}
+      {node.children.map((sub) => (
+        <div key={sub.id} className="catalog-compact-subcategory">
+          <h3 className="catalog-compact-subcategory-title">{sub.label}</h3>
+          <CatalogCompactItemList items={sub.items} />
+        </div>
       ))}
     </div>
   );
@@ -134,11 +210,9 @@ function CategoryToggleIcon() {
 
 function CatalogCategorySection({
   node,
-  view,
   nested = false,
 }: {
   node: CatalogCategoryNode;
-  view: CatalogBrowseView;
   nested?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -169,17 +243,13 @@ function CatalogCategorySection({
             <div
               className={`catalog-category-items${hasChildren ? ' catalog-category-items--indented' : ''}`}
             >
-              {view === 'card' ? (
-                <CatalogCardGrid items={node.items} />
-              ) : (
-                <CatalogItemTable items={node.items} />
-              )}
+              <CatalogItemTable items={node.items} />
             </div>
           ) : null}
           {hasChildren ? (
             <div className="catalog-category-children">
               {node.children.map((child) => (
-                <CatalogCategorySection key={child.id} node={child} view={view} nested />
+                <CatalogCategorySection key={child.id} node={child} nested />
               ))}
             </div>
           ) : null}
@@ -201,25 +271,47 @@ function CatalogBrowseResults({
 
   if (flattenUncategorized) {
     return view === 'card' ? (
-      <CatalogCardGrid items={nodes[0].items} />
+      <CatalogCompactItemList items={nodes[0].items} />
     ) : (
       <CatalogItemTable items={nodes[0].items} />
+    );
+  }
+
+  if (view === 'card') {
+    return (
+      <div className="catalog-compact-grid">
+        {nodes.map((node) => (
+          <CatalogCategoryCard key={node.id} node={node} />
+        ))}
+      </div>
     );
   }
 
   return (
     <div className="catalog-category-tree">
       {nodes.map((node) => (
-        <CatalogCategorySection key={node.id} node={node} view={view} />
+        <CatalogCategorySection key={node.id} node={node} />
       ))}
     </div>
   );
+}
+
+function sortedUnique(values: (string | undefined)[]): string[] {
+  const set = new Set<string>();
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) set.add(trimmed);
+  }
+  return [...set].sort((a, b) => a.localeCompare(b));
 }
 
 export function CatalogBrowsePage() {
   const { hasPermission } = useAuth();
   const canAdmin = hasPermission('records.*.write');
   const [view, setView] = useState<CatalogBrowseView>(readStoredView);
+  const [searchText, setSearchText] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [subcategoryFilter, setSubcategoryFilter] = useState('');
 
   const onViewChange = useCallback((next: CatalogBrowseView) => {
     setView(next);
@@ -251,12 +343,88 @@ export function CatalogBrowsePage() {
   });
 
   const items = data?.result;
-  const tree = useMemo(() => buildCatalogCategoryTree(items || []), [items]);
+
+  const categoryOptions = useMemo(
+    () => sortedUnique((items || []).map((i) => i.category)),
+    [items],
+  );
+
+  const subcategoryOptions = useMemo(
+    () =>
+      sortedUnique(
+        (items || [])
+          .filter((i) => !categoryFilter || i.category?.trim() === categoryFilter)
+          .map((i) => i.subcategory),
+      ),
+    [items, categoryFilter],
+  );
+
+  const handleCategoryChange = useCallback(
+    (next: string) => {
+      setCategoryFilter(next);
+      if (subcategoryFilter) {
+        const stillValid = (items || []).some(
+          (i) =>
+            i.subcategory?.trim() === subcategoryFilter && (!next || i.category?.trim() === next),
+        );
+        if (!stillValid) setSubcategoryFilter('');
+      }
+    },
+    [items, subcategoryFilter],
+  );
+
+  const handleSubcategoryChange = useCallback(
+    (next: string) => {
+      setSubcategoryFilter(next);
+      // If no category is selected yet, infer it from the chosen subcategory
+      // when it unambiguously belongs to a single category.
+      if (next && !categoryFilter) {
+        const owningCategories = sortedUnique(
+          (items || []).filter((i) => i.subcategory?.trim() === next).map((i) => i.category),
+        );
+        if (owningCategories.length === 1) {
+          setCategoryFilter(owningCategories[0]);
+        }
+      }
+    },
+    [items, categoryFilter],
+  );
+
+  const isFiltered = Boolean(searchText.trim() || categoryFilter || subcategoryFilter);
+
+  const clearFilters = useCallback(() => {
+    setSearchText('');
+    setCategoryFilter('');
+    setSubcategoryFilter('');
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    const query = searchText.trim().toLowerCase();
+    return (items || []).filter((item) => {
+      if (query && !item.name.toLowerCase().includes(query)) return false;
+      if (categoryFilter && item.category?.trim() !== categoryFilter) return false;
+      if (subcategoryFilter && item.subcategory?.trim() !== subcategoryFilter) return false;
+      return true;
+    });
+  }, [items, searchText, categoryFilter, subcategoryFilter]);
+
+  const tree = useMemo(() => buildCatalogCategoryTree(filteredItems), [filteredItems]);
 
   return (
     <div className="catalog-browse">
       <div className="section-header-row">
-        <p className="catalog-browse-intro">Browse available services and submit requests.</p>
+        <CatalogSearchBar
+          searchText={searchText}
+          onSearchTextChange={setSearchText}
+          category={categoryFilter}
+          onCategoryChange={handleCategoryChange}
+          categoryOptions={categoryOptions}
+          subcategory={subcategoryFilter}
+          onSubcategoryChange={handleSubcategoryChange}
+          subcategoryOptions={subcategoryOptions}
+          onClear={clearFilters}
+          isFiltered={isFiltered}
+        />
         <CatalogViewToggle view={view} onChange={onViewChange} />
       </div>
       {isLoading ? (
@@ -265,6 +433,8 @@ export function CatalogBrowsePage() {
         <p className="error">{(error as Error).message}</p>
       ) : !items?.length ? (
         <p className="empty-state">No catalog items yet</p>
+      ) : !filteredItems.length ? (
+        <p className="empty-state">No services match your search</p>
       ) : (
         <CatalogBrowseResults nodes={tree} view={view} />
       )}

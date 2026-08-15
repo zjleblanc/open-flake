@@ -10,18 +10,14 @@ A commit fails if either hook reports a problem:
 - `eslint` runs `npx eslint --max-warnings 0 src/`. Warnings fail the hook the
   same as errors.
 
-After creating or editing frontend files, from `frontend/`:
+After creating or editing frontend files, and **before considering the work done**, from `frontend/`:
 
 ```bash
 npm run format
 npm run lint
 ```
 
-`npm run format` uses this package's Prettier (`frontend/.prettierrc`:
-`singleQuote`, `trailingComma: "all"`, `printWidth: 100`, `semi`). Do not rely on
-a global Prettier or hand-wrap JSX/TS to look "nice" — if a tag, import, or
-call fits in 100 columns, Prettier will put it on one line and `--check` will
-fail if you left it split.
+`npm run format` writes this package's Prettier config. Confirm `npx prettier --check` would pass on the files you touched — that is the same check the pre-commit hook runs. Do not stop at "looks formatted."
 
 Do not leave `react-hooks/exhaustive-deps` warnings. Stabilize values used as
 hook dependencies (`useMemo` for derived arrays/objects; destructure mutation

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-14 — Compact catalog cards with search
+
+### Added
+
+- Category cards on the catalog landing: category as a dark purple banner, subcategories as headings, items as compact striped lists with a one-line clipped short description.
+- Search bar in place of the browse intro: free-text by name plus category and subcategory filters. Choosing a subcategory fills in its category when unique; choosing a category clears an incompatible subcategory.
+
+### Changed
+
+- Card view no longer uses one card per item or the tree connectors. List view still uses the collapsible category tree.
+
 ## 2026-08-14 — Dedicated request and requested-item detail views
 
 ### Added
