@@ -118,9 +118,10 @@ export const api = {
       cis_total: number;
     }>('/api/v1/dashboard'),
 
-  listRecords: (resource: string, params?: { state?: string }) => {
+  listRecords: (resource: string, params?: { state?: string; query?: string }) => {
     const qs = new URLSearchParams();
     if (params?.state) qs.set('state', params.state);
+    if (params?.query) qs.set('query', params.query);
     return request<{ records: Record<string, string>[]; total: number }>(
       `/api/v1/records/${resource}?${qs}`,
     );
@@ -128,6 +129,9 @@ export const api = {
 
   getRecord: (resource: string, sysId: string) =>
     request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}`),
+
+  listRecordVariables: (resource: string, sysId: string) =>
+    request<RecordVariable[]>(`/api/v1/records/${resource}/${sysId}/variables`),
 
   createRecord: (resource: string, data: Record<string, unknown>) =>
     request<Record<string, string>>(`/api/v1/records/${resource}`, {
@@ -458,6 +462,14 @@ export const api = {
       };
     }>(`/api/flake/catalog/admin/payload-preview${suffix}`);
   },
+};
+
+export type RecordVariable = {
+  sys_id: string;
+  name: string;
+  question_text: string;
+  type: string;
+  value: string;
 };
 
 export type CatalogChoice = { value: string; label: string; record?: Record<string, unknown> };

@@ -12,6 +12,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { RecordListPage } from './pages/RecordListPage';
+import { RequestDetailPage } from './pages/RequestDetailPage';
+import { RequestedItemDetailPage } from './pages/RequestedItemDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { UsersPage } from './pages/UsersPage';
 
@@ -38,20 +40,6 @@ const PROBLEM_DETAIL_FIELDS = [
 
 const CHANGE_DETAIL_FIELDS = [
   { key: 'short_description', label: 'Short Description' },
-  { key: 'state', label: 'State', type: 'select-state' },
-  { key: 'priority', label: 'Priority', readOnly: true },
-];
-
-const REQUEST_DETAIL_FIELDS = [
-  { key: 'short_description', label: 'Short Description' },
-  { key: 'description', label: 'Description', type: 'textarea' },
-  { key: 'state', label: 'State', type: 'select-state' },
-  { key: 'priority', label: 'Priority', readOnly: true },
-];
-
-const REQUESTED_ITEM_DETAIL_FIELDS = [
-  { key: 'short_description', label: 'Short Description' },
-  { key: 'description', label: 'Description', type: 'textarea' },
   { key: 'state', label: 'State', type: 'select-state' },
   { key: 'priority', label: 'Priority', readOnly: true },
 ];
@@ -167,17 +155,7 @@ export function App() {
             <RecordListPage resource="catalog-requests" title="Requests" basePath="/requests" />
           }
         />
-        <Route
-          path="requests/:sysId"
-          element={
-            <RecordDetailPage
-              resource="catalog-requests"
-              title="Requests"
-              listPath="/requests"
-              fields={REQUEST_DETAIL_FIELDS}
-            />
-          }
-        />
+        <Route path="requests/:sysId" element={<RequestDetailPage />} />
         <Route
           path="requested-items"
           element={
@@ -188,17 +166,7 @@ export function App() {
             />
           }
         />
-        <Route
-          path="requested-items/:sysId"
-          element={
-            <RecordDetailPage
-              resource="catalog-request-items"
-              title="Requested Items"
-              listPath="/requested-items"
-              fields={REQUESTED_ITEM_DETAIL_FIELDS}
-            />
-          }
-        />
+        <Route path="requested-items/:sysId" element={<RequestedItemDetailPage />} />
         <Route path="catalog" element={<CatalogBrowsePage />} />
         <Route path="catalog/admin" element={<CatalogAdminListPage />} />
         <Route path="catalog/admin/:itemId" element={<CatalogItemBuilderPage />} />

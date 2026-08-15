@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-14 — Dedicated request and requested-item detail views
+
+### Added
+
+- Dedicated request (REQ) and requested-item (RITM) detail pages with system properties, related-record lists, and the same section navigation as configuration items.
+- Child requested items on the request view; parent request link and sibling items on the requested-item view.
+- Variables section on requested items, loaded from submitted catalog options (`sc_item_option`).
+- `GET /api/v1/records/{resource}?query=` field filter and `GET /api/v1/records/catalog-request-items/{sys_id}/variables` for the UI.
+
+### Changed
+
+- Request and requested-item details no longer use the generic ticket form; the empty locked Priority field is omitted because catalog ordering never sets it.
+
 ## 2026-08-14 — Collapsible catalog tree, category dropdowns, and standalone create
 
 ### Added

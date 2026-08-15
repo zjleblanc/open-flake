@@ -37,13 +37,16 @@ from app.models import (
     ChangeRequest,
     CmdbCi,
     Incident,
+    ItemOptionNew,
     OAuthClient,
     Problem,
     RecordAccessGrant,
+    ScItemOption,
     SysAttachment,
     SysComment,
     SysUser,
 )
+from app.query.parser import QueryCondition, parse_sysparm_query
 from app.utils.ids import new_api_key, new_sys_id
 
 router = APIRouter(prefix="/api/v1", tags=["ui-api"])
@@ -158,6 +161,7 @@ def _table_router_name(name: str) -> str:
 async def list_resource(
     resource: str,
     state: str | None = None,
+    query: str | None = None,
     limit: int = 50,
     offset: int = 0,
     auth: AuthContext = Depends(authenticate_request),
@@ -166,9 +170,8 @@ async def list_resource(
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    from app.query.parser import QueryCondition
 
-    conditions = []
+    conditions = parse_sysparm_query(query)
     if state:
         conditions.append(QueryCondition(field="state", operator="=", value=state))
     records, total = await list_records(
@@ -193,6 +196,45 @@ async def get_resource(
     if not record:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return record
+
+
+@router.get("/records/{resource}/{sys_id}/variables")
+async def list_record_variables(
+    resource: str,
+    sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return submitted catalog variable values for a requested item (RITM).
+
+    In ServiceNow, variable values (``sc_item_option``) are always attached to
+    the requested item, never the parent request, so this is only meaningful
+    for the ``catalog-request-items`` resource.
+    """
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    if table != "sc_req_item":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Variables are only available for requested items"
+        )
+    await assert_record_action_by_id(db, auth, table, sys_id, "read")
+    result = await db.execute(
+        select(ScItemOption, ItemOptionNew)
+        .join(ItemOptionNew, ItemOptionNew.sys_id == ScItemOption.item_option_new)
+        .where(ScItemOption.sc_req_item == sys_id)
+        .order_by(ItemOptionNew.order, ItemOptionNew.name)
+    )
+    return [
+        {
+            "sys_id": option.sys_id,
+            "name": variable.name,
+            "question_text": variable.question_text or variable.name,
+            "type": variable.type,
+            "value": option.value or "",
+        }
+        for option, variable in result.all()
+    ]
 
 
 @router.post("/records/{resource}", status_code=status.HTTP_201_CREATED)

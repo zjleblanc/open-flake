@@ -1112,6 +1112,26 @@ button.nav-link {
   transform: none;
 }
 
+.readonly-input-link {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--of-density-input-padding-y) var(--of-density-input-padding-x);
+  padding-right: 2.25rem;
+  background: color-mix(in srgb, var(--of-bg) 75%, var(--of-surface));
+  border: 1px solid color-mix(in srgb, var(--of-border) 90%, transparent);
+  border-radius: var(--of-radius);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  color: var(--of-primary-light);
+  text-decoration: none;
+}
+
+.readonly-input-link:hover {
+  text-decoration: underline;
+  border-color: var(--of-primary);
+}
+
 .detail-field {
   padding: var(--of-density-detail-field);
   border-radius: var(--of-radius);
