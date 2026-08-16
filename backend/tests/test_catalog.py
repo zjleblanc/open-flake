@@ -111,8 +111,7 @@ def test_render_payload_default_and_template():
     }
     variables = {"sn_vm_name": "web01"}
     payload = _render_payload(attachment, ritm=ritm, variables=variables)
-    assert payload["event"] == "catalog_order"
-    assert payload["request_item"]["number"] == "RITM0000001"
+    assert payload["number"] == "RITM0000001"
     assert payload["variables"]["sn_vm_name"] == "web01"
 
     attachment.payload_template = '{"host":"$var_sn_vm_name","number":"$number","event":"$event"}'
@@ -126,9 +125,9 @@ def test_render_payload_default_and_template():
 
 def test_preview_payload_defaults_to_ritm_shape():
     preview = preview_payload(None)
-    assert preview["event"] == "catalog_order"
-    assert "request_item" in preview
-    assert "number" in preview["request_item"]
+    assert "number" in preview
+    assert "variables" in preview
+    assert "request_item" not in preview
     custom = preview_payload('{"n":"$number"}')
     assert custom == {"n": "RITM0000001"}
 
@@ -138,7 +137,8 @@ def test_default_payload_shape():
         {"sys_id": "r1", "number": "RITM1", "short_description": "x"},
         {"a": "b"},
     )
-    assert payload["request_item"]["sys_id"] == "r1"
+    assert payload["sys_id"] == "r1"
+    assert payload["number"] == "RITM1"
     assert payload["variables"] == {"a": "b"}
 
 
@@ -341,7 +341,7 @@ async def test_deliver_webhooks_for_ritm_posts_signed_payload():
     assert call_kwargs["headers"]["X-OpenFlake-Signature"] == expected
     payload = json.loads(body.decode("utf-8"))
     assert payload["variables"]["sn_vm_name"] == "web01"
-    assert payload["request_item"]["number"] == "RITM0000001"
+    assert payload["number"] == "RITM0000001"
     db.add.assert_called()
 
 

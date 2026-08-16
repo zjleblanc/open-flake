@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-16 — Flatten default webhook payload to match ITSM
+
+### Changed
+
+- Default catalog order/state-change webhook payload (`default_payload`) is now a flat ServiceNow-style record — every `sc_req_item` field at the top level plus a sibling `variables` key — replacing the previous `{event, request_item, variables}` envelope. Custom `payload_template` attachments are unaffected.
+- `template_context()` now exposes every RITM field as a `$placeholder` instead of a fixed subset, and the admin payload preview renders the exact shape that gets delivered.
+
+### Added
+
+- New ServiceNow-standard fields on requested items (`sc_req_item`): `requested_for`, `upon_approval`, `upon_reject`, `approval_set`, `made_sla`, `reassignment_count`, `recurring_price`, `backordered`, `billable`, `knowledge`, `delivery_plan`, `sys_domain`, `sys_domain_path`, and `task_effective_number`, populated with ITSM defaults when a catalog item is ordered.
+
 ## 2026-08-15 — Snowfall error pages for 404 and failed fetches
 
 ### Added

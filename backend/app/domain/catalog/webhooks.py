@@ -24,28 +24,52 @@ logger = logging.getLogger("openflake.catalog.webhooks")
 WEBHOOK_TIMEOUT_SECONDS = 15.0
 
 # Sample RITM used for admin payload previews (matches default delivery shape).
-DEFAULT_RITM_PREVIEW: dict[str, Any] = {
-    "event": "catalog_order",
-    "request_item": {
-        "sys_id": "sample_ritm_sys_id",
-        "number": "RITM0000001",
-        "short_description": "Order: Sample Catalog Item",
-        "description": "Sample description",
-        "state": "1",
-        "stage": "fulfillment",
-        "quantity": "1",
-        "price": "0",
-        "request": "sample_req_sys_id",
-        "cat_item": "sample_cat_item_sys_id",
-        "cmdb_ci": "",
-        "assignment_group": "",
-        "assigned_to": "",
-        "approval": "not_requested",
-        "opened_by": "admin",
-    },
-    "variables": {
-        "example_field": "example_value",
-    },
+DEFAULT_RITM_PREVIEW_EVENT = "catalog_order"
+DEFAULT_RITM_PREVIEW_RITM: dict[str, Any] = {
+    "sys_id": "sample_ritm_sys_id",
+    "number": "RITM0000001",
+    "sys_class_name": "sc_req_item",
+    "task_effective_number": "RITM0000001",
+    "short_description": "Order: Sample Catalog Item",
+    "description": "Sample description",
+    "active": "true",
+    "state": "1",
+    "stage": "fulfillment",
+    "quantity": "1",
+    "price": "0",
+    "recurring_price": "0",
+    "request": "sample_req_sys_id",
+    "cat_item": "sample_cat_item_sys_id",
+    "cmdb_ci": "",
+    "assignment_group": "",
+    "assigned_to": "",
+    "requested_for": "admin",
+    "opened_by": "admin",
+    "opened_at": "2026-01-01 00:00:00",
+    "due_date": "2026-01-03 00:00:00",
+    "approval": "not_requested",
+    "approval_set": "",
+    "upon_approval": "proceed",
+    "upon_reject": "cancel",
+    "priority": "4",
+    "urgency": "3",
+    "impact": "3",
+    "escalation": "0",
+    "made_sla": "true",
+    "backordered": "false",
+    "billable": "false",
+    "knowledge": "false",
+    "reassignment_count": "0",
+    "delivery_plan": "",
+    "sys_domain": "global",
+    "sys_domain_path": "/",
+    "sys_created_by": "admin",
+    "sys_created_on": "2026-01-01 00:00:00",
+    "sys_updated_by": "admin",
+    "sys_updated_on": "2026-01-01 00:00:00",
+}
+DEFAULT_RITM_PREVIEW_VARIABLES: dict[str, str] = {
+    "example_field": "example_value",
 }
 
 # Documented $placeholders available in custom payload templates (string.Template).
@@ -53,19 +77,45 @@ TEMPLATE_VARIABLES: list[dict[str, str]] = [
     {"name": "$event", "description": "Trigger event (catalog_order, state_change, …)"},
     {"name": "$sys_id", "description": "RITM sys_id"},
     {"name": "$number", "description": "RITM number (e.g. RITM0000001)"},
+    {"name": "$task_effective_number", "description": "Effective number (mirrors number)"},
+    {"name": "$sys_class_name", "description": "Table class name (sc_req_item)"},
     {"name": "$short_description", "description": "RITM short description"},
     {"name": "$description", "description": "RITM description"},
+    {"name": "$active", "description": "Whether the RITM is active"},
     {"name": "$state", "description": "RITM state"},
     {"name": "$stage", "description": "RITM stage"},
     {"name": "$quantity", "description": "Order quantity"},
     {"name": "$price", "description": "Item price"},
+    {"name": "$recurring_price", "description": "Recurring price"},
     {"name": "$request", "description": "Parent sc_request sys_id"},
     {"name": "$cat_item", "description": "Catalog item sys_id"},
     {"name": "$cmdb_ci", "description": "Linked CI sys_id"},
     {"name": "$assignment_group", "description": "Assignment group sys_id"},
     {"name": "$assigned_to", "description": "Assignee sys_id"},
-    {"name": "$approval", "description": "Approval state"},
+    {"name": "$requested_for", "description": "User the item was requested for"},
     {"name": "$opened_by", "description": "Opened-by user sys_id"},
+    {"name": "$opened_at", "description": "Timestamp the RITM was opened"},
+    {"name": "$due_date", "description": "Due date"},
+    {"name": "$approval", "description": "Approval state"},
+    {"name": "$approval_set", "description": "Timestamp the approval state was set"},
+    {"name": "$upon_approval", "description": "Action to take on approval (e.g. proceed)"},
+    {"name": "$upon_reject", "description": "Action to take on rejection (e.g. cancel)"},
+    {"name": "$priority", "description": "Priority"},
+    {"name": "$urgency", "description": "Urgency"},
+    {"name": "$impact", "description": "Impact"},
+    {"name": "$escalation", "description": "Escalation level"},
+    {"name": "$made_sla", "description": "Whether the SLA was met"},
+    {"name": "$backordered", "description": "Whether the item is backordered"},
+    {"name": "$billable", "description": "Whether the item is billable"},
+    {"name": "$knowledge", "description": "Whether a knowledge article exists"},
+    {"name": "$reassignment_count", "description": "Number of reassignments"},
+    {"name": "$delivery_plan", "description": "Linked delivery plan sys_id"},
+    {"name": "$sys_domain", "description": "Domain (e.g. global)"},
+    {"name": "$sys_domain_path", "description": "Domain path"},
+    {"name": "$sys_created_by", "description": "User who created the RITM"},
+    {"name": "$sys_created_on", "description": "Timestamp the RITM was created"},
+    {"name": "$sys_updated_by", "description": "User who last updated the RITM"},
+    {"name": "$sys_updated_on", "description": "Timestamp the RITM was last updated"},
     {"name": "$request_item_json", "description": "Full request_item object as JSON"},
     {"name": "$variables_json", "description": "All variable answers as a JSON object"},
     {
@@ -75,40 +125,35 @@ TEMPLATE_VARIABLES: list[dict[str, str]] = [
 ]
 
 
-def default_payload(ritm: dict[str, Any], variables: dict[str, str]) -> dict[str, Any]:
-    """Canonical payload sent when no per-item template is configured."""
+def _flatten_refs(record: dict[str, Any]) -> dict[str, Any]:
+    """Collapse ServiceNow-style {"link": ..., "value": sys_id} refs to plain sys_ids."""
     return {
-        "event": "catalog_order",
-        "request_item": {
-            "sys_id": ritm.get("sys_id", ""),
-            "number": ritm.get("number", ""),
-            "short_description": ritm.get("short_description", ""),
-            "description": ritm.get("description", ""),
-            "state": ritm.get("state", ""),
-            "stage": ritm.get("stage", ""),
-            "quantity": ritm.get("quantity", ""),
-            "price": ritm.get("price", ""),
-            "request": _ref_value(ritm.get("request")),
-            "cat_item": _ref_value(ritm.get("cat_item")),
-            "cmdb_ci": _ref_value(ritm.get("cmdb_ci")),
-            "assignment_group": _ref_value(ritm.get("assignment_group")),
-            "assigned_to": _ref_value(ritm.get("assigned_to")),
-            "approval": ritm.get("approval", ""),
-            "opened_by": _ref_value(ritm.get("opened_by")),
-        },
-        "variables": variables,
+        key: _ref_value(value) if isinstance(value, dict) and "value" in value else value
+        for key, value in record.items()
     }
+
+
+def default_payload(ritm: dict[str, Any], variables: dict[str, str]) -> dict[str, Any]:
+    """Canonical payload sent when no per-item template is configured.
+
+    Mirrors ServiceNow's ITSM webhook shape: the full sc_req_item record
+    flattened at the top level (reference fields collapsed to their sys_id),
+    with catalog variable answers nested under ``variables``.
+    """
+    payload = _flatten_refs(ritm)
+    payload["variables"] = variables
+    return payload
 
 
 def preview_payload(payload_template: str | None = None) -> dict[str, Any] | str:
     """Return the payload preview for the admin UI (default RITM or rendered template)."""
     if not payload_template:
-        return DEFAULT_RITM_PREVIEW
+        return default_payload(DEFAULT_RITM_PREVIEW_RITM, DEFAULT_RITM_PREVIEW_VARIABLES)
     return _render_template(
         payload_template,
-        ritm=DEFAULT_RITM_PREVIEW["request_item"],
-        variables=DEFAULT_RITM_PREVIEW["variables"],
-        event=str(DEFAULT_RITM_PREVIEW.get("event") or "catalog_order"),
+        ritm=DEFAULT_RITM_PREVIEW_RITM,
+        variables=DEFAULT_RITM_PREVIEW_VARIABLES,
+        event=DEFAULT_RITM_PREVIEW_EVENT,
     )
 
 
@@ -135,27 +180,18 @@ def template_context(
     variables: dict[str, str],
     event: str = "catalog_order",
 ) -> dict[str, str]:
-    """Build string.Template substitution map from a RITM and its variables."""
-    request_item = {
-        "sys_id": ritm.get("sys_id", ""),
-        "number": ritm.get("number", ""),
-        "short_description": ritm.get("short_description", ""),
-        "description": ritm.get("description", ""),
-        "state": ritm.get("state", ""),
-        "stage": ritm.get("stage", ""),
-        "quantity": str(ritm.get("quantity", "")),
-        "price": ritm.get("price", ""),
-        "request": _ref_value(ritm.get("request")),
-        "cat_item": _ref_value(ritm.get("cat_item")),
-        "cmdb_ci": _ref_value(ritm.get("cmdb_ci")),
-        "assignment_group": _ref_value(ritm.get("assignment_group")),
-        "assigned_to": _ref_value(ritm.get("assigned_to")),
-        "approval": str(ritm.get("approval", "")),
-        "opened_by": _ref_value(ritm.get("opened_by")),
+    """Build string.Template substitution map from a RITM and its variables.
+
+    Every scalar field on the flattened RITM record is exposed as a
+    top-level ``$<field>`` placeholder, mirroring the flat default payload.
+    """
+    request_item = _flatten_refs(ritm)
+    scalar_fields = {
+        key: value for key, value in request_item.items() if not isinstance(value, dict | list)
     }
     return {
         "event": event,
-        **{key: str(value) for key, value in request_item.items()},
+        **{key: str(value) for key, value in scalar_fields.items()},
         "request_item_json": json.dumps(request_item),
         "variables_json": json.dumps(variables),
         **{f"var_{key}": str(value) for key, value in variables.items()},

@@ -399,18 +399,19 @@ async def create_record(
     if table == "record_access_grant" and user_sys_id:
         flat.setdefault("granted_by", user_sys_id)
 
+    column_names = {c.name for c in model.__table__.columns}
     number = await next_number(db, table)
-    if number and "number" in {c.name for c in model.__table__.columns}:
+    if number and "number" in column_names:
         flat.setdefault("number", number)
+    if "task_effective_number" in column_names:
+        flat.setdefault("task_effective_number", flat.get("number"))
 
     if "other" in flat and isinstance(flat["other"], dict):
         other = flat.pop("other")
     else:
         other = {}
 
-    record = model(
-        **{k: v for k, v in flat.items() if k in {c.name for c in model.__table__.columns}}
-    )
+    record = model(**{k: v for k, v in flat.items() if k in column_names})
     if hasattr(record, "other"):
         record.other = other
     db.add(record)
