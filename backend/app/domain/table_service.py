@@ -1,3 +1,4 @@
+import json
 from collections.abc import Sequence
 from typing import Any
 
@@ -28,7 +29,7 @@ from app.domain.registry import (
     TABLE_MODELS,
 )
 from app.events.bus import RecordEvent, emit
-from app.models import NumberSequence, SysUser
+from app.models import NumberSequence, SysAudit, SysUser
 from app.query.parser import QueryCondition, apply_condition_groups
 from app.utils.ids import new_sys_id
 
@@ -380,6 +381,46 @@ async def get_record_by_sys_id(
     return result
 
 
+def _audit_stringify(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if hasattr(value, "isoformat"):
+        return str(value.isoformat())
+    if isinstance(value, dict | list):
+        return json.dumps(value)
+    return str(value)
+
+
+async def _record_field_audit(
+    db: AsyncSession,
+    table: str,
+    sys_id: str,
+    changes: list[tuple[str, Any, Any]],
+    username: str | None,
+) -> None:
+    """Insert one `SysAudit` row per changed field, all sharing a `batch_id` so the
+    activity feed can group every field touched by a single update call together."""
+    if not changes:
+        return
+    batch_id = new_sys_id()
+    for field_name, old_value, new_value in changes:
+        db.add(
+            SysAudit(
+                sys_id=new_sys_id(),
+                table_name=table,
+                record_sys_id=sys_id,
+                batch_id=batch_id,
+                field_name=field_name,
+                old_value=_audit_stringify(old_value),
+                new_value=_audit_stringify(new_value),
+                user=username,
+            )
+        )
+    await db.flush()
+
+
 async def _resolve_audit_username(
     db: AsyncSession,
     user_sys_id: str | None,
@@ -539,18 +580,32 @@ async def update_record(
     if audit_username:
         flat["sys_updated_by"] = audit_username
 
+    track_audit = table in RBAC_RECORD_TABLES
+    changes: list[tuple[str, Any, Any]] = []
+
     other_update = flat.pop("other", None)
     for key, value in flat.items():
         if hasattr(record, key):
+            if track_audit and key not in {"sys_updated_by", "sys_mod_count"}:
+                old_value = getattr(record, key)
+                if old_value != value:
+                    changes.append((key, old_value, value))
             setattr(record, key, value)
     if other_update and hasattr(record, "other"):
         current = dict(record.other or {})
+        if track_audit:
+            for key, value in other_update.items():
+                old_value = current.get(key)
+                if old_value != value:
+                    changes.append((key, old_value, value))
         current.update(other_update)
         record.other = current
     if hasattr(record, "sys_mod_count"):
         record.sys_mod_count = (record.sys_mod_count or 0) + 1
 
     await db.flush()
+    if track_audit:
+        await _record_field_audit(db, table, sys_id, changes, audit_username)
     result = _model_to_dict(record, table, exclude_links)
     await emit(RecordEvent(action="update", table=table, sys_id=sys_id, record=result))
     return result

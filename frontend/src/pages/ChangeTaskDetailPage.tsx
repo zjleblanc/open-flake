@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
@@ -9,17 +9,18 @@ import {
   AttachmentsIcon,
   CommentsIcon,
   FieldsIcon,
+  LockIcon,
   OverviewIcon,
   SystemIcon,
 } from '../components/DetailIcons';
 import { EmptyValue } from '../components/EmptyValue';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
+import { JournalFieldRenderer } from '../components/JournalFieldRenderer';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordActivitySection } from '../components/RecordActivitySection';
 import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
 import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
-import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
 import {
   referenceDisplayValue,
@@ -29,8 +30,8 @@ import {
 } from '../utils/referenceFields';
 import '../components/Layout.css';
 
-const RESOURCE = 'catalog-requests';
-const LIST_PATH = '/requests';
+const RESOURCE = 'change-tasks';
+const LIST_PATH = '/change-tasks';
 
 interface FieldConfig {
   key: string;
@@ -46,17 +47,25 @@ const EDITABLE_FIELDS: FieldConfig[] = [
 ];
 
 const LOCKED_FIELDS: FieldConfig[] = [
-  { key: 'request_state', label: 'Request State' },
-  { key: 'stage', label: 'Stage' },
-  { key: 'approval', label: 'Approval' },
-  { key: 'requested_for', label: 'Requested For', refTarget: 'user' },
-  { key: 'requested_by', label: 'Requested By', refTarget: 'user' },
-  { key: 'opened_by', label: 'Opened By', refTarget: 'user' },
-  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
+  { key: 'change_task_type', label: 'Task Type' },
+  { key: 'priority', label: 'Priority' },
   { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
+  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
   { key: 'cmdb_ci', label: 'Configuration Item', refTarget: 'cmdb_ci' },
-  { key: 'category', label: 'Category' },
-  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'business_service', label: 'Business Service', refTarget: 'cmdb_ci' },
+  { key: 'close_code', label: 'Close Code' },
+  { key: 'planned_start_date', label: 'Planned Start Date' },
+  { key: 'planned_end_date', label: 'Planned End Date' },
+  { key: 'closed_at', label: 'Closed At' },
+];
+
+/** Journal-style fields (ServiceNow work_notes/comments/close_notes convention): rendered
+ * as plain textareas while editing, and via `JournalFieldRenderer` (which understands
+ * `[code]...[/code]` blocks) when read-only. */
+const NOTES_FIELDS: FieldConfig[] = [
+  { key: 'work_notes', label: 'Work Notes', type: 'textarea' },
+  { key: 'comments', label: 'Comments', type: 'textarea' },
+  { key: 'close_notes', label: 'Close Notes', type: 'textarea' },
 ];
 
 const SYSTEM_FIELDS: FieldConfig[] = [
@@ -68,28 +77,30 @@ const SYSTEM_FIELDS: FieldConfig[] = [
 ];
 
 const SECTION = {
-  details: 'req-section-details',
-  items: 'req-section-items',
-  system: 'req-section-system',
-  attachments: 'req-section-attachments',
-  comments: 'req-section-comments',
-  activity: 'req-section-activity',
+  details: 'ctask-section-details',
+  notes: 'ctask-section-notes',
+  system: 'ctask-section-system',
+  attachments: 'ctask-section-attachments',
+  comments: 'ctask-section-comments',
+  activity: 'ctask-section-activity',
 } as const;
 
+const FORM_FIELDS: FieldConfig[] = [...EDITABLE_FIELDS, ...NOTES_FIELDS];
+
 const FIELD_LABELS: Record<string, string> = Object.fromEntries(
-  [...EDITABLE_FIELDS, ...LOCKED_FIELDS].map((field) => [field.key, field.label]),
+  [...FORM_FIELDS, ...LOCKED_FIELDS].map((field) => [field.key, field.label]),
 );
 
 function buildEditableForm(data: Record<string, string>): Record<string, string> {
   const form: Record<string, string> = {};
-  EDITABLE_FIELDS.forEach((field) => {
+  FORM_FIELDS.forEach((field) => {
     form[field.key] = data[field.key] || '';
   });
   return form;
 }
 
 function formsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
-  return EDITABLE_FIELDS.every((field) => (a[field.key] ?? '') === (b[field.key] ?? ''));
+  return FORM_FIELDS.every((field) => (a[field.key] ?? '') === (b[field.key] ?? ''));
 }
 
 function resolveLockedDisplay(field: FieldConfig, raw: unknown): unknown {
@@ -99,7 +110,42 @@ function resolveLockedDisplay(field: FieldConfig, raw: unknown): unknown {
   return raw;
 }
 
-export function RequestDetailPage() {
+interface ParentChangeFieldProps {
+  changeSysId: string;
+  changeNumber?: string;
+}
+
+function ParentChangeField({ changeSysId, changeNumber }: ParentChangeFieldProps) {
+  return (
+    <div className="form-group form-group--readonly" style={{ marginBottom: 0 }}>
+      <label htmlFor="ctask-parent-change">Change Request</label>
+      <div className="readonly-input-wrap">
+        {changeSysId ? (
+          <Link
+            id="ctask-parent-change"
+            to={`/changes/${changeSysId}`}
+            className="readonly-input-link"
+          >
+            {changeNumber || changeSysId}
+          </Link>
+        ) : (
+          <input
+            id="ctask-parent-change"
+            readOnly
+            className="readonly-input"
+            type="text"
+            value="—"
+          />
+        )}
+        <span className="readonly-input-lock" aria-hidden="true">
+          <LockIcon size={14} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function ChangeTaskDetailPage() {
   const { sysId } = useParams<{ sysId: string }>();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
@@ -112,6 +158,13 @@ export function RequestDetailPage() {
 
   const permissions = data ? getRecordPermissions(data) : null;
   const canWrite = !!permissions?.write;
+  const changeSysId = data ? refSysId(data.change_request) : '';
+
+  const { data: parentChange } = useQuery({
+    queryKey: ['record', 'change-requests', changeSysId],
+    queryFn: () => api.getRecord('change-requests', changeSysId),
+    enabled: !!changeSysId,
+  });
 
   const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
     queryKey: ['attachments', RESOURCE, sysId],
@@ -124,13 +177,6 @@ export function RequestDetailPage() {
     queryFn: () => api.listComments(RESOURCE, sysId!),
     enabled: !!sysId && !!(permissions?.comment || permissions?.write),
   });
-
-  const { data: childItemsData, isLoading: childItemsLoading } = useQuery({
-    queryKey: ['records', 'catalog-request-items', 'request', sysId],
-    queryFn: () => api.listRecords('catalog-request-items', { query: `request=${sysId}` }),
-    enabled: !!sysId,
-  });
-  const childItems = useMemo(() => childItemsData?.records ?? [], [childItemsData]);
 
   useEffect(() => {
     if (!data) return;
@@ -162,11 +208,10 @@ export function RequestDetailPage() {
         accent: 'accent',
       },
       {
-        id: SECTION.items,
-        title: 'Requested Items',
+        id: SECTION.notes,
+        title: 'Notes',
         icon: <FieldsIcon size={14} />,
         accent: 'info',
-        count: childItemsLoading ? '…' : childItems.length,
       },
       {
         id: SECTION.system,
@@ -209,8 +254,6 @@ export function RequestDetailPage() {
   }, [
     attachments.length,
     attachmentsLoading,
-    childItems.length,
-    childItemsLoading,
     comments.length,
     permissions?.comment,
     permissions?.read,
@@ -220,7 +263,7 @@ export function RequestDetailPage() {
 
   const headerBreadcrumbs = useMemo(
     () => [
-      { label: 'Requests', to: LIST_PATH },
+      { label: 'Change Tasks', to: LIST_PATH },
       { label: isLoading || !data ? 'Loading…' : recordTitle },
     ],
     [isLoading, data, recordTitle],
@@ -267,33 +310,32 @@ export function RequestDetailPage() {
             defaultOpen
           >
             <div className="detail-field-groups">
-              {displayedLockedFields.length > 0 && (
-                <DetailFieldGroup>
-                  {displayedLockedFields.map((field) => {
-                    const fieldSysId = field.refTarget ? refSysId(data[field.key]) : '';
-                    return (
-                      <ReadOnlyFieldInput
-                        key={field.key}
-                        id={`req-${field.key}`}
-                        fieldKey={field.key}
-                        label={field.label}
-                        value={
-                          field.refTarget
-                            ? referenceDisplayValue(data, field.key)
-                            : resolveLockedDisplay(field, data[field.key])
-                        }
-                        href={
-                          field.refTarget && fieldSysId
-                            ? referenceHref(field.refTarget, fieldSysId)
-                            : undefined
-                        }
-                        multiline={field.type === 'textarea'}
-                        gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
-                      />
-                    );
-                  })}
-                </DetailFieldGroup>
-              )}
+              <DetailFieldGroup>
+                <ParentChangeField changeSysId={changeSysId} changeNumber={parentChange?.number} />
+                {displayedLockedFields.map((field) => {
+                  const fieldSysId = field.refTarget ? refSysId(data[field.key]) : '';
+                  return (
+                    <ReadOnlyFieldInput
+                      key={field.key}
+                      id={`ctask-${field.key}`}
+                      fieldKey={field.key}
+                      label={field.label}
+                      value={
+                        field.refTarget
+                          ? referenceDisplayValue(data, field.key)
+                          : resolveLockedDisplay(field, data[field.key])
+                      }
+                      href={
+                        field.refTarget && fieldSysId
+                          ? referenceHref(field.refTarget, fieldSysId)
+                          : undefined
+                      }
+                      multiline={field.type === 'textarea'}
+                      gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
+                    />
+                  );
+                })}
+              </DetailFieldGroup>
 
               {editableFields.length > 0 && (
                 <DetailFieldGroup dividerTop={showEditableDivider}>
@@ -306,24 +348,24 @@ export function RequestDetailPage() {
                         gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
                       }}
                     >
-                      <label htmlFor={`req-${field.key}`}>{field.label}</label>
+                      <label htmlFor={`ctask-${field.key}`}>{field.label}</label>
                       {field.type === 'select-state' ? (
                         <OFSelect
-                          id={`req-${field.key}`}
+                          id={`ctask-${field.key}`}
                           value={form[field.key] ?? ''}
                           onChange={(value) => setForm({ ...form, [field.key]: value as string })}
                           options={stateOptionsFor(RESOURCE)}
                         />
                       ) : field.type === 'textarea' ? (
                         <textarea
-                          id={`req-${field.key}`}
+                          id={`ctask-${field.key}`}
                           rows={3}
                           value={form[field.key] ?? ''}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                         />
                       ) : (
                         <input
-                          id={`req-${field.key}`}
+                          id={`ctask-${field.key}`}
                           type="text"
                           value={form[field.key] ?? ''}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
@@ -348,17 +390,62 @@ export function RequestDetailPage() {
             )}
           </ExpandableDetailSection>
 
-          <RelatedRecordsSection
-            id={SECTION.items}
-            title="Requested Items"
+          <ExpandableDetailSection
+            id={SECTION.notes}
+            title="Notes"
             icon={<FieldsIcon size={14} />}
             accent="info"
-            basePath="/requested-items"
-            resource="catalog-request-items"
-            records={childItems}
-            isLoading={childItemsLoading}
-            emptyMessage="No requested items linked to this request yet"
-          />
+          >
+            <div className="detail-field-groups">
+              <DetailFieldGroup>
+                {NOTES_FIELDS.map((field) =>
+                  canWrite ? (
+                    <div
+                      className="form-group"
+                      key={field.key}
+                      style={{ marginBottom: 0, gridColumn: '1 / -1' }}
+                    >
+                      <label htmlFor={`ctask-${field.key}`}>{field.label}</label>
+                      <textarea
+                        id={`ctask-${field.key}`}
+                        rows={4}
+                        value={form[field.key] ?? ''}
+                        onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="form-group form-group--readonly"
+                      key={field.key}
+                      style={{ marginBottom: 0, gridColumn: '1 / -1' }}
+                    >
+                      <label htmlFor={`ctask-${field.key}`}>{field.label}</label>
+                      <div className="readonly-input-wrap journal-field-wrap">
+                        <div id={`ctask-${field.key}`} className="journal-field-readonly">
+                          <JournalFieldRenderer content={String(data[field.key] || '')} />
+                        </div>
+                        <span className="readonly-input-lock" aria-hidden="true">
+                          <LockIcon size={14} />
+                        </span>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </DetailFieldGroup>
+            </div>
+
+            {canWrite && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => updateMutation.mutate(form)}
+                  disabled={!isDirty || updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Notes'}
+                </button>
+              </div>
+            )}
+          </ExpandableDetailSection>
 
           <ExpandableDetailSection
             id={SECTION.system}
@@ -370,7 +457,7 @@ export function RequestDetailPage() {
               {SYSTEM_FIELDS.map((field) => (
                 <ReadOnlyFieldInput
                   key={field.key}
-                  id={`req-${field.key}`}
+                  id={`ctask-${field.key}`}
                   fieldKey={field.key}
                   label={field.label}
                   value={data[field.key]}

@@ -2,8 +2,13 @@ from unittest.mock import AsyncMock
 
 import pytest
 from app.auth.deps import AuthContext
-from app.domain.table_service import _resolve_audit_username, create_record, update_record
-from app.models import CmdbCi, LifecycleMixin, SysComment, SysUser
+from app.domain.table_service import (
+    _audit_stringify,
+    _resolve_audit_username,
+    create_record,
+    update_record,
+)
+from app.models import CmdbCi, Incident, LifecycleMixin, SysAudit, SysComment, SysUser
 
 
 @pytest.mark.asyncio
@@ -128,6 +133,109 @@ async def test_update_record_sets_username_sys_updated_by():
     assert record.sys_updated_by == "jsmith"
     assert result["sys_updated_by"] == "jsmith"
     assert result["sys_created_by"] == "admin"
+
+
+def test_audit_stringify_handles_various_types():
+    assert _audit_stringify(None) is None
+    assert _audit_stringify(True) == "true"
+    assert _audit_stringify(False) == "false"
+    assert _audit_stringify({"a": 1}) == '{"a": 1}'
+    assert _audit_stringify("abc") == "abc"
+
+
+@pytest.mark.asyncio
+async def test_update_record_logs_field_audit_for_rbac_table():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user2", user_name="jsmith", auth_method="basic")
+    record = Incident(
+        sys_id="inc1",
+        number="INC0000001",
+        short_description="original",
+        state="1",
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    added = []
+    db.add = lambda obj: added.append(obj)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("app.domain.table_service.TABLE_MODELS", {"incident": Incident})
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        mp.setattr("app.domain.table_service.assert_record_action", AsyncMock())
+        result = await update_record(
+            db,
+            "incident",
+            "inc1",
+            {"short_description": "updated", "state": "2"},
+            auth.user_sys_id,
+            auth=auth,
+        )
+
+    audit_rows = [obj for obj in added if isinstance(obj, SysAudit)]
+    assert len(audit_rows) == 2
+    assert len({row.batch_id for row in audit_rows}) == 1
+    changes = {row.field_name: (row.old_value, row.new_value) for row in audit_rows}
+    assert changes["short_description"] == ("original", "updated")
+    assert changes["state"] == ("1", "2")
+    assert all(row.user == "jsmith" for row in audit_rows)
+    assert result["short_description"] == "updated"
+
+
+@pytest.mark.asyncio
+async def test_update_record_skips_audit_when_value_unchanged():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user2", user_name="jsmith", auth_method="basic")
+    record = Incident(
+        sys_id="inc1",
+        number="INC0000001",
+        short_description="same",
+        state="1",
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    added = []
+    db.add = lambda obj: added.append(obj)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("app.domain.table_service.TABLE_MODELS", {"incident": Incident})
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        mp.setattr("app.domain.table_service.assert_record_action", AsyncMock())
+        await update_record(
+            db,
+            "incident",
+            "inc1",
+            {"short_description": "same"},
+            auth.user_sys_id,
+            auth=auth,
+        )
+
+    assert [obj for obj in added if isinstance(obj, SysAudit)] == []
+
+
+@pytest.mark.asyncio
+async def test_update_record_skips_audit_for_non_rbac_table():
+    db = AsyncMock()
+    record = SysComment(
+        sys_id="c1",
+        table_name="incident",
+        record_sys_id="inc1",
+        comment="hello",
+        sys_mod_count=0,
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    added = []
+    db.add = lambda obj: added.append(obj)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("app.domain.table_service.TABLE_MODELS", {"sys_comment": SysComment})
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        await update_record(db, "sys_comment", "c1", {"comment": "updated"})
+
+    assert [obj for obj in added if isinstance(obj, SysAudit)] == []
 
 
 def test_lifecycle_mixin_sys_mod_count_defaults_to_zero():

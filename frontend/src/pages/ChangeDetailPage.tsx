@@ -29,8 +29,10 @@ import {
 } from '../utils/referenceFields';
 import '../components/Layout.css';
 
-const RESOURCE = 'catalog-requests';
-const LIST_PATH = '/requests';
+const RESOURCE = 'change-requests';
+const LIST_PATH = '/changes';
+const CHANGE_TASKS_RESOURCE = 'change-tasks';
+const CHANGE_TASKS_LIST_PATH = '/change-tasks';
 
 interface FieldConfig {
   key: string;
@@ -46,17 +48,16 @@ const EDITABLE_FIELDS: FieldConfig[] = [
 ];
 
 const LOCKED_FIELDS: FieldConfig[] = [
-  { key: 'request_state', label: 'Request State' },
-  { key: 'stage', label: 'Stage' },
-  { key: 'approval', label: 'Approval' },
-  { key: 'requested_for', label: 'Requested For', refTarget: 'user' },
-  { key: 'requested_by', label: 'Requested By', refTarget: 'user' },
-  { key: 'opened_by', label: 'Opened By', refTarget: 'user' },
-  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
-  { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
-  { key: 'cmdb_ci', label: 'Configuration Item', refTarget: 'cmdb_ci' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'risk', label: 'Risk' },
+  { key: 'type', label: 'Type' },
   { key: 'category', label: 'Category' },
-  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'chg_model', label: 'Change Model' },
+  { key: 'requested_by', label: 'Requested By', refTarget: 'user' },
+  { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
+  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
+  { key: 'cmdb_ci', label: 'Configuration Item', refTarget: 'cmdb_ci' },
+  { key: 'business_service', label: 'Business Service', refTarget: 'cmdb_ci' },
 ];
 
 const SYSTEM_FIELDS: FieldConfig[] = [
@@ -68,12 +69,12 @@ const SYSTEM_FIELDS: FieldConfig[] = [
 ];
 
 const SECTION = {
-  details: 'req-section-details',
-  items: 'req-section-items',
-  system: 'req-section-system',
-  attachments: 'req-section-attachments',
-  comments: 'req-section-comments',
-  activity: 'req-section-activity',
+  details: 'chg-section-details',
+  tasks: 'chg-section-tasks',
+  system: 'chg-section-system',
+  attachments: 'chg-section-attachments',
+  comments: 'chg-section-comments',
+  activity: 'chg-section-activity',
 } as const;
 
 const FIELD_LABELS: Record<string, string> = Object.fromEntries(
@@ -99,7 +100,7 @@ function resolveLockedDisplay(field: FieldConfig, raw: unknown): unknown {
   return raw;
 }
 
-export function RequestDetailPage() {
+export function ChangeDetailPage() {
   const { sysId } = useParams<{ sysId: string }>();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
@@ -125,12 +126,12 @@ export function RequestDetailPage() {
     enabled: !!sysId && !!(permissions?.comment || permissions?.write),
   });
 
-  const { data: childItemsData, isLoading: childItemsLoading } = useQuery({
-    queryKey: ['records', 'catalog-request-items', 'request', sysId],
-    queryFn: () => api.listRecords('catalog-request-items', { query: `request=${sysId}` }),
+  const { data: changeTasksData, isLoading: changeTasksLoading } = useQuery({
+    queryKey: ['records', CHANGE_TASKS_RESOURCE, 'change_request', sysId],
+    queryFn: () => api.listRecords(CHANGE_TASKS_RESOURCE, { query: `change_request=${sysId}` }),
     enabled: !!sysId,
   });
-  const childItems = useMemo(() => childItemsData?.records ?? [], [childItemsData]);
+  const changeTasks = useMemo(() => changeTasksData?.records ?? [], [changeTasksData]);
 
   useEffect(() => {
     if (!data) return;
@@ -162,11 +163,11 @@ export function RequestDetailPage() {
         accent: 'accent',
       },
       {
-        id: SECTION.items,
-        title: 'Requested Items',
+        id: SECTION.tasks,
+        title: 'Change Tasks',
         icon: <FieldsIcon size={14} />,
         accent: 'info',
-        count: childItemsLoading ? '…' : childItems.length,
+        count: changeTasksLoading ? '…' : changeTasks.length,
       },
       {
         id: SECTION.system,
@@ -209,8 +210,8 @@ export function RequestDetailPage() {
   }, [
     attachments.length,
     attachmentsLoading,
-    childItems.length,
-    childItemsLoading,
+    changeTasks.length,
+    changeTasksLoading,
     comments.length,
     permissions?.comment,
     permissions?.read,
@@ -220,7 +221,7 @@ export function RequestDetailPage() {
 
   const headerBreadcrumbs = useMemo(
     () => [
-      { label: 'Requests', to: LIST_PATH },
+      { label: 'Change Requests', to: LIST_PATH },
       { label: isLoading || !data ? 'Loading…' : recordTitle },
     ],
     [isLoading, data, recordTitle],
@@ -274,7 +275,7 @@ export function RequestDetailPage() {
                     return (
                       <ReadOnlyFieldInput
                         key={field.key}
-                        id={`req-${field.key}`}
+                        id={`chg-${field.key}`}
                         fieldKey={field.key}
                         label={field.label}
                         value={
@@ -306,24 +307,24 @@ export function RequestDetailPage() {
                         gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
                       }}
                     >
-                      <label htmlFor={`req-${field.key}`}>{field.label}</label>
+                      <label htmlFor={`chg-${field.key}`}>{field.label}</label>
                       {field.type === 'select-state' ? (
                         <OFSelect
-                          id={`req-${field.key}`}
+                          id={`chg-${field.key}`}
                           value={form[field.key] ?? ''}
                           onChange={(value) => setForm({ ...form, [field.key]: value as string })}
                           options={stateOptionsFor(RESOURCE)}
                         />
                       ) : field.type === 'textarea' ? (
                         <textarea
-                          id={`req-${field.key}`}
+                          id={`chg-${field.key}`}
                           rows={3}
                           value={form[field.key] ?? ''}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
                         />
                       ) : (
                         <input
-                          id={`req-${field.key}`}
+                          id={`chg-${field.key}`}
                           type="text"
                           value={form[field.key] ?? ''}
                           onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
@@ -349,15 +350,15 @@ export function RequestDetailPage() {
           </ExpandableDetailSection>
 
           <RelatedRecordsSection
-            id={SECTION.items}
-            title="Requested Items"
+            id={SECTION.tasks}
+            title="Change Tasks"
             icon={<FieldsIcon size={14} />}
             accent="info"
-            basePath="/requested-items"
-            resource="catalog-request-items"
-            records={childItems}
-            isLoading={childItemsLoading}
-            emptyMessage="No requested items linked to this request yet"
+            basePath={CHANGE_TASKS_LIST_PATH}
+            resource={CHANGE_TASKS_RESOURCE}
+            records={changeTasks}
+            isLoading={changeTasksLoading}
+            emptyMessage="No change tasks linked to this change yet"
           />
 
           <ExpandableDetailSection
@@ -370,7 +371,7 @@ export function RequestDetailPage() {
               {SYSTEM_FIELDS.map((field) => (
                 <ReadOnlyFieldInput
                   key={field.key}
-                  id={`req-${field.key}`}
+                  id={`chg-${field.key}`}
                   fieldKey={field.key}
                   label={field.label}
                   value={data[field.key]}

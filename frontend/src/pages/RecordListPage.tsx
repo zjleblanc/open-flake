@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api, getRecordPermissions, STATE_LABELS, stateBadge } from '../api/client';
+import { api, getRecordPermissions, stateBadge, stateLabel } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { EmptyValue } from '../components/EmptyValue';
 import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
@@ -37,12 +37,16 @@ function recordLabel(record: Record<string, string>): string {
   return record.number || record.name || record.sys_id;
 }
 
-function getColumnFilterValue(record: Record<string, string>, column: ListColumn): string {
+function getColumnFilterValue(
+  record: Record<string, string>,
+  column: ListColumn,
+  resource: string,
+): string {
   const keys = column.filterKeys ?? [column.key];
   const values = keys.map((key) => record[key] || '').filter(Boolean);
   if (column.key === 'state') {
     const raw = record.state || '';
-    const label = STATE_LABELS[raw] || '';
+    const label = raw ? stateLabel(raw, resource) : '';
     if (label && !values.includes(label)) values.push(label);
   }
   return values.join(' ');
@@ -75,9 +79,9 @@ export function RecordListPage({
     const query = filterText.trim().toLowerCase();
     if (!query || !activeFilterColumn) return records;
     return records.filter((record) =>
-      getColumnFilterValue(record, activeFilterColumn).toLowerCase().includes(query),
+      getColumnFilterValue(record, activeFilterColumn, resource).toLowerCase().includes(query),
     );
-  }, [records, filterText, activeFilterColumn]);
+  }, [records, filterText, activeFilterColumn, resource]);
   const isFiltered = filterText.trim().length > 0;
   const deletableRecords = useMemo(
     () => filteredRecords.filter((record) => getRecordPermissions(record).delete),
@@ -203,8 +207,8 @@ export function RecordListPage({
         return <EmptyValue />;
       }
       return (
-        <span className={`badge ${stateBadge(record.state)}`}>
-          {STATE_LABELS[record.state] || record.state}
+        <span className={`badge ${stateBadge(record.state, resource)}`}>
+          {stateLabel(record.state, resource)}
         </span>
       );
     }

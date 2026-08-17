@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { api, getRecordPermissions, STATE_LABELS, stateBadge } from '../api/client';
+import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
 import { DetailSection } from '../components/DetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { OverviewIcon } from '../components/DetailIcons';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
+import { RecordActivitySection } from '../components/RecordActivitySection';
 import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
 import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
@@ -109,11 +110,11 @@ export function RecordDetailPage({
     if (isLoading || !data) return undefined;
     if (!data.state) return <EmptyValue />;
     return (
-      <span className={`badge ${stateBadge(data.state)}`}>
-        {STATE_LABELS[data.state] || data.state}
+      <span className={`badge ${stateBadge(data.state, resource)}`}>
+        {stateLabel(data.state, resource)}
       </span>
     );
-  }, [isLoading, data]);
+  }, [isLoading, data, resource]);
   const headerActions = useMemo(
     () =>
       !isLoading && data && sysId ? (
@@ -145,7 +146,7 @@ export function RecordDetailPage({
                 const raw = data[field.key];
                 const display =
                   field.type === 'select-state'
-                    ? STATE_LABELS[String(raw)] || formatReadOnlyValue(raw)
+                    ? stateLabel(String(raw), resource) || formatReadOnlyValue(raw)
                     : raw;
 
                 return (
@@ -180,10 +181,7 @@ export function RecordDetailPage({
                       id={`field-${field.key}`}
                       value={form[field.key] ?? ''}
                       onChange={(value) => setForm({ ...form, [field.key]: value as string })}
-                      options={Object.entries(STATE_LABELS).map(([val, label]) => ({
-                        value: val,
-                        label,
-                      }))}
+                      options={stateOptionsFor(resource)}
                     />
                   ) : field.type === 'textarea' ? (
                     <textarea
@@ -232,6 +230,14 @@ export function RecordDetailPage({
           resource={resource}
           sysId={sysId}
           canComment={!!(permissions?.comment || permissions?.write)}
+        />
+      )}
+
+      {sysId && permissions?.read && (
+        <RecordActivitySection
+          resource={resource}
+          sysId={sysId}
+          fieldLabels={Object.fromEntries(fields.map((field) => [field.key, field.label]))}
         />
       )}
     </div>

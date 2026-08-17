@@ -210,6 +210,9 @@ export const api = {
       `/api/v1/records/${resource}/${sysId}/comments`,
     ),
 
+  listActivity: (resource: string, sysId: string) =>
+    request<{ activity: ActivityEntry[] }>(`/api/v1/records/${resource}/${sysId}/activity`),
+
   createComment: (resource: string, sysId: string, comment: string) =>
     request<Record<string, string>>(`/api/v1/records/${resource}/${sysId}/comments`, {
       method: 'POST',
@@ -562,6 +565,24 @@ export type CatalogWebhookAttachment = {
   webhook_active?: boolean;
 };
 
+export type ActivityChange = { field: string; old_value: string; new_value: string };
+
+export type ActivityEntry = {
+  id: string;
+  type: 'created' | 'update' | 'comment';
+  user: string;
+  timestamp: string;
+  changes?: ActivityChange[];
+  comment?: string;
+};
+
+/**
+ * Generic fallback state labels, historically shared by every table. State
+ * codes are NOT globally consistent across ServiceNow tables — e.g. code `3`
+ * means "On Hold" for incident/problem but "Closed" for change_request. Use
+ * `TABLE_STATE_LABELS` (keyed by the `/api/v1/records/{resource}` slug) for
+ * tables with their own state machine, and fall back to this map otherwise.
+ */
 export const STATE_LABELS: Record<string, string> = {
   '1': 'New',
   '2': 'In Progress',
@@ -577,7 +598,60 @@ export const STATE_LABELS: Record<string, string> = {
   '0': 'Review',
 };
 
-export function stateBadge(state: string): string {
+/** Per-resource state label overrides for tables whose state codes collide with other tables. */
+export const TABLE_STATE_LABELS: Record<string, Record<string, string>> = {
+  'change-requests': {
+    '-5': 'New',
+    '-4': 'Assess',
+    '-3': 'Authorize',
+    '-2': 'Scheduled',
+    '-1': 'Implement',
+    '0': 'Review',
+    '3': 'Closed',
+    '4': 'Canceled',
+  },
+  'change-tasks': {
+    '1': 'Open',
+    '2': 'In Progress',
+    '3': 'Closed Complete',
+    '4': 'Closed Incomplete',
+    '7': 'Closed Skipped',
+  },
+};
+
+/** The full set of state options valid for a given resource's state field. */
+export function stateLabelsFor(resource?: string): Record<string, string> {
+  if (resource && TABLE_STATE_LABELS[resource]) {
+    return TABLE_STATE_LABELS[resource];
+  }
+  return STATE_LABELS;
+}
+
+export function stateOptionsFor(resource?: string): { value: string; label: string }[] {
+  return Object.entries(stateLabelsFor(resource)).map(([value, label]) => ({ value, label }));
+}
+
+export function stateLabel(state: string, resource?: string): string {
+  const scoped = resource ? TABLE_STATE_LABELS[resource] : undefined;
+  return scoped?.[state] || STATE_LABELS[state] || state;
+}
+
+export function stateBadge(state: string, resource?: string): string {
+  if (resource === 'change-requests') {
+    if (state === '-5') return 'badge-new';
+    if (state === '-4' || state === '-3' || state === '-2' || state === '-1') {
+      return 'badge-progress';
+    }
+    if (state === '0') return 'badge-resolved';
+    if (state === '3' || state === '4') return 'badge-closed';
+    return 'badge-new';
+  }
+  if (resource === 'change-tasks') {
+    if (state === '1') return 'badge-new';
+    if (state === '2') return 'badge-progress';
+    if (state === '3' || state === '4' || state === '7') return 'badge-closed';
+    return 'badge-new';
+  }
   if (state === '1' || state === '-5') return 'badge-new';
   if (state === '2' || state === '-4' || state === '-3') return 'badge-progress';
   if (state === '6' || state === '0') return 'badge-resolved';

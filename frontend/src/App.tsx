@@ -6,6 +6,8 @@ import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
 import { CatalogItemPage } from './pages/CatalogItemPage';
 import { CatalogWebhooksPage } from './pages/CatalogWebhooksPage';
 import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
+import { ChangeDetailPage } from './pages/ChangeDetailPage';
+import { ChangeTaskDetailPage } from './pages/ChangeTaskDetailPage';
 import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { GroupDetailPage } from './pages/GroupDetailPage';
@@ -37,12 +39,6 @@ const INCIDENT_DETAIL_FIELDS = [
 const PROBLEM_DETAIL_FIELDS = [
   { key: 'short_description', label: 'Short Description' },
   { key: 'description', label: 'Description', type: 'textarea' },
-  { key: 'state', label: 'State', type: 'select-state' },
-  { key: 'priority', label: 'Priority', readOnly: true },
-];
-
-const CHANGE_DETAIL_FIELDS = [
-  { key: 'short_description', label: 'Short Description' },
   { key: 'state', label: 'State', type: 'select-state' },
   { key: 'priority', label: 'Priority', readOnly: true },
 ];
@@ -129,17 +125,14 @@ export function App() {
             />
           }
         />
+        <Route path="changes/:sysId" element={<ChangeDetailPage />} />
         <Route
-          path="changes/:sysId"
+          path="change-tasks"
           element={
-            <RecordDetailPage
-              resource="change-requests"
-              title="Change Requests"
-              listPath="/changes"
-              fields={CHANGE_DETAIL_FIELDS}
-            />
+            <RecordListPage resource="change-tasks" title="Change Tasks" basePath="/change-tasks" />
           }
         />
+        <Route path="change-tasks/:sysId" element={<ChangeTaskDetailPage />} />
         <Route
           path="configuration-items"
           element={

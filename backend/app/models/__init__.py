@@ -137,6 +137,26 @@ class SysComment(Base, LifecycleMixin):
     comment: Mapped[str] = mapped_column(Text, default="")
 
 
+class SysAudit(Base):
+    """Field-level change log entry, written by `update_record()` for RBAC record
+    tables. Rows sharing a `batch_id` were all written by the same create/update
+    call, letting the activity feed group them into a single timeline entry."""
+
+    __tablename__ = "sys_audit"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(128), index=True)
+    record_sys_id: Mapped[str] = mapped_column(String(32), index=True)
+    batch_id: Mapped[str] = mapped_column(String(32), index=True)
+    field_name: Mapped[str] = mapped_column(String(128))
+    old_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    new_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sys_created_on: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, server_default=sa_now()
+    )
+
+
 class SysUserGrMember(Base, LifecycleMixin):
     __tablename__ = "sys_user_grmember"
 

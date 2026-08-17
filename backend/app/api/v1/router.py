@@ -43,6 +43,7 @@ from app.models import (
     RecordAccessGrant,
     ScItemOption,
     SysAttachment,
+    SysAudit,
     SysComment,
     SysUser,
 )
@@ -468,6 +469,82 @@ async def create_comment(
         False,
         auth=auth,
     )
+
+
+@router.get("/records/{resource}/{sys_id}/activity")
+async def list_record_activity(
+    resource: str,
+    sys_id: str,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a merged, time-descending activity timeline for a record: a
+    synthetic "created" entry, field-change batches from `sys_audit`, and
+    threaded `sys_comment` entries."""
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    table = TABLE_ENDPOINTS[resource]
+    record = await get_record_by_sys_id(db, table, sys_id, exclude_links=True, auth=auth)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+
+    activity: list[dict[str, Any]] = []
+
+    audit_result = await db.execute(
+        select(SysAudit)
+        .where(SysAudit.table_name == table, SysAudit.record_sys_id == sys_id)
+        .order_by(SysAudit.sys_created_on.asc())
+    )
+    batches: dict[str, dict[str, Any]] = {}
+    for row in audit_result.scalars().all():
+        batch = batches.get(row.batch_id)
+        if batch is None:
+            batch = {
+                "id": row.batch_id,
+                "type": "update",
+                "user": row.user or "",
+                "timestamp": row.sys_created_on.isoformat() if row.sys_created_on else "",
+                "changes": [],
+            }
+            batches[row.batch_id] = batch
+            activity.append(batch)
+        batch["changes"].append(
+            {
+                "field": row.field_name,
+                "old_value": row.old_value or "",
+                "new_value": row.new_value or "",
+            }
+        )
+
+    comments_result = await db.execute(
+        select(SysComment)
+        .where(SysComment.table_name == table, SysComment.record_sys_id == sys_id)
+        .order_by(SysComment.sys_created_on.asc())
+    )
+    for comment in comments_result.scalars().all():
+        activity.append(
+            {
+                "id": comment.sys_id,
+                "type": "comment",
+                "user": comment.sys_created_by or "",
+                "timestamp": comment.sys_created_on.isoformat() if comment.sys_created_on else "",
+                "comment": comment.comment,
+            }
+        )
+
+    created_on = record.get("sys_created_on")
+    if created_on:
+        activity.append(
+            {
+                "id": f"{sys_id}-created",
+                "type": "created",
+                "user": record.get("sys_created_by") or "",
+                "timestamp": created_on,
+            }
+        )
+
+    activity.sort(key=lambda entry: entry.get("timestamp") or "", reverse=True)
+    return {"activity": activity}
 
 
 @router.get("/records/{resource}/{sys_id}/attachments")

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { STATE_LABELS, stateBadge } from '../api/client';
+import { stateBadge, stateLabel } from '../api/client';
 import type { DetailSectionAccent } from './DetailSection';
 import { EmptyValue } from './EmptyValue';
 import { ExpandableDetailSection } from './ExpandableDetailSection';
@@ -12,6 +12,8 @@ interface RelatedRecordsSectionProps {
   icon: ReactNode;
   accent?: DetailSectionAccent;
   basePath: string;
+  /** Resource slug of the related records (e.g. `change-tasks`), used to resolve state labels/badges correctly. */
+  resource?: string;
   records: Record<string, string>[];
   isLoading?: boolean;
   emptyMessage: string;
@@ -27,6 +29,7 @@ export function RelatedRecordsSection({
   icon,
   accent = 'accent',
   basePath,
+  resource,
   records,
   isLoading,
   emptyMessage,
@@ -61,8 +64,8 @@ export function RelatedRecordsSection({
                   {isEmptyDisplayValue(record.state) ? (
                     <EmptyValue />
                   ) : (
-                    <span className={`badge ${stateBadge(record.state)}`}>
-                      {STATE_LABELS[record.state] || record.state}
+                    <span className={`badge ${stateBadge(record.state, resource)}`}>
+                      {stateLabel(record.state, resource)}
                     </span>
                   )}
                 </td>

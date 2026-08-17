@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Enrich Change views and add field-level activity timeline
+
+### Added
+
+- Dedicated `ChangeDetailPage` and `ChangeTaskDetailPage` with resolved reference links, system properties, and related record tables.
+- `SysAudit` backend model for field-level change tracking; `update_record()` automatically logs diffs sharing a `batch_id` per save operation.
+- `GET /api/v1/records/{resource}/{sys_id}/activity` endpoint merging audit batches, comments, and creation events into a chronological timeline.
+- `RecordActivitySection` frontend component showing the unified audit/comment feed, added to Incident, Problem, Change, Change Task, Request, and Requested Item views.
+- `JournalFieldRenderer` with `[code]...[/code]` block parsing to render sanitized HTML inside journal fields (`work_notes`, `comments`, `close_notes`).
+- Frontend routes for `/change-tasks` list and `/change-tasks/:sysId` detail.
+
+### Changed
+
+- `STATE_LABELS` replaced with `TABLE_STATE_LABELS` and resource-aware `stateLabel` / `stateBadge` helpers to fix conflicting state codes (e.g. code `3` as Closed in Change vs On Hold in Incident).
+- `RecordDetailPage`, `RecordListPage`, `RelatedRecordsSection`, `RequestDetailPage`, and `RequestedItemDetailPage` now pass their resource context to resolve correct state labels.
+- Both new Change-related pages include `RecordAttachmentsSection` and `RecordCommentsSection` by default.
+
+### Fixed
+
+- State label bug where Change records in state `3` (Closed) were incorrectly displayed as "On Hold".
+
 ## 2026-08-17 — Relax CMDB field validation for ITSM compatibility
 
 ### Added

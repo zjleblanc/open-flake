@@ -1816,6 +1816,112 @@ button.nav-link {
   display: none;
 }
 
+.activity-feed-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-feed-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.activity-feed-item:last-child {
+  border-bottom: none;
+}
+
+.activity-feed-item-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.activity-feed-item-user {
+  font-weight: 600;
+}
+
+.activity-feed-item-body {
+  margin: 0;
+}
+
+.activity-feed-changes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.activity-feed-change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+.activity-feed-change-field {
+  font-weight: 600;
+  color: var(--of-text-muted);
+}
+
+.activity-feed-change-values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.activity-feed-change-old {
+  color: var(--of-text-muted);
+  text-decoration: line-through;
+}
+
+.activity-feed-change-arrow {
+  color: var(--of-text-muted);
+}
+
+.activity-feed-change-new {
+  font-weight: 600;
+}
+
+.journal-field-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.journal-field-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.journal-field-html {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 65%, transparent);
+}
+
+.journal-field-wrap .journal-field-readonly {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  background: color-mix(in srgb, var(--of-bg) 75%, var(--of-surface));
+  border: 1px solid color-mix(in srgb, var(--of-border) 90%, transparent);
+  border-radius: var(--of-radius);
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  white-space: normal;
+}
+
 @media (max-width: 768px) {
   .layout {
     flex-direction: column;

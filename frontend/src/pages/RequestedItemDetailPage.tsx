@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { api, getRecordPermissions, STATE_LABELS, stateBadge } from '../api/client';
+import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import {
+  ActivityIcon,
   AttachmentsIcon,
   CommentsIcon,
   FieldsIcon,
@@ -16,6 +17,7 @@ import {
 import { EmptyValue } from '../components/EmptyValue';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
+import { RecordActivitySection } from '../components/RecordActivitySection';
 import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
 import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
@@ -72,7 +74,12 @@ const SECTION = {
   system: 'ritm-section-system',
   attachments: 'ritm-section-attachments',
   comments: 'ritm-section-comments',
+  activity: 'ritm-section-activity',
 } as const;
+
+const FIELD_LABELS: Record<string, string> = Object.fromEntries(
+  [...EDITABLE_FIELDS, ...LOCKED_FIELDS].map((field) => [field.key, field.label]),
+);
 
 function buildEditableForm(data: Record<string, string>): Record<string, string> {
   const form: Record<string, string> = {};
@@ -88,7 +95,7 @@ function formsEqual(a: Record<string, string>, b: Record<string, string>): boole
 
 function resolveLockedDisplay(field: FieldConfig, raw: unknown): unknown {
   if (field.type === 'select-state') {
-    return STATE_LABELS[String(raw)] || raw;
+    return stateLabel(String(raw), RESOURCE) || raw;
   }
   return raw;
 }
@@ -253,6 +260,15 @@ export function RequestedItemDetailPage() {
       });
     }
 
+    if (sysId && permissions?.read) {
+      items.push({
+        id: SECTION.activity,
+        title: 'Activity',
+        icon: <ActivityIcon size={14} />,
+        accent: 'primary',
+      });
+    }
+
     return items;
   }, [
     attachments.length,
@@ -280,8 +296,8 @@ export function RequestedItemDetailPage() {
     if (isLoading || !data) return undefined;
     if (!data.state) return <EmptyValue />;
     return (
-      <span className={`badge ${stateBadge(data.state)}`}>
-        {STATE_LABELS[data.state] || data.state}
+      <span className={`badge ${stateBadge(data.state, RESOURCE)}`}>
+        {stateLabel(data.state, RESOURCE)}
       </span>
     );
   }, [isLoading, data]);
@@ -362,10 +378,7 @@ export function RequestedItemDetailPage() {
                           id={`ritm-${field.key}`}
                           value={form[field.key] ?? ''}
                           onChange={(value) => setForm({ ...form, [field.key]: value as string })}
-                          options={Object.entries(STATE_LABELS).map(([val, label]) => ({
-                            value: val,
-                            label,
-                          }))}
+                          options={stateOptionsFor(RESOURCE)}
                         />
                       ) : field.type === 'textarea' ? (
                         <textarea
@@ -408,6 +421,7 @@ export function RequestedItemDetailPage() {
               icon={<HierarchyIcon size={14} />}
               accent="info"
               basePath={LIST_PATH}
+              resource={RESOURCE}
               records={siblingItems}
               isLoading={siblingsLoading}
               emptyMessage="No other items on this request"
@@ -475,6 +489,15 @@ export function RequestedItemDetailPage() {
               sysId={sysId}
               sectionId={SECTION.comments}
               canComment={!!(permissions?.comment || permissions?.write)}
+            />
+          )}
+
+          {sysId && permissions?.read && (
+            <RecordActivitySection
+              resource={RESOURCE}
+              sysId={sysId}
+              sectionId={SECTION.activity}
+              fieldLabels={FIELD_LABELS}
             />
           )}
         </div>
