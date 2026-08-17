@@ -141,6 +141,25 @@ def is_known_cmdb_class(table: str) -> bool:
     return is_cmdb_class_name(table) and (is_registered(table) or table.startswith("cmdb_ci_"))
 
 
+DISPLAY_FIELD_BY_TABLE: dict[str, str] = {
+    "sys_user": "user_name",
+    "sys_user_group": "name",
+    "cmdb_ci": "name",
+    "incident": "number",
+    "problem": "number",
+    "problem_task": "number",
+    "change_request": "number",
+    "change_task": "number",
+    "sc_request": "number",
+    "sc_req_item": "number",
+    "sc_task": "number",
+    "sc_cat_item": "name",
+    "item_option_new": "name",
+    "sc_webhook": "name",
+    "cmdb_rel_type": "name",
+    "std_change_producer_version": "name",
+}
+
 REFERENCE_FIELDS: dict[str, set[str]] = {
     "incident": {
         "caller_id",

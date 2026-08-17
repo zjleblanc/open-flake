@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useUserPreferences } from '../settings/UserPreferencesContext';
 import openFlakeSm from '../assets/images/open_flake_sm.png';
 import {
+  AccessIcon,
   CatalogIcon,
   ChangeIcon,
   ConfigurationItemIcon,
@@ -18,6 +19,7 @@ import {
   UsersIcon,
   WebhookIcon,
 } from './NavIcons';
+import { HierarchyIcon } from './DetailIcons';
 import { PageHeaderProvider } from './PageHeaderContext';
 import { TopNavbar } from './TopNavbar';
 import './Layout.css';
@@ -78,7 +80,21 @@ const NAV: NavEntry[] = [
       },
     ],
   },
-  { to: '/users', label: 'Users & Groups', icon: <UsersIcon />, permission: 'users.read' },
+  {
+    id: 'access',
+    label: 'Access',
+    icon: <AccessIcon />,
+    permission: 'users.read',
+    children: [
+      { to: '/access/users', label: 'Users', icon: <UsersIcon /> },
+      {
+        to: '/access/groups',
+        label: 'Groups',
+        icon: <HierarchyIcon />,
+        permission: 'groups.read',
+      },
+    ],
+  },
   { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];
 
@@ -131,6 +147,7 @@ export function Layout() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     catalog: true,
     integrations: true,
+    access: true,
   });
 
   const visibleNav = useMemo((): NavEntry[] => {
@@ -232,7 +249,7 @@ export function Layout() {
                   ) : (
                     <button
                       type="button"
-                      className={`nav-link nav-group-toggle${childActive ? ' active' : ''}`}
+                      className="nav-link nav-group-toggle"
                       onClick={() => toggleGroup(item.id)}
                       aria-expanded={expanded}
                     >

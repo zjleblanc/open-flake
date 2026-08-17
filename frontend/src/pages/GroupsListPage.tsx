@@ -5,23 +5,11 @@ import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { OFSelect } from '../components/OFSelect';
+import { ReferenceLink } from '../components/ReferenceLink';
 import '../components/Layout.css';
 
-type UserFormState = {
-  user_name: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-};
-
-const EMPTY_USER_FORM: UserFormState = {
-  user_name: '',
-  password: '',
-  first_name: '',
-  last_name: '',
-  email: '',
-};
+type GroupFormState = { name: string; description: string };
+const EMPTY_GROUP_FORM: GroupFormState = { name: '', description: '' };
 
 interface ListColumn {
   key: string;
@@ -29,34 +17,26 @@ interface ListColumn {
 }
 
 const COLUMNS: ListColumn[] = [
-  { key: 'user_name', label: 'Username' },
   { key: 'name', label: 'Name' },
-  { key: 'email', label: 'Email' },
+  { key: 'description', label: 'Description' },
 ];
 
-function userLabel(record: Record<string, string>): string {
-  return record.user_name || record.sys_id;
+function groupLabel(record: Record<string, string>): string {
+  return record.name || record.sys_id;
 }
 
-function getColumnFilterValue(record: Record<string, string>, columnKey: string): string {
-  if (columnKey === 'name') {
-    return `${record.first_name || ''} ${record.last_name || ''}`.trim();
-  }
-  return record[columnKey] || '';
-}
-
-export function UsersPage() {
+export function GroupsListPage() {
   const { hasPermission } = useAuth();
-  const canWriteUsers = hasPermission('users.write');
+  const canWriteGroups = hasPermission('groups.write');
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<UserFormState>(EMPTY_USER_FORM);
+  const [form, setForm] = useState<GroupFormState>(EMPTY_GROUP_FORM);
   const [filterField, setFilterField] = useState(COLUMNS[0].key);
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['records', 'users'],
-    queryFn: () => api.listRecords('users'),
+    queryKey: ['records', 'groups'],
+    queryFn: () => api.listRecords('groups'),
   });
 
   const records = useMemo(() => data?.records ?? [], [data?.records]);
@@ -64,39 +44,37 @@ export function UsersPage() {
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
     if (!query) return records;
-    return records.filter((record) =>
-      getColumnFilterValue(record, filterField).toLowerCase().includes(query),
-    );
+    return records.filter((record) => (record[filterField] || '').toLowerCase().includes(query));
   }, [records, filterText, filterField]);
   const isFiltered = filterText.trim().length > 0;
 
   const createMutation = useMutation({
-    mutationFn: () => api.createUser(form),
+    mutationFn: () => api.createRecord('groups', form),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['records', 'groups'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setShowCreate(false);
-      setForm(EMPTY_USER_FORM);
+      setForm(EMPTY_GROUP_FORM);
     },
   });
 
-  const headerBreadcrumbs = useMemo(() => [{ label: 'Users' }], []);
+  const headerBreadcrumbs = useMemo(() => [{ label: 'Groups' }], []);
   const headerActions = useMemo(
     () =>
-      canWriteUsers ? (
+      canWriteGroups ? (
         <button className="btn btn-primary" onClick={() => setShowCreate((prev) => !prev)}>
           {showCreate ? 'Cancel' : 'Create'}
         </button>
       ) : null,
-    [canWriteUsers, showCreate],
+    [canWriteGroups, showCreate],
   );
 
   usePageHeader({ breadcrumbs: headerBreadcrumbs, actions: headerActions });
 
-  if (!hasPermission('users.read')) {
+  if (!hasPermission('groups.read')) {
     return (
       <div>
-        <p className="text-muted">You do not have permission to view users.</p>
+        <p className="text-muted">You do not have permission to view groups.</p>
       </div>
     );
   }
@@ -105,23 +83,24 @@ export function UsersPage() {
 
   return (
     <div>
-      {showCreate && canWriteUsers && (
+      {showCreate && canWriteGroups && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h2 className="section-title">New User</h2>
-          {(['user_name', 'password', 'first_name', 'last_name', 'email'] as const).map((key) => (
-            <div className="form-group" key={key}>
-              <label>{key.replace('_', ' ')}</label>
-              <input
-                type={key === 'password' ? 'password' : 'text'}
-                value={form[key]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-              />
-            </div>
-          ))}
+          <h2 className="section-title">New Group</h2>
+          <div className="form-group">
+            <label>Name</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Description</label>
+            <input
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
           <button
             className="btn btn-primary"
             onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || !form.name.trim()}
           >
             Save
           </button>
@@ -130,9 +109,9 @@ export function UsersPage() {
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="record-list-filter">
-          <label htmlFor="filter-field-users">Filter by</label>
+          <label htmlFor="filter-field-groups">Filter by</label>
           <OFSelect
-            id="filter-field-users"
+            id="filter-field-groups"
             size="sm"
             className="record-list-filter-select"
             value={filterField}
@@ -143,7 +122,7 @@ export function UsersPage() {
             type="search"
             value={filterText}
             onChange={(event) => setFilterText(event.target.value)}
-            placeholder={`Search ${COLUMNS.find((c) => c.key === filterField)?.label.toLowerCase() ?? 'users'}…`}
+            placeholder={`Search ${COLUMNS.find((c) => c.key === filterField)?.label.toLowerCase() ?? 'groups'}…`}
             aria-label="Filter value"
           />
           {isFiltered && (
@@ -167,26 +146,27 @@ export function UsersPage() {
               {COLUMNS.map((column) => (
                 <th key={column.key}>{column.label}</th>
               ))}
+              <th>Owner</th>
             </tr>
           </thead>
           <tbody>
             {filteredRecords.map((record) => (
               <tr key={record.sys_id}>
                 <td>
-                  <Link to={`/access/users/${record.sys_id}`} className="reference-link">
-                    {userLabel(record)}
+                  <Link to={`/access/groups/${record.sys_id}`} className="reference-link">
+                    {groupLabel(record)}
                   </Link>
                 </td>
+                <td>{record.description}</td>
                 <td>
-                  {record.first_name} {record.last_name}
+                  <ReferenceLink value={record.owner} record={record} field="owner" target="user" />
                 </td>
-                <td>{record.email}</td>
               </tr>
             ))}
             {filteredRecords.length === 0 && (
               <tr>
-                <td colSpan={COLUMNS.length} className="empty-state">
-                  {isFiltered ? 'No records match this filter' : 'No users found'}
+                <td colSpan={COLUMNS.length + 1} className="empty-state">
+                  {isFiltered ? 'No records match this filter' : 'No groups found'}
                 </td>
               </tr>
             )}

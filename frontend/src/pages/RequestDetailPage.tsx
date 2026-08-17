@@ -19,6 +19,12 @@ import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
+import {
+  referenceDisplayValue,
+  referenceHref,
+  refSysId,
+  type RefTarget,
+} from '../utils/referenceFields';
 import '../components/Layout.css';
 
 const RESOURCE = 'catalog-requests';
@@ -28,6 +34,7 @@ interface FieldConfig {
   key: string;
   label: string;
   type?: 'textarea' | 'select-state';
+  refTarget?: RefTarget;
 }
 
 const EDITABLE_FIELDS: FieldConfig[] = [
@@ -40,12 +47,12 @@ const LOCKED_FIELDS: FieldConfig[] = [
   { key: 'request_state', label: 'Request State' },
   { key: 'stage', label: 'Stage' },
   { key: 'approval', label: 'Approval' },
-  { key: 'requested_for', label: 'Requested For' },
-  { key: 'requested_by', label: 'Requested By' },
-  { key: 'opened_by', label: 'Opened By' },
-  { key: 'assignment_group', label: 'Assignment Group' },
-  { key: 'assigned_to', label: 'Assigned To' },
-  { key: 'cmdb_ci', label: 'Configuration Item' },
+  { key: 'requested_for', label: 'Requested For', refTarget: 'user' },
+  { key: 'requested_by', label: 'Requested By', refTarget: 'user' },
+  { key: 'opened_by', label: 'Opened By', refTarget: 'user' },
+  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
+  { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
+  { key: 'cmdb_ci', label: 'Configuration Item', refTarget: 'cmdb_ci' },
   { key: 'category', label: 'Category' },
   { key: 'subcategory', label: 'Subcategory' },
 ];
@@ -246,17 +253,29 @@ export function RequestDetailPage() {
             <div className="detail-field-groups">
               {displayedLockedFields.length > 0 && (
                 <DetailFieldGroup>
-                  {displayedLockedFields.map((field) => (
-                    <ReadOnlyFieldInput
-                      key={field.key}
-                      id={`req-${field.key}`}
-                      fieldKey={field.key}
-                      label={field.label}
-                      value={resolveLockedDisplay(field, data[field.key])}
-                      multiline={field.type === 'textarea'}
-                      gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
-                    />
-                  ))}
+                  {displayedLockedFields.map((field) => {
+                    const fieldSysId = field.refTarget ? refSysId(data[field.key]) : '';
+                    return (
+                      <ReadOnlyFieldInput
+                        key={field.key}
+                        id={`req-${field.key}`}
+                        fieldKey={field.key}
+                        label={field.label}
+                        value={
+                          field.refTarget
+                            ? referenceDisplayValue(data, field.key)
+                            : resolveLockedDisplay(field, data[field.key])
+                        }
+                        href={
+                          field.refTarget && fieldSysId
+                            ? referenceHref(field.refTarget, fieldSysId)
+                            : undefined
+                        }
+                        multiline={field.type === 'textarea'}
+                        gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
+                      />
+                    );
+                  })}
                 </DetailFieldGroup>
               )}
 

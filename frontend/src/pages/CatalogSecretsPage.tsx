@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { FieldTooltip } from '../components/FieldTooltip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { EditIcon, DeleteIcon } from '../components/DetailIcons';
 import './CatalogPages.css';
 
 type SecretFormState = { name: string; value: string; description: string };
@@ -175,19 +176,21 @@ export function CatalogSecretsPage() {
                     {canWrite ? (
                       <button
                         type="button"
-                        className="btn btn-secondary btn-sm"
+                        className="btn-icon"
+                        aria-label={`Edit ${secret.name}`}
                         onClick={() => startEdit(secret)}
                       >
-                        Edit
+                        <EditIcon size={14} />
                       </button>
                     ) : null}
                     {canAdmin ? (
                       <button
                         type="button"
-                        className="btn btn-danger btn-sm"
+                        className="btn-icon btn-icon-danger"
+                        aria-label={`Delete ${secret.name}`}
                         onClick={() => setPendingDelete({ id: secret.sys_id, label: secret.name })}
                       >
-                        Delete
+                        <DeleteIcon size={14} />
                       </button>
                     ) : null}
                   </div>

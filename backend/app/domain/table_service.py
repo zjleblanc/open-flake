@@ -20,6 +20,7 @@ from app.auth.rbac import (
 from app.config import get_settings
 from app.domain.errors import validate_other_field_keys
 from app.domain.registry import (
+    DISPLAY_FIELD_BY_TABLE,
     NUMBER_PREFIXES,
     PLATFORM_TABLES,
     RBAC_RECORD_TABLES,
@@ -125,6 +126,58 @@ def _ref_table(field: str, table: str | None = None) -> str:
     return mapping.get(field, "sys_user")
 
 
+async def attach_reference_display_values(
+    db: AsyncSession,
+    table: str,
+    records: list[dict[str, Any]],
+) -> None:
+    """Populate a `<field>_display_value` key for each populated reference field.
+
+    Frontend views resolve a reference's sys_id to a human-readable label (e.g. a
+    user's `user_name` or a group's `name`) using this field instead of showing the
+    raw sys_id. Lookups are batched per referenced table to avoid N+1 queries.
+    """
+    refs = REFERENCE_FIELDS.get(table, set())
+    if not refs or not records:
+        return
+
+    field_ref_table: dict[str, str] = {}
+    ids_by_ref_table: dict[str, set[str]] = {}
+    for field in refs:
+        ref_table = _ref_table(field, table)
+        if ref_table not in DISPLAY_FIELD_BY_TABLE:
+            continue
+        field_ref_table[field] = ref_table
+        ids = ids_by_ref_table.setdefault(ref_table, set())
+        for record in records:
+            value = record.get(field)
+            sys_id = value.get("value") if isinstance(value, dict) else value
+            if sys_id:
+                ids.add(sys_id)
+
+    labels_by_ref_table: dict[str, dict[str, str]] = {}
+    for ref_table, ids in ids_by_ref_table.items():
+        if not ids:
+            continue
+        model = TABLE_MODELS.get(ref_table)
+        display_field = DISPLAY_FIELD_BY_TABLE.get(ref_table)
+        if model is None or display_field is None:
+            continue
+        column = getattr(model, display_field, None)
+        if column is None:
+            continue
+        result = await db.execute(select(model.sys_id, column).where(model.sys_id.in_(ids)))
+        labels_by_ref_table[ref_table] = {row[0]: (row[1] or row[0]) for row in result.all()}
+
+    for field, ref_table in field_ref_table.items():
+        labels = labels_by_ref_table.get(ref_table, {})
+        for record in records:
+            value = record.get(field)
+            sys_id = value.get("value") if isinstance(value, dict) else value
+            if sys_id:
+                record[f"{field}_display_value"] = labels.get(sys_id, sys_id)
+
+
 def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
     known_cols = {c.name for c in TABLE_MODELS[table].__table__.columns}
     result: dict[str, Any] = {}
@@ -224,7 +277,7 @@ async def list_records(
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import list_cmdb_ci
 
-        return await list_cmdb_ci(
+        cmdb_records, total = await list_cmdb_ci(
             db,
             conditions,
             limit,
@@ -234,6 +287,8 @@ async def list_records(
             include_permissions=include_permissions,
             query_class=query_class,
         )
+        await attach_reference_display_values(db, table, cmdb_records)
+        return cmdb_records, total
 
     model = TABLE_MODELS.get(table)
     if not model:
@@ -267,6 +322,7 @@ async def list_records(
         out.append(
             await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
         )
+    await attach_reference_display_values(db, table, out)
     return out, total
 
 
@@ -283,7 +339,7 @@ async def get_record_by_sys_id(
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import get_cmdb_ci
 
-        return await get_cmdb_ci(
+        record = await get_cmdb_ci(
             db,
             sys_id,
             exclude_links,
@@ -292,6 +348,9 @@ async def get_record_by_sys_id(
             skip_auth=skip_auth,
             query_class=query_class,
         )
+        if record:
+            await attach_reference_display_values(db, table, [record])
+        return record
 
     model = TABLE_MODELS.get(table)
     if not model:
@@ -316,7 +375,9 @@ async def get_record_by_sys_id(
                         await assert_record_action(db, auth, parent_table, parent, "read")
 
     record_dict = _model_to_dict(record, table, exclude_links)
-    return await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
+    result = await _enrich_with_permissions(db, auth, table, record_dict, include_permissions)
+    await attach_reference_display_values(db, table, [result])
+    return result
 
 
 async def _resolve_audit_username(

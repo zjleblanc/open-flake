@@ -15,7 +15,12 @@ import {
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
-import { resolveUserLabel } from '../utils/referenceFields';
+import {
+  referenceDisplayValue,
+  referenceHref,
+  refSysId,
+  type RefTarget,
+} from '../utils/referenceFields';
 import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
 import { RecordCommentsSection } from '../components/RecordCommentsSection';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
@@ -45,11 +50,11 @@ const CMDB_CI_GENERAL_FIELDS: { key: string; label: string }[] = [
   { key: 'company', label: 'Company' },
 ];
 
-const CMDB_CI_ASSIGNMENT_FIELDS: { key: string; label: string }[] = [
-  { key: 'support_group', label: 'Support Group' },
-  { key: 'managed_by', label: 'Managed By' },
-  { key: 'assignment_group', label: 'Assignment Group' },
-  { key: 'assigned_to', label: 'Assigned To' },
+const CMDB_CI_ASSIGNMENT_FIELDS: { key: string; label: string; refTarget: RefTarget }[] = [
+  { key: 'support_group', label: 'Support Group', refTarget: 'group' },
+  { key: 'managed_by', label: 'Managed By', refTarget: 'user' },
+  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
+  { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
 ];
 
 const CMDB_CI_FIELDS: { key: string; label: string }[] = [
@@ -89,8 +94,6 @@ const EDITABLE_FIELDS: { key: string; label: string }[] = [
 ];
 
 const EDITABLE_FIELD_KEYS = new Set(EDITABLE_FIELDS.map((f) => f.key));
-
-const USER_REFERENCE_FIELDS = new Set(['assigned_to']);
 
 const RBAC_FIELD_KEYS = new Set(['owner', 'owner_group', '_permissions']);
 
@@ -183,17 +186,6 @@ function validateOtherFormKeys(otherForm: Record<string, string>): string | null
   return null;
 }
 
-function resolveLockedFieldValue(
-  key: string,
-  value: unknown,
-  userLabels: Record<string, string>,
-): unknown {
-  if (USER_REFERENCE_FIELDS.has(key)) {
-    return resolveUserLabel(value, userLabels);
-  }
-  return value;
-}
-
 export function ConfigurationItemDetailPage() {
   const { sysId } = useParams<{ sysId: string }>();
   const queryClient = useQueryClient();
@@ -212,11 +204,6 @@ export function ConfigurationItemDetailPage() {
     enabled: !!sysId,
   });
 
-  const { data: usersData } = useQuery({
-    queryKey: ['records', 'users'],
-    queryFn: () => api.listRecords('users'),
-  });
-
   const permissions = data ? getRecordPermissions(data) : null;
 
   const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
@@ -230,12 +217,6 @@ export function ConfigurationItemDetailPage() {
     queryFn: () => api.listComments(resource, sysId!),
     enabled: !!sysId && !!(permissions?.comment || permissions?.write),
   });
-
-  const userLabels = useMemo(
-    () =>
-      Object.fromEntries((usersData?.records || []).map((user) => [user.sys_id, user.user_name])),
-    [usersData],
-  );
 
   useEffect(() => {
     if (!data) return;
@@ -439,7 +420,7 @@ export function ConfigurationItemDetailPage() {
                     id={`ci-${field.key}`}
                     fieldKey={field.key}
                     label={field.label}
-                    value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
+                    value={data[field.key]}
                   />
                 ))}
               </DetailFieldGroup>
@@ -461,7 +442,7 @@ export function ConfigurationItemDetailPage() {
                         id={`ci-${field.key}`}
                         fieldKey={field.key}
                         label={field.label}
-                        value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
+                        value={data[field.key]}
                       />
                     ))}
                   </DetailFieldGroup>
@@ -504,15 +485,19 @@ export function ConfigurationItemDetailPage() {
               accent="info"
             >
               <DetailFieldGroup>
-                {CMDB_CI_ASSIGNMENT_FIELDS.map((field) => (
-                  <ReadOnlyFieldInput
-                    key={field.key}
-                    id={`ci-${field.key}`}
-                    fieldKey={field.key}
-                    label={field.label}
-                    value={resolveLockedFieldValue(field.key, data[field.key], userLabels)}
-                  />
-                ))}
+                {CMDB_CI_ASSIGNMENT_FIELDS.map((field) => {
+                  const fieldSysId = refSysId(data[field.key]);
+                  return (
+                    <ReadOnlyFieldInput
+                      key={field.key}
+                      id={`ci-${field.key}`}
+                      fieldKey={field.key}
+                      label={field.label}
+                      value={referenceDisplayValue(data, field.key)}
+                      href={fieldSysId ? referenceHref(field.refTarget, fieldSysId) : undefined}
+                    />
+                  );
+                })}
               </DetailFieldGroup>
             </ExpandableDetailSection>
 

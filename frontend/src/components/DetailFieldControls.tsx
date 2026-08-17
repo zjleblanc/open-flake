@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useUserPreferences } from '../settings/UserPreferencesContext';
 import type { ColorScheme, LayoutDensity } from '../settings/userPreferences';
 import { formatDetailValue } from '../utils/formatDisplayValue';
@@ -142,6 +143,11 @@ interface ReadOnlyFieldInputProps {
   multiline?: boolean;
   gridColumn?: string;
   fieldKey?: string;
+  /**
+   * When set (and the field has a value), renders the value as a link to the
+   * referenced object's display view instead of a plain readonly input.
+   */
+  href?: string;
 }
 
 export function ReadOnlyFieldInput({
@@ -151,15 +157,21 @@ export function ReadOnlyFieldInput({
   multiline = false,
   gridColumn,
   fieldKey,
+  href,
 }: ReadOnlyFieldInputProps) {
   const { dateDisplayFormat } = useUserPreferences();
   const display = formatDetailValue(value, { fieldKey, dateDisplayFormat });
+  const isEmpty = display === '—';
 
   return (
     <div className="form-group form-group--readonly" style={{ marginBottom: 0, gridColumn }}>
       <label htmlFor={id}>{label}</label>
       <div className="readonly-input-wrap">
-        {multiline ? (
+        {href && !isEmpty ? (
+          <Link id={id} to={href} className="readonly-input-link">
+            {display}
+          </Link>
+        ) : multiline ? (
           <textarea id={id} readOnly className="readonly-input" rows={3} value={display} />
         ) : (
           <input id={id} readOnly className="readonly-input" type="text" value={display} />

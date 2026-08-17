@@ -1128,8 +1128,22 @@ button.nav-link {
 }
 
 .readonly-input-link:hover {
-  text-decoration: underline;
+  color: var(--of-primary);
   border-color: var(--of-primary);
+}
+
+/*
+ * Links that resolve a reference field (owner, assigned to, etc.) to its
+ * object's display view. No underline; hover only shifts color, matching the
+ * global `a` style. See frontend/AGENTS.md for the reference-link convention.
+ */
+.reference-link {
+  color: var(--of-accent);
+  text-decoration: none;
+}
+
+.reference-link:hover {
+  color: var(--of-accent-dark);
 }
 
 .detail-field {
@@ -1377,22 +1391,46 @@ button.nav-link {
   display: none;
 }
 
-.property-panel summary::after {
-  content: '+';
-  margin-left: auto;
-  color: var(--of-text-muted);
-  font-size: 1.125rem;
-  line-height: 1;
-}
-
-.property-panel[open] summary::after {
-  content: '−';
-}
-
 .property-panel-count {
   color: var(--of-text-muted);
   font-size: 0.75rem;
   font-weight: 600;
+}
+
+.property-panel-summary-spacer {
+  flex: 1;
+}
+
+.property-panel-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/*
+ * Force a compact button height here regardless of `.btn`/`.btn-sm` cascade
+ * order, so a header action (e.g. "Create") never makes the summary row
+ * taller than sections without one — it should fit within the summary's
+ * icon-driven height, not grow it.
+ */
+.property-panel-header-actions .btn {
+  padding: 0.1875rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.property-panel-toggle-icon {
+  display: flex;
+  align-items: center;
+  color: var(--of-text-muted);
+}
+
+.property-panel[open] .property-panel-toggle-icon--collapsed {
+  display: none;
+}
+
+.property-panel:not([open]) .property-panel-toggle-icon--expanded {
+  display: none;
 }
 
 .property-panel-body {

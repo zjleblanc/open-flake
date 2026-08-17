@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-16 — Split Access into Users and Groups list views
+
+### Added
+
+- Sidebar **Access** nav group (fingerprint icon, expand/collapse only — same pattern as Integrations) with child routes `/access/users` and `/access/groups`.
+- Dedicated Users and Groups list pages matching other resource lists: filter bar, table, and Create in the top navbar.
+- User and group detail pages (`/access/users/:sysId`, `/access/groups/:sysId`) with section navigation.
+- `ReferenceLink` plus `referenceHref` / `referenceDisplayValue` helpers so reference fields link to the target's display view by label, not raw sys_id.
+- Backend `attach_reference_display_values` (and `DISPLAY_FIELD_BY_TABLE`) so list/get record responses include `<field>_display_value` siblings for populated references.
+- `ExpandableDetailSection` header-actions slot and chevron expand/collapse icons (replacing `+`/`−`).
+- Frontend AGENTS.md guidance for reference links, edit/delete icon buttons, and expand/collapse indicators.
+
+### Changed
+
+- Removed the combined Users & Groups page; legacy `/users` and `/groups` URLs redirect into `/access/...`.
+- Assignment and other reference fields on CI, request, and requested-item detail views use display values and links instead of client-side user-label maps.
+- Toggle-only nav parents (Access, Integrations) are not highlighted when a child route is active.
+
 ## 2026-08-16 — Flatten default webhook payload to match ITSM
 
 ### Changed

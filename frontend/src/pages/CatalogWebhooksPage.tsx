@@ -8,6 +8,7 @@ import { FieldTooltip } from '../components/FieldTooltip';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TemplateAutocomplete } from '../components/TemplateAutocomplete';
 import { OFSelect } from '../components/OFSelect';
+import { EditIcon, DeleteIcon } from '../components/DetailIcons';
 import './CatalogPages.css';
 
 type HeaderRow = { key: string; value: string };
@@ -278,19 +279,21 @@ export function CatalogWebhooksPage() {
                       <div className="catalog-row-actions">
                         <button
                           type="button"
-                          className="btn btn-secondary btn-sm"
+                          className="btn-icon"
+                          aria-label={`Edit ${webhook.name}`}
                           onClick={() => startEdit(webhook)}
                         >
-                          Edit
+                          <EditIcon size={14} />
                         </button>
                         <button
                           type="button"
-                          className="btn btn-danger btn-sm"
+                          className="btn-icon btn-icon-danger"
+                          aria-label={`Delete ${webhook.name}`}
                           onClick={() =>
                             setPendingDelete({ id: webhook.sys_id, label: webhook.name })
                           }
                         >
-                          Delete
+                          <DeleteIcon size={14} />
                         </button>
                       </div>
                     </td>

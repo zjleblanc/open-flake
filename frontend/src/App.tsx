@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { getToken } from './api/client';
 import { CatalogBrowsePage } from './pages/CatalogBrowsePage';
@@ -8,6 +8,8 @@ import { CatalogWebhooksPage } from './pages/CatalogWebhooksPage';
 import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
 import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { GroupDetailPage } from './pages/GroupDetailPage';
+import { GroupsListPage } from './pages/GroupsListPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
@@ -15,6 +17,7 @@ import { RecordListPage } from './pages/RecordListPage';
 import { RequestDetailPage } from './pages/RequestDetailPage';
 import { RequestedItemDetailPage } from './pages/RequestedItemDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { UserDetailPage } from './pages/UserDetailPage';
 import { UsersPage } from './pages/UsersPage';
 
 const INCIDENT_FIELDS = [
@@ -47,6 +50,16 @@ const CHANGE_DETAIL_FIELDS = [
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function LegacyUserRedirect() {
+  const { sysId } = useParams<{ sysId: string }>();
+  return <Navigate to={`/access/users/${sysId}`} replace />;
+}
+
+function LegacyGroupRedirect() {
+  const { sysId } = useParams<{ sysId: string }>();
+  return <Navigate to={`/access/groups/${sysId}`} replace />;
 }
 
 export function App() {
@@ -174,7 +187,14 @@ export function App() {
         <Route path="catalog/:itemId" element={<CatalogItemPage />} />
         <Route path="integrations/webhooks" element={<CatalogWebhooksPage />} />
         <Route path="integrations/secrets" element={<CatalogSecretsPage />} />
-        <Route path="users" element={<UsersPage />} />
+        <Route path="access/users" element={<UsersPage />} />
+        <Route path="access/users/:sysId" element={<UserDetailPage />} />
+        <Route path="access/groups" element={<GroupsListPage />} />
+        <Route path="access/groups/:sysId" element={<GroupDetailPage />} />
+        <Route path="users" element={<Navigate to="/access/users" replace />} />
+        <Route path="users/:sysId" element={<LegacyUserRedirect />} />
+        <Route path="groups" element={<Navigate to="/access/groups" replace />} />
+        <Route path="groups/:sysId" element={<LegacyGroupRedirect />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

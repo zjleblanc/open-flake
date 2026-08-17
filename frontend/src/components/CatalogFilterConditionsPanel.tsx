@@ -5,6 +5,7 @@ import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OFSelect } from './OFSelect';
+import { EditIcon, DeleteIcon } from './DetailIcons';
 
 const CONDITION_OPERATORS = ['=', '!=', 'IN', 'NOT_IN', 'EMPTY', 'NOT_EMPTY'];
 
@@ -214,14 +215,16 @@ export function CatalogFilterConditionsPanel({
                   <td className="catalog-row-actions">
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      className="btn-icon"
+                      aria-label={`Edit filter override for ${depends?.question_text || depends?.name || condition.depends_on}`}
                       onClick={() => startEdit(condition)}
                     >
-                      Edit
+                      <EditIcon size={14} />
                     </button>
                     <button
                       type="button"
-                      className="btn btn-danger btn-sm"
+                      className="btn-icon btn-icon-danger"
+                      aria-label={`Delete filter override for ${depends?.question_text || depends?.name || condition.depends_on}`}
                       onClick={() =>
                         setPendingDelete({
                           id: condition.sys_id,
@@ -233,7 +236,7 @@ export function CatalogFilterConditionsPanel({
                         })
                       }
                     >
-                      Delete
+                      <DeleteIcon size={14} />
                     </button>
                   </td>
                 </tr>

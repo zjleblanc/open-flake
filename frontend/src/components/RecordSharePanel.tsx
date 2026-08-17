@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { api, getRecordPermissions, type RecordPermissions } from '../api/client';
 import { EmptyValue } from './EmptyValue';
 import { isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { ConfirmDialog } from './ConfirmDialog';
 import { OFSelect } from './OFSelect';
+import { referenceHref } from '../utils/referenceFields';
 
 function refValue(field: unknown): string {
   if (!field) return '';
@@ -171,11 +173,27 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
           <dl className="share-ownership-readonly">
             <div>
               <dt>Owner</dt>
-              <dd>{ownerLabel ?? <EmptyValue />}</dd>
+              <dd>
+                {ownerLabel ? (
+                  <Link to={referenceHref('user', owner)} className="reference-link">
+                    {ownerLabel}
+                  </Link>
+                ) : (
+                  <EmptyValue />
+                )}
+              </dd>
             </div>
             <div>
               <dt>Owner group</dt>
-              <dd>{ownerGroupLabel ?? <EmptyValue />}</dd>
+              <dd>
+                {ownerGroupLabel ? (
+                  <Link to={referenceHref('group', ownerGroup)} className="reference-link">
+                    {ownerGroupLabel}
+                  </Link>
+                ) : (
+                  <EmptyValue />
+                )}
+              </dd>
             </div>
           </dl>
         )}
@@ -199,12 +217,24 @@ export function RecordSharePanel({ resource, sysId, record, canWrite }: RecordSh
                   g.user_sys_id ||
                   g.group_sys_id;
                 const granteeKind = g.user_sys_id ? 'User' : 'Group';
+                const granteeHref = g.user_sys_id
+                  ? referenceHref('user', g.user_sys_id)
+                  : g.group_sys_id
+                    ? referenceHref('group', g.group_sys_id)
+                    : null;
                 return (
                   <li key={g.sys_id} className="sharing-grant-item">
                     <div className="sharing-grant-info">
                       <span className="sharing-grant-level">{g.access_level}</span>
                       <span className="sharing-grant-name">
-                        {granteeKind}: {grantee}
+                        {granteeKind}:{' '}
+                        {granteeHref ? (
+                          <Link to={granteeHref} className="reference-link">
+                            {grantee}
+                          </Link>
+                        ) : (
+                          grantee
+                        )}
                       </span>
                     </div>
                     <button
