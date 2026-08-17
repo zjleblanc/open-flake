@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Detailed delete previews with cascaded record samples
+
+### Added
+
+- Delete confirmation dialog now lists a sample of affected records (up to 5) for each cascaded child table, providing better visibility into the impact of a deletion.
+- Special human-readable labels for `cmdb_rel_ci` cascades that describe the relationship direction ("incoming" vs "outgoing") and type (e.g., "Depends on").
+- `ConfirmDialog` supports a `wide` layout for dense impact reports and organizes information into "Permanently deleted" vs "Referenced by" sections.
+- Lab seed data includes additional Change Tasks and links Change Requests/Tasks to their primary Configuration Items for richer relationship testing.
+- `badge-accent` and `badge-primary` theme tokens for UI metadata and relationship indicators.
+
+### Changed
+
+- Refactored `RecordDeleteButton`, `RecordListPage` bulk deletes, and `cascadeSummary.ts` to use a structured `PermanentItem` data model instead of plain-language strings.
+- Bulk delete previews aggregate cascaded counts across all selected records into a unified impact report.
+- Backend `_cascade_children_preview` returns record sys_ids and labels (resolving display fields) to the frontend.
+
+### Fixed
+
+- Relationship records (`cmdb_rel_ci`) in delete previews now show the linked CI's name instead of a raw sys_id.
+
 ## 2026-08-17 — Enrich Change views and add field-level activity timeline
 
 ### Added

@@ -2020,6 +2020,54 @@ button.nav-link {
   line-height: 1.5;
 }
 
+.confirm-dialog-warning {
+  margin: 0 0 1.25rem;
+  color: var(--of-danger);
+  line-height: 1.5;
+}
+
+.confirm-dialog-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 0 0 1.25rem;
+}
+
+.confirm-dialog-section {
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 6%, transparent);
+}
+
+.confirm-dialog-section-title {
+  margin: 0 0 0.625rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--of-text-muted);
+}
+
+.confirm-dialog-section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border-radius: 999px;
+  background: var(--of-badge-primary-bg);
+  color: var(--of-badge-primary-text);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .confirm-dialog-error {
   margin: -0.5rem 0 1rem;
   color: var(--of-danger);
@@ -2038,7 +2086,7 @@ button.nav-link {
 }
 
 .cascade-reference-groups {
-  margin: 0 0 1.25rem;
+  margin: 0;
   padding: 0;
   list-style: none;
   display: flex;
@@ -2046,7 +2094,12 @@ button.nav-link {
   gap: 0.75rem;
 }
 
+.cascade-reference-groups + .cascade-reference-groups {
+  margin-top: 0.75rem;
+}
+
 .cascade-reference-group-label {
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--of-text);
   margin: 0 0 0.25rem;
@@ -2055,12 +2108,20 @@ button.nav-link {
 .cascade-reference-group-items {
   margin: 0;
   padding-left: 1.25rem;
+  font-size: 0.875rem;
   color: var(--of-text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .cascade-reference-more {
   color: var(--of-text-muted);
   font-style: italic;
+}
+
+.cascade-relationship-this {
+  color: var(--of-primary-light);
 }
 
 .record-select-column {

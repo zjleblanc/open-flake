@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
@@ -42,6 +43,7 @@ from app.models import (
     ApiKey,
     ChangeRequest,
     CmdbCi,
+    CmdbRelType,
     Incident,
     ItemOptionNew,
     OAuthClient,
@@ -213,7 +215,8 @@ def _table_label(table: str) -> str:
 async def _cascade_children_preview(
     db: AsyncSession, table: str, sys_id: str
 ) -> list[dict[str, Any]]:
-    """Count each table of strict FK-cascaded children (always deleted)."""
+    """List (with a sample of records) each table of strict FK-cascaded
+    children that will always be deleted alongside the record."""
     fields_by_child: dict[str, list[str]] = {}
     for child_table, child_field in PARENT_CHILD_RELATIONS.get(table, []):
         fields_by_child.setdefault(child_table, []).append(child_field)
@@ -229,11 +232,82 @@ async def _cascade_children_preview(
         count = (
             await db.execute(select(func.count()).select_from(model).where(condition))
         ).scalar() or 0
-        if count:
-            previews.append(
-                {"table": child_table, "label": _table_label(child_table), "count": count}
-            )
+        if not count:
+            continue
+        rows = (await db.execute(select(model).where(condition).limit(5))).scalars().all()
+        previews.append(
+            {
+                "table": child_table,
+                "label": _table_label(child_table),
+                "count": count,
+                "records": await _cascade_child_records(db, child_table, rows, sys_id),
+            }
+        )
     return previews
+
+
+async def _cascade_child_records(
+    db: AsyncSession, child_table: str, rows: Sequence[Any], exclude_sys_id: str
+) -> list[dict[str, Any]]:
+    """Build human-readable labels for a sample of cascade-child rows.
+
+    ``cmdb_rel_ci`` rows have no meaningful display field of their own, so
+    they're described from the perspective of the record being deleted, e.g.
+    "→ lab-sw-core-01 (Depends on)".
+    """
+    if child_table == "cmdb_rel_ci":
+        return await _cmdb_rel_ci_labels(db, rows, exclude_sys_id)
+    display_field = DISPLAY_FIELD_BY_TABLE.get(child_table)
+    return [
+        {
+            "sys_id": row.sys_id,
+            "label": (getattr(row, display_field, None) if display_field else None) or row.sys_id,
+        }
+        for row in rows
+    ]
+
+
+async def _cmdb_rel_ci_labels(
+    db: AsyncSession, rows: Sequence[Any], exclude_sys_id: str
+) -> list[dict[str, Any]]:
+    """Describe each relationship row from the perspective of the CI being
+    deleted: which other CI it's linked to, and in which direction, so the
+    UI can render "[this] -> other" (or the reverse) with the relationship
+    type shown separately as a badge.
+    """
+    ci_ids = {row.parent for row in rows} | {row.child for row in rows}
+    type_ids = {row.type for row in rows if row.type}
+
+    ci_names: dict[str, str] = {}
+    if ci_ids:
+        result = await db.execute(
+            select(CmdbCi.sys_id, CmdbCi.name).where(CmdbCi.sys_id.in_(ci_ids))
+        )
+        ci_names = dict(result.all())  # type: ignore[arg-type]
+    type_names: dict[str, str] = {}
+    if type_ids:
+        result = await db.execute(
+            select(CmdbRelType.sys_id, CmdbRelType.name).where(CmdbRelType.sys_id.in_(type_ids))
+        )
+        type_names = dict(result.all())  # type: ignore[arg-type]
+
+    records = []
+    for row in rows:
+        is_parent = row.parent == exclude_sys_id
+        other_id = row.child if is_parent else row.parent
+        other_name = ci_names.get(other_id, other_id)
+        type_name = type_names.get(row.type, row.type)
+        records.append(
+            {
+                "sys_id": row.sys_id,
+                "label": other_name,
+                "relationship": {
+                    "direction": "outgoing" if is_parent else "incoming",
+                    "type": type_name,
+                },
+            }
+        )
+    return records
 
 
 async def _loose_references_preview(

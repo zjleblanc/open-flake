@@ -62,6 +62,10 @@
   --of-badge-progress-text: #9ad8d8;
   --of-badge-resolved-bg: #183301;
   --of-badge-resolved-text: #afdc8f;
+  --of-badge-accent-bg: color-mix(in srgb, var(--of-accent) 20%, transparent);
+  --of-badge-accent-text: color-mix(in srgb, var(--of-accent) 60%, white);
+  --of-badge-primary-bg: color-mix(in srgb, var(--of-primary) 24%, transparent);
+  --of-badge-primary-text: var(--of-primary-light);
   --of-alert-success-bg: #183301;
   --of-alert-success-text: #afdc8f;
   --of-alert-error-bg: #3d1515;
@@ -109,6 +113,10 @@
   --of-badge-progress-text: #1a6363;
   --of-badge-resolved-bg: #e3f0d9;
   --of-badge-resolved-text: #3d6624;
+  --of-badge-accent-bg: color-mix(in srgb, var(--of-accent) 14%, transparent);
+  --of-badge-accent-text: color-mix(in srgb, var(--of-accent) 60%, black);
+  --of-badge-primary-bg: color-mix(in srgb, var(--of-primary) 16%, transparent);
+  --of-badge-primary-text: var(--of-primary-dark);
   --of-alert-success-bg: #e3f0d9;
   --of-alert-success-text: #3d6624;
   --of-alert-error-bg: #fce8e4;
@@ -490,6 +498,11 @@ tr:hover td {
 .badge-closed {
   background: var(--of-surface-hover);
   color: var(--of-text-muted);
+}
+
+.badge-accent {
+  background: var(--of-badge-accent-bg);
+  color: var(--of-badge-accent-text);
 }
 
 .form-group {

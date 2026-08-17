@@ -27,7 +27,7 @@ from app.domain.table_service import (
     clear_loose_references,
     delete_record,
 )
-from app.models import CmdbCi, Incident, SysAudit
+from app.models import CmdbCi, CmdbRelCi, Incident, SysAudit
 
 
 def _scalars_result(rows):
@@ -356,7 +356,9 @@ async def test_cascade_children_preview_counts_fk_cascaded_children(monkeypatch)
     db = AsyncMock()
     count_result = MagicMock()
     count_result.scalar.return_value = 3
-    db.execute = AsyncMock(return_value=count_result)
+    change_task = MagicMock(sys_id="task1", number="CTASK0000001")
+    rows_result = _scalars_result([change_task])
+    db.execute = AsyncMock(side_effect=[count_result, rows_result])
 
     monkeypatch.setattr(
         router_module,
@@ -366,7 +368,14 @@ async def test_cascade_children_preview_counts_fk_cascaded_children(monkeypatch)
 
     preview = await router_module._cascade_children_preview(db, "change_request", "chg1")
 
-    assert preview == [{"table": "change_task", "label": "Change Tasks", "count": 3}]
+    assert preview == [
+        {
+            "table": "change_task",
+            "label": "Change Tasks",
+            "count": 3,
+            "records": [{"sys_id": "task1", "label": "CTASK0000001"}],
+        }
+    ]
 
 
 @pytest.mark.asyncio
@@ -385,6 +394,34 @@ async def test_cascade_children_preview_omits_tables_with_zero_children(monkeypa
     preview = await router_module._cascade_children_preview(db, "change_request", "chg1")
 
     assert preview == []
+
+
+@pytest.mark.asyncio
+async def test_cmdb_rel_ci_labels_describe_relationship_from_deleted_ci_perspective():
+    db = AsyncMock()
+    ci_result = MagicMock()
+    ci_result.all.return_value = [("core1", "lab-sw-core-01"), ("access1", "lab-sw-access-02")]
+    type_result = MagicMock()
+    type_result.all.return_value = [("type1", "Depends on")]
+    db.execute = AsyncMock(side_effect=[ci_result, type_result])
+
+    outgoing = CmdbRelCi(sys_id="rel1", parent="access1", child="core1", type="type1")
+    incoming = CmdbRelCi(sys_id="rel2", parent="core1", child="access1", type="type1")
+
+    records = await router_module._cmdb_rel_ci_labels(db, [outgoing, incoming], "access1")
+
+    assert records == [
+        {
+            "sys_id": "rel1",
+            "label": "lab-sw-core-01",
+            "relationship": {"direction": "outgoing", "type": "Depends on"},
+        },
+        {
+            "sys_id": "rel2",
+            "label": "lab-sw-core-01",
+            "relationship": {"direction": "incoming", "type": "Depends on"},
+        },
+    ]
 
 
 @pytest.mark.asyncio

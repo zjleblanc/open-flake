@@ -803,12 +803,30 @@ async def _seed_changes(session, ctx: LabContext) -> None:
             "category": "Network",
             "requested_by": ctx.users["lchen"],
             "assignment_group": network,
+            "cmdb_ci": ctx.cis["lab-fw-01"],
         },
         ctx.admin_id,
     )
     ctx.changes["firewall"] = fw_change["sys_id"]
 
     await ensure_record(
+        session,
+        "change_task",
+        {"short_description": f"{LAB_PREFIX} Apply temporary ACL on lab-fw-01"},
+        {
+            "short_description": f"{LAB_PREFIX} Apply temporary ACL on lab-fw-01",
+            "description": "Add scoped allow rule for vendor support IP range.",
+            "state": "-5",
+            "change_request": ctx.changes["firewall"],
+            "change_task_type": "implementation",
+            "cmdb_ci": ctx.cis["lab-fw-01"],
+            "assigned_to": ctx.users["lchen"],
+            "assignment_group": network,
+        },
+        ctx.admin_id,
+    )
+
+    switch_change = await ensure_record(
         session,
         "change_request",
         {"short_description": f"{LAB_PREFIX} Replace failed access switch in Building B"},
@@ -827,11 +845,30 @@ async def _seed_changes(session, ctx: LabContext) -> None:
             "assigned_to": ctx.users["lchen"],
             "assignment_group": network,
             "close_notes": "Switch replaced; monitoring green for 72 hours.",
+            "cmdb_ci": ctx.cis["lab-sw-access-02"],
+        },
+        ctx.admin_id,
+    )
+    ctx.changes["switch"] = switch_change["sys_id"]
+
+    await ensure_record(
+        session,
+        "change_task",
+        {"short_description": f"{LAB_PREFIX} Swap failed access switch hardware"},
+        {
+            "short_description": f"{LAB_PREFIX} Swap failed access switch hardware",
+            "description": "Physically replace lab-sw-access-02 and restore saved config.",
+            "state": "3",
+            "change_request": ctx.changes["switch"],
+            "change_task_type": "implementation",
+            "cmdb_ci": ctx.cis["lab-sw-access-02"],
+            "assigned_to": ctx.users["lchen"],
+            "assignment_group": network,
         },
         ctx.admin_id,
     )
 
-    await ensure_record(
+    cab_change = await ensure_record(
         session,
         "change_request",
         {"short_description": f"{LAB_PREFIX} CAB review — datacenter network core upgrade"},
@@ -847,6 +884,25 @@ async def _seed_changes(session, ctx: LabContext) -> None:
             "risk": "2",
             "category": "Network",
             "requested_by": ctx.users["tchen"],
+            "assignment_group": cab,
+            "cmdb_ci": ctx.cis["lab-sw-core-01"],
+        },
+        ctx.admin_id,
+    )
+    ctx.changes["cab"] = cab_change["sys_id"]
+
+    await ensure_record(
+        session,
+        "change_task",
+        {"short_description": f"{LAB_PREFIX} Schedule core switch firmware maintenance window"},
+        {
+            "short_description": f"{LAB_PREFIX} Schedule core switch firmware maintenance window",
+            "description": "Coordinate with network operations to book a Q3 maintenance window.",
+            "state": "-5",
+            "change_request": ctx.changes["cab"],
+            "change_task_type": "planning",
+            "cmdb_ci": ctx.cis["lab-sw-core-01"],
+            "assigned_to": ctx.users["lchen"],
             "assignment_group": cab,
         },
         ctx.admin_id,

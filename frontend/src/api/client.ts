@@ -570,9 +570,20 @@ export type CatalogWebhookAttachment = {
   webhook_active?: boolean;
 };
 
-export type CascadeChildPreview = { table: string; label: string; count: number };
+export type CascadeChildRelationship = { direction: 'outgoing' | 'incoming'; type: string };
 
-export type LooseReferenceRecord = { sys_id: string; label: string };
+export type LooseReferenceRecord = {
+  sys_id: string;
+  label: string;
+  relationship?: CascadeChildRelationship;
+};
+
+export type CascadeChildPreview = {
+  table: string;
+  label: string;
+  count: number;
+  records: LooseReferenceRecord[];
+};
 
 export type LooseReferencePreview = {
   table: string;

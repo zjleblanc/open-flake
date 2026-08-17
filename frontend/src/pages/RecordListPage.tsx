@@ -9,7 +9,7 @@ import {
   type CascadePreview,
 } from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { buildCascadeSummary } from '../utils/cascadeSummary';
+import { aggregatePermanentItems, permanentTotal } from '../utils/cascadeSummary';
 import { EmptyValue } from '../components/EmptyValue';
 import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { usePageHeader } from '../components/PageHeaderContext';
@@ -178,6 +178,14 @@ export function RecordListPage({
     return [...groups.values()];
   }, [bulkPreviews]);
   const bulkHasLooseReferences = bulkLooseGroups.length > 0;
+  const bulkReferenceCount = bulkLooseGroups.reduce((sum, group) => sum + group.count, 0);
+
+  const bulkPermanentItems = useMemo(
+    () => aggregatePermanentItems((bulkPreviews as CascadePreview[]) ?? []),
+    [bulkPreviews],
+  );
+  const bulkHasPermanentItems = bulkPermanentItems.length > 0;
+  const bulkPermanentCount = permanentTotal(bulkPermanentItems);
 
   const toggleSelect = (sysId: string) => {
     setSelected((current) => {
@@ -205,37 +213,8 @@ export function RecordListPage({
   };
 
   const selectedLabels = records.filter((record) => selected.has(record.sys_id)).map(recordLabel);
-
-  function bulkDeleteMessage(): string {
-    const fallback =
-      selected.size === 1
-        ? `Are you sure you want to permanently delete "${selectedLabels[0]}"? This action cannot be undone.`
-        : `Are you sure you want to permanently delete ${selected.size} records? This action cannot be undone.${
-            selectedLabels.length > 0
-              ? ` (${selectedLabels.slice(0, 3).join(', ')}${selectedLabels.length > 3 ? ', …' : ''})`
-              : ''
-          }`;
-    if (!bulkPreviews) return fallback;
-
-    const cascadeTotals = new Map<string, { label: string; count: number }>();
-    const peripheralTotals: Record<string, number> = {};
-    for (const preview of bulkPreviews as CascadePreview[]) {
-      for (const child of preview.cascade_children) {
-        const current = cascadeTotals.get(child.table) ?? { label: child.label, count: 0 };
-        current.count += child.count;
-        cascadeTotals.set(child.table, current);
-      }
-      for (const [key, count] of Object.entries(preview.peripheral)) {
-        peripheralTotals[key] = (peripheralTotals[key] ?? 0) + count;
-      }
-    }
-    const cascadeParts = [...cascadeTotals.values()].map(
-      (entry) => `${entry.count} ${entry.label}`,
-    );
-    const subject =
-      selected.size === 1 ? `Deleting "${selectedLabels[0]}"` : `Deleting ${selected.size} records`;
-    return buildCascadeSummary(subject, cascadeParts, peripheralTotals, fallback);
-  }
+  const bulkSubject =
+    selected.size === 1 ? <strong>{selectedLabels[0]}</strong> : `${selected.size} records`;
 
   const headerBreadcrumbs = useMemo(() => [{ label: title }], [title]);
   const headerActions = useMemo(
@@ -414,25 +393,47 @@ export function RecordListPage({
 
       <ConfirmDialog
         open={confirmOpen}
-        title={`Delete ${selected.size} record${selected.size === 1 ? '' : 's'}`}
-        wide={bulkHasLooseReferences}
+        title={`Delete ${selected.size} record${selected.size === 1 ? '' : 's'}?`}
+        wide={bulkHasPermanentItems || bulkHasLooseReferences}
         message={
           <>
-            <p>{bulkDeleteMessage()}</p>
-            {bulkHasLooseReferences && (
-              <>
-                <p>The following records reference the selected items:</p>
-                <ul className="cascade-reference-groups">
-                  {bulkLooseGroups.map((group) => (
-                    <li key={group.label}>
-                      <p className="cascade-reference-group-label">
-                        {group.count} {group.label}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            <p className="confirm-dialog-warning">Deleting {bulkSubject} cannot be undone.</p>
+            <div className="confirm-dialog-sections">
+              {bulkHasPermanentItems && (
+                <div className="confirm-dialog-section">
+                  <h3 className="confirm-dialog-section-title">
+                    Permanently deleted
+                    <span className="confirm-dialog-section-count">{bulkPermanentCount}</span>
+                  </h3>
+                  <ul className="cascade-reference-groups">
+                    {bulkPermanentItems.map((item) => (
+                      <li key={item.key}>
+                        <p className="cascade-reference-group-label">
+                          {item.count} {item.label}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {bulkHasLooseReferences && (
+                <div className="confirm-dialog-section">
+                  <h3 className="confirm-dialog-section-title">
+                    Referenced by
+                    <span className="confirm-dialog-section-count">{bulkReferenceCount}</span>
+                  </h3>
+                  <ul className="cascade-reference-groups">
+                    {bulkLooseGroups.map((group) => (
+                      <li key={group.label}>
+                        <p className="cascade-reference-group-label">
+                          {group.count} {group.label}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </>
         }
         confirmLabel={bulkHasLooseReferences ? 'Delete and clear references' : 'Delete'}

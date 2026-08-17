@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api, type CascadePreview } from '../api/client';
-import { buildCascadeSummary } from '../utils/cascadeSummary';
+import { api } from '../api/client';
+import { buildPermanentItems, permanentTotal } from '../utils/cascadeSummary';
 import { ConfirmDialog } from './ConfirmDialog';
 import './Layout.css';
 
@@ -11,18 +11,6 @@ interface RecordDeleteButtonProps {
   sysId: string;
   recordLabel: string;
   listPath: string;
-}
-
-function summarize(recordLabel: string, preview?: CascadePreview): string {
-  const fallback = `Are you sure you want to permanently delete "${recordLabel}"? This action cannot be undone.`;
-  if (!preview) return fallback;
-  const cascadeParts = preview.cascade_children.map((child) => `${child.count} ${child.label}`);
-  return buildCascadeSummary(
-    `Deleting "${recordLabel}"`,
-    cascadeParts,
-    preview.peripheral,
-    fallback,
-  );
 }
 
 export function RecordDeleteButton({
@@ -58,31 +46,97 @@ export function RecordDeleteButton({
   const preview = previewQuery.data;
   const looseReferences = preview?.loose_references ?? [];
   const hasLooseReferences = looseReferences.length > 0;
+  const permanentItems = buildPermanentItems(
+    preview?.cascade_children ?? [],
+    preview?.peripheral ?? {},
+  );
+  const hasPermanentItems = permanentItems.length > 0;
+  const permanentCount = permanentTotal(permanentItems);
+  const referenceCount = looseReferences.reduce((sum, group) => sum + group.records.length, 0);
   const isBusy = deleteMutation.isPending || (confirmOpen && previewQuery.isLoading);
+  const isWide = hasPermanentItems || hasLooseReferences;
 
   const message = (
     <>
-      <p>{summarize(recordLabel, preview)}</p>
-      {hasLooseReferences && (
-        <>
-          <p>The following records reference this item:</p>
-          <ul className="cascade-reference-groups">
-            {looseReferences.map((group) => (
-              <li key={`${group.table}-${group.field}`}>
-                <p className="cascade-reference-group-label">{group.label}</p>
-                <ul className="cascade-reference-group-items">
-                  {group.records.slice(0, 5).map((record) => (
-                    <li key={record.sys_id}>{record.label}</li>
-                  ))}
-                </ul>
-                {group.records.length > 5 && (
-                  <p className="cascade-reference-more">+{group.records.length - 5} more</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+      <p className="confirm-dialog-warning">This action cannot be undone.</p>
+      <div className="confirm-dialog-sections">
+        {hasPermanentItems && (
+          <div className="confirm-dialog-section">
+            <h3 className="confirm-dialog-section-title">
+              Permanently deleted
+              <span className="confirm-dialog-section-count">{permanentCount}</span>
+            </h3>
+            <ul className="cascade-reference-groups">
+              {permanentItems.map((item) => (
+                <li key={item.key}>
+                  <p className="cascade-reference-group-label">
+                    {item.records.length > 0 ? item.label : `${item.count} ${item.label}`}
+                  </p>
+                  {item.records.length > 0 && (
+                    <ul className="cascade-reference-group-items">
+                      {item.records.map((record) => (
+                        <li key={record.sys_id}>
+                          {record.relationship ? (
+                            record.relationship.direction === 'outgoing' ? (
+                              <>
+                                <span className="cascade-relationship-this">this</span>{' '}
+                                <span className="badge badge-accent">
+                                  {record.relationship.type}
+                                </span>
+                                {' \u2192 '}
+                                {record.label}
+                              </>
+                            ) : (
+                              <>
+                                {record.label}{' '}
+                                <span className="badge badge-accent">
+                                  {record.relationship.type}
+                                </span>
+                                {' \u2192 '}
+                                <span className="cascade-relationship-this">this</span>
+                              </>
+                            )
+                          ) : (
+                            record.label
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {item.count > item.records.length && (
+                    <p className="cascade-reference-more">
+                      +{item.count - item.records.length} more
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {hasLooseReferences && (
+          <div className="confirm-dialog-section">
+            <h3 className="confirm-dialog-section-title">
+              Referenced by
+              <span className="confirm-dialog-section-count">{referenceCount}</span>
+            </h3>
+            <ul className="cascade-reference-groups">
+              {looseReferences.map((group) => (
+                <li key={`${group.table}-${group.field}`}>
+                  <p className="cascade-reference-group-label">{group.label}</p>
+                  <ul className="cascade-reference-group-items">
+                    {group.records.slice(0, 5).map((record) => (
+                      <li key={record.sys_id}>{record.label}</li>
+                    ))}
+                  </ul>
+                  {group.records.length > 5 && (
+                    <p className="cascade-reference-more">+{group.records.length - 5} more</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </>
   );
 
@@ -101,10 +155,10 @@ export function RecordDeleteButton({
       </button>
       <ConfirmDialog
         open={confirmOpen}
-        title="Delete record"
+        title={`Delete "${recordLabel}"?`}
         message={message}
         error={error}
-        wide={hasLooseReferences}
+        wide={isWide}
         confirmLabel={hasLooseReferences ? 'Delete and clear references' : 'Delete'}
         pendingLabel="Deleting…"
         onConfirm={() => deleteMutation.mutate(hasLooseReferences ? 'clear' : undefined)}
