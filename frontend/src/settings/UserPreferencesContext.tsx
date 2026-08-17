@@ -31,10 +31,12 @@ interface UserPreferencesContextValue {
   layoutDensity: LayoutDensity;
   sidebarExpanded: boolean;
   colorScheme: ColorScheme;
+  pinnedNavItems: string[];
   setDateDisplayFormat: (format: DateDisplayFormat) => void;
   setLayoutDensity: (density: LayoutDensity) => void;
   setSidebarExpanded: (expanded: boolean) => void;
   setColorScheme: (scheme: ColorScheme) => void;
+  setPinnedNavItems: (items: string[]) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextValue | null>(null);
@@ -153,6 +155,17 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     [persistPreferences],
   );
 
+  const setPinnedNavItems = useCallback(
+    (pinnedNavItems: string[]) => {
+      setPreferences((current) => {
+        const next = { ...current, pinnedNavItems };
+        void persistPreferences(next);
+        return next;
+      });
+    },
+    [persistPreferences],
+  );
+
   const value = useMemo(
     () => ({
       preferences,
@@ -161,10 +174,12 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       layoutDensity: preferences.layoutDensity,
       sidebarExpanded: preferences.sidebarExpanded,
       colorScheme: preferences.colorScheme,
+      pinnedNavItems: preferences.pinnedNavItems,
       setDateDisplayFormat,
       setLayoutDensity,
       setSidebarExpanded,
       setColorScheme,
+      setPinnedNavItems,
     }),
     [
       preferences,
@@ -173,6 +188,7 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       setLayoutDensity,
       setSidebarExpanded,
       setColorScheme,
+      setPinnedNavItems,
     ],
   );
 
@@ -191,10 +207,12 @@ export function useUserPreferences(): UserPreferencesContextValue {
       layoutDensity: DEFAULT_USER_PREFERENCES.layoutDensity,
       sidebarExpanded: DEFAULT_USER_PREFERENCES.sidebarExpanded,
       colorScheme: DEFAULT_USER_PREFERENCES.colorScheme,
+      pinnedNavItems: DEFAULT_USER_PREFERENCES.pinnedNavItems,
       setDateDisplayFormat: () => {},
       setLayoutDensity: () => {},
       setSidebarExpanded: () => {},
       setColorScheme: () => {},
+      setPinnedNavItems: () => {},
     };
   }
   return context;

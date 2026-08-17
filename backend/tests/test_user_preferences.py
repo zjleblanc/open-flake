@@ -1,4 +1,5 @@
 from app.domain.user_preferences import (
+    DEFAULT_PINNED_NAV_ITEMS,
     DEFAULT_USER_PREFERENCES,
     merge_user_preferences_update,
     normalize_user_preferences,
@@ -33,6 +34,7 @@ def test_normalize_user_preferences_accepts_valid_values():
         "layout_density": "compact",
         "sidebar_expanded": False,
         "color_scheme": "dark",
+        "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
     }
 
 
@@ -48,6 +50,7 @@ def test_merge_user_preferences_update_partial_patch():
         "layout_density": "compact",
         "sidebar_expanded": True,
         "color_scheme": "dark",
+        "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
     }
 
 
@@ -62,9 +65,44 @@ def test_merge_user_preferences_update_ignores_invalid_patch_values():
         "layout_density": "comfortable",
         "sidebar_expanded": False,
         "color_scheme": "dark",
+        "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
     }
 
 
 def test_normalize_user_preferences_accepts_color_scheme():
     result = normalize_user_preferences({"color_scheme": "system"})
     assert result["color_scheme"] == "system"
+
+
+def test_normalize_user_preferences_defaults_pinned_nav_items():
+    result = normalize_user_preferences(None)
+    assert result["pinned_nav_items"] == DEFAULT_PINNED_NAV_ITEMS
+
+
+def test_normalize_user_preferences_coerces_invalid_pinned_nav_items():
+    result = normalize_user_preferences({"pinned_nav_items": "not-a-list"})
+    assert result["pinned_nav_items"] == DEFAULT_PINNED_NAV_ITEMS
+
+    result = normalize_user_preferences({"pinned_nav_items": ["/incidents", 5]})
+    assert result["pinned_nav_items"] == DEFAULT_PINNED_NAV_ITEMS
+
+
+def test_normalize_user_preferences_accepts_custom_pinned_nav_items():
+    custom = ["/incidents", "/integrations/webhooks"]
+    result = normalize_user_preferences({"pinned_nav_items": custom})
+    assert result["pinned_nav_items"] == custom
+
+
+def test_merge_user_preferences_update_replaces_pinned_nav_items():
+    current = DEFAULT_USER_PREFERENCES.copy()
+    result = merge_user_preferences_update(
+        current,
+        {"pinned_nav_items": [*DEFAULT_PINNED_NAV_ITEMS, "/integrations/webhooks"]},
+    )
+    assert result["pinned_nav_items"] == [*DEFAULT_PINNED_NAV_ITEMS, "/integrations/webhooks"]
+
+
+def test_merge_user_preferences_update_ignores_invalid_pinned_nav_items():
+    current = DEFAULT_USER_PREFERENCES.copy()
+    result = merge_user_preferences_update(current, {"pinned_nav_items": ["ok", 1]})
+    assert result["pinned_nav_items"] == DEFAULT_PINNED_NAV_ITEMS

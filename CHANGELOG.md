@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Favorite/pin any page to the sidebar
+
+### Added
+
+- Menu icon next to the breadcrumbs opens a filterable dropdown listing every OpenFlake page. Clicking a row navigates there; clicking the flake on the right favorites/unfavorites it.
+- Favorited pages are pinned to the sidebar; favoriting a child route (e.g. Webhooks) also surfaces its parent group as a container. Pure container groups with no route of their own (Integrations, Access) can't be pinned directly.
+- `pinnedNavItems` user preference (`pinned_nav_items` on the backend), defaulting to the core resource tabs (Dashboard, Service Catalog, Requests, Requested Items, Incidents, Problems, Changes, Configuration Items) so they stay pinned until explicitly unfavorited — new favorites are additive, not a replacement.
+- `FlakeIcon` and `MenuIcon` in `NavIcons.tsx`; shared `navConfig.tsx` module for the nav tree so the sidebar and the new dropdown read from one source of truth.
+
+### Changed
+
+- Sidebar now renders only the user's pinned items instead of the full nav tree.
+
 ## 2026-08-16 — Split Access into Users and Groups list views
 
 ### Added

@@ -8,6 +8,7 @@ export interface UserPreferences {
   layoutDensity: LayoutDensity;
   sidebarExpanded: boolean;
   colorScheme: ColorScheme;
+  pinnedNavItems: string[];
 }
 
 export interface UserPreferencesApi {
@@ -15,13 +16,31 @@ export interface UserPreferencesApi {
   layout_density: LayoutDensity;
   sidebar_expanded: boolean;
   color_scheme: ColorScheme;
+  pinned_nav_items: string[];
 }
+
+// Kept in sync with `DEFAULT_PINNED_NAV_ITEMS` in
+// `backend/app/domain/user_preferences.py`. These are the resource tabs
+// pinned to the sidebar out of the box -- they remain favorited until a user
+// explicitly unfavorites them, they are not replaced when new items are
+// favorited.
+export const DEFAULT_PINNED_NAV_ITEMS: string[] = [
+  '/',
+  '/catalog',
+  '/requests',
+  '/requested-items',
+  '/incidents',
+  '/problems',
+  '/changes',
+  '/configuration-items',
+];
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   dateDisplayFormat: 'raw',
   layoutDensity: 'comfortable',
   sidebarExpanded: true,
   colorScheme: 'dark',
+  pinnedNavItems: DEFAULT_PINNED_NAV_ITEMS,
 };
 
 const LEGACY_PREFS_KEY = 'openflake.userPreferences';
@@ -55,7 +74,14 @@ export function fromApiPreferences(
       api?.color_scheme && VALID_COLOR_SCHEMES.has(api.color_scheme)
         ? api.color_scheme
         : DEFAULT_USER_PREFERENCES.colorScheme,
+    pinnedNavItems: isStringArray(api?.pinned_nav_items)
+      ? api.pinned_nav_items
+      : DEFAULT_USER_PREFERENCES.pinnedNavItems,
   };
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
 export function toApiPreferences(preferences: UserPreferences): UserPreferencesApi {
@@ -64,6 +90,7 @@ export function toApiPreferences(preferences: UserPreferences): UserPreferencesA
     layout_density: preferences.layoutDensity,
     sidebar_expanded: preferences.sidebarExpanded,
     color_scheme: preferences.colorScheme,
+    pinned_nav_items: preferences.pinnedNavItems,
   };
 }
 

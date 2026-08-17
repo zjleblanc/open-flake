@@ -4,16 +4,32 @@ DateDisplayFormat = Literal["raw", "local"]
 LayoutDensity = Literal["comfortable", "compact"]
 ColorScheme = Literal["dark", "light", "system"]
 
+DEFAULT_PINNED_NAV_ITEMS: list[str] = [
+    "/",
+    "/catalog",
+    "/requests",
+    "/requested-items",
+    "/incidents",
+    "/problems",
+    "/changes",
+    "/configuration-items",
+]
+
 DEFAULT_USER_PREFERENCES: dict[str, Any] = {
     "date_display_format": "raw",
     "layout_density": "comfortable",
     "sidebar_expanded": True,
     "color_scheme": "dark",
+    "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
 }
 
 _VALID_DATE_DISPLAY_FORMATS = {"raw", "local"}
 _VALID_LAYOUT_DENSITIES = {"comfortable", "compact"}
 _VALID_COLOR_SCHEMES = {"dark", "light", "system"}
+
+
+def _is_valid_pinned_nav_items(value: Any) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) for item in value)
 
 
 def normalize_user_preferences(stored: dict[str, Any] | None) -> dict[str, Any]:
@@ -44,11 +60,16 @@ def normalize_user_preferences(stored: dict[str, Any] | None) -> dict[str, Any]:
     if color_scheme not in _VALID_COLOR_SCHEMES:
         color_scheme = DEFAULT_USER_PREFERENCES["color_scheme"]
 
+    pinned_nav_items = merged.get("pinned_nav_items")
+    if not _is_valid_pinned_nav_items(pinned_nav_items):
+        pinned_nav_items = list(DEFAULT_PINNED_NAV_ITEMS)
+
     return {
         "date_display_format": date_display_format,
         "layout_density": layout_density,
         "sidebar_expanded": sidebar_expanded,
         "color_scheme": color_scheme,
+        "pinned_nav_items": pinned_nav_items,
     }
 
 
@@ -81,5 +102,10 @@ def merge_user_preferences_update(
         value = patch["color_scheme"]
         if value in _VALID_COLOR_SCHEMES:
             update["color_scheme"] = value
+
+    if "pinned_nav_items" in patch:
+        value = patch["pinned_nav_items"]
+        if _is_valid_pinned_nav_items(value):
+            update["pinned_nav_items"] = value
 
     return normalize_user_preferences({**base, **update})

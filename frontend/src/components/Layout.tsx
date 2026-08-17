@@ -1,102 +1,12 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useUserPreferences } from '../settings/UserPreferencesContext';
 import openFlakeSm from '../assets/images/open_flake_sm.png';
-import {
-  AccessIcon,
-  CatalogIcon,
-  ChangeIcon,
-  ConfigurationItemIcon,
-  DashboardIcon,
-  IncidentIcon,
-  IntegrationsIcon,
-  ProblemIcon,
-  RequestedItemIcon,
-  RequestIcon,
-  SecretIcon,
-  SettingsIcon,
-  UsersIcon,
-  WebhookIcon,
-} from './NavIcons';
-import { HierarchyIcon } from './DetailIcons';
+import { isNavGroup, NAV, type NavEntry } from './navConfig';
 import { PageHeaderProvider } from './PageHeaderContext';
 import { TopNavbar } from './TopNavbar';
 import './Layout.css';
-
-type NavLeaf = {
-  to: string;
-  label: string;
-  icon: ReactNode;
-  permission?: string;
-};
-
-type NavGroup = {
-  id: string;
-  label: string;
-  icon: ReactNode;
-  to?: string;
-  permission?: string;
-  children: NavLeaf[];
-};
-
-type NavEntry = NavLeaf | NavGroup;
-
-function isNavGroup(entry: NavEntry): entry is NavGroup {
-  return 'children' in entry;
-}
-
-const NAV: NavEntry[] = [
-  { to: '/', label: 'Dashboard', icon: <DashboardIcon /> },
-  {
-    id: 'catalog',
-    label: 'Service Catalog',
-    icon: <CatalogIcon />,
-    to: '/catalog',
-    children: [
-      { to: '/requests', label: 'Requests', icon: <RequestIcon /> },
-      { to: '/requested-items', label: 'Requested Items', icon: <RequestedItemIcon /> },
-    ],
-  },
-  { to: '/incidents', label: 'Incidents', icon: <IncidentIcon /> },
-  { to: '/problems', label: 'Problems', icon: <ProblemIcon /> },
-  { to: '/changes', label: 'Changes', icon: <ChangeIcon /> },
-  {
-    to: '/configuration-items',
-    label: 'Configuration Items',
-    icon: <ConfigurationItemIcon />,
-  },
-  {
-    id: 'integrations',
-    label: 'Integrations',
-    icon: <IntegrationsIcon />,
-    children: [
-      { to: '/integrations/webhooks', label: 'Webhooks', icon: <WebhookIcon /> },
-      {
-        to: '/integrations/secrets',
-        label: 'Secrets',
-        icon: <SecretIcon />,
-        permission: 'secrets.read',
-      },
-    ],
-  },
-  {
-    id: 'access',
-    label: 'Access',
-    icon: <AccessIcon />,
-    permission: 'users.read',
-    children: [
-      { to: '/access/users', label: 'Users', icon: <UsersIcon /> },
-      {
-        to: '/access/groups',
-        label: 'Groups',
-        icon: <HierarchyIcon />,
-        permission: 'groups.read',
-      },
-    ],
-  },
-  { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
-];
 
 function ChevronLeftIcon() {
   return (
@@ -142,7 +52,8 @@ function ChevronDownIcon() {
 
 export function Layout() {
   const { hasPermission } = useAuth();
-  const { sidebarExpanded, setSidebarExpanded } = useUserPreferences();
+  const { sidebarExpanded, setSidebarExpanded, pinnedNavItems, setPinnedNavItems } =
+    useUserPreferences();
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     catalog: true,
@@ -168,6 +79,35 @@ export function Layout() {
     });
   }, [hasPermission]);
 
+  const pinnedSet = useMemo(() => new Set(pinnedNavItems), [pinnedNavItems]);
+
+  // Sidebar shows only favorited items. A group surfaces if its own route is
+  // favorited and/or any of its children are — only the favorited children
+  // are rendered underneath it. Groups with no `to` of their own (pure
+  // containers like Integrations/Access) only ever appear via their children.
+  const sidebarNav = useMemo((): NavEntry[] => {
+    return visibleNav.flatMap((item): NavEntry[] => {
+      if (!isNavGroup(item)) {
+        return pinnedSet.has(item.to) ? [item] : [];
+      }
+      const children = item.children.filter((child) => pinnedSet.has(child.to));
+      const parentPinned = Boolean(item.to && pinnedSet.has(item.to));
+      if (!children.length && !parentPinned) {
+        return [];
+      }
+      return [{ ...item, children }];
+    });
+  }, [visibleNav, pinnedSet]);
+
+  const togglePin = useCallback(
+    (to: string) => {
+      setPinnedNavItems(
+        pinnedSet.has(to) ? pinnedNavItems.filter((item) => item !== to) : [...pinnedNavItems, to],
+      );
+    },
+    [pinnedNavItems, pinnedSet, setPinnedNavItems],
+  );
+
   function toggleGroup(id: string) {
     setOpenGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   }
@@ -181,7 +121,7 @@ export function Layout() {
             <span className="brand-text">OpenFlake</span>
           </div>
           <nav className="sidebar-nav">
-            {visibleNav.map((item) => {
+            {sidebarNav.map((item) => {
               if (!isNavGroup(item)) {
                 return (
                   <NavLink
@@ -205,7 +145,8 @@ export function Layout() {
                 item.to &&
                 (location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)),
               );
-              const expanded = openGroups[item.id] ?? childActive;
+              const hasChildren = item.children.length > 0;
+              const expanded = hasChildren && (openGroups[item.id] ?? childActive);
 
               if (!sidebarExpanded) {
                 const target = item.to ?? item.children[0].to;
@@ -236,15 +177,17 @@ export function Layout() {
                         <span className="nav-link-icon">{item.icon}</span>
                         <span className="nav-link-label">{item.label}</span>
                       </NavLink>
-                      <button
-                        type="button"
-                        className={`nav-group-chevron-btn${expanded ? ' open' : ''}`}
-                        onClick={() => toggleGroup(item.id)}
-                        aria-expanded={expanded}
-                        aria-label={expanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
-                      >
-                        <ChevronDownIcon />
-                      </button>
+                      {hasChildren && (
+                        <button
+                          type="button"
+                          className={`nav-group-chevron-btn${expanded ? ' open' : ''}`}
+                          onClick={() => toggleGroup(item.id)}
+                          aria-expanded={expanded}
+                          aria-label={expanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
+                        >
+                          <ChevronDownIcon />
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -297,7 +240,11 @@ export function Layout() {
           </div>
         </aside>
         <div className="main-column">
-          <TopNavbar />
+          <TopNavbar
+            navItems={visibleNav}
+            pinnedNavItems={pinnedNavItems}
+            onTogglePin={togglePin}
+          />
           <main className="content">
             <div className="content-body">
               <Outlet />

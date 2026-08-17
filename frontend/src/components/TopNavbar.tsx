@@ -4,7 +4,9 @@ import { useAuth } from '../auth/AuthContext';
 import { useUserPreferences } from '../settings/UserPreferencesContext';
 import { Breadcrumbs } from './Breadcrumbs';
 import { ColorSchemeSelector, LayoutDensitySelector, ToggleSwitch } from './DetailFieldControls';
-import { SignOutIcon } from './NavIcons';
+import { MenuIcon, SignOutIcon } from './NavIcons';
+import type { NavEntry } from './navConfig';
+import { NavMenuDropdown } from './NavMenuDropdown';
 import { usePageHeaderContext } from './PageHeaderContext';
 
 function userInitials(userName: string): string {
@@ -15,7 +17,13 @@ function userInitials(userName: string): string {
   return userName.slice(0, 2).toUpperCase();
 }
 
-export function TopNavbar() {
+interface TopNavbarProps {
+  navItems: NavEntry[];
+  pinnedNavItems: string[];
+  onTogglePin: (to: string) => void;
+}
+
+export function TopNavbar({ navItems, pinnedNavItems, onTogglePin }: TopNavbarProps) {
   const { header } = usePageHeaderContext();
   const { user, logout: authLogout } = useAuth();
   const {
@@ -29,6 +37,8 @@ export function TopNavbar() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
+  const navMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -51,6 +61,30 @@ export function TopNavbar() {
     };
   }, [menuOpen]);
 
+  // The trigger button and the dropdown share `navMenuRef` so a click on the
+  // trigger itself never counts as "outside" -- see the `menuRef` pattern
+  // above for the user menu, which this mirrors.
+  useEffect(() => {
+    if (!navMenuOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (navMenuRef.current && !navMenuRef.current.contains(e.target as Node)) {
+        setNavMenuOpen(false);
+      }
+    }
+
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setNavMenuOpen(false);
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [navMenuOpen]);
+
   function logout() {
     setMenuOpen(false);
     authLogout();
@@ -60,6 +94,27 @@ export function TopNavbar() {
   return (
     <header className="top-navbar">
       <div className="top-navbar-start">
+        <div className="nav-menu-root" ref={navMenuRef}>
+          <button
+            type="button"
+            className="nav-menu-trigger"
+            onClick={() => setNavMenuOpen((open) => !open)}
+            aria-expanded={navMenuOpen}
+            aria-haspopup="menu"
+            aria-label="Browse all OpenFlake pages"
+            title="Browse all pages"
+          >
+            <MenuIcon size={18} />
+          </button>
+          {navMenuOpen && (
+            <NavMenuDropdown
+              items={navItems}
+              pinnedNavItems={pinnedNavItems}
+              onTogglePin={onTogglePin}
+              onClose={() => setNavMenuOpen(false)}
+            />
+          )}
+        </div>
         {header.breadcrumbs.length > 0 && <Breadcrumbs items={header.breadcrumbs} />}
         {header.badge && <div className="top-navbar-badge">{header.badge}</div>}
       </div>
