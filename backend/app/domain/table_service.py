@@ -449,6 +449,7 @@ async def create_record(
             flat["user_password"] = hash_password(pwd)
     sys_id = flat.pop("sys_id", None) or new_sys_id()
     flat["sys_id"] = sys_id
+    flat.pop("sys_mod_count", None)
     audit_username = await _resolve_audit_username(db, user_sys_id, auth)
     if audit_username:
         flat["sys_created_by"] = audit_username
@@ -533,6 +534,7 @@ async def update_record(
         if not pwd.startswith("$2"):
             flat["user_password"] = hash_password(pwd)
     flat.pop("sys_id", None)
+    flat.pop("sys_mod_count", None)
     audit_username = await _resolve_audit_username(db, user_sys_id, auth)
     if audit_username:
         flat["sys_updated_by"] = audit_username
@@ -545,6 +547,8 @@ async def update_record(
         current = dict(record.other or {})
         current.update(other_update)
         record.other = current
+    if hasattr(record, "sys_mod_count"):
+        record.sys_mod_count = (record.sys_mod_count or 0) + 1
 
     await db.flush()
     result = _model_to_dict(record, table, exclude_links)

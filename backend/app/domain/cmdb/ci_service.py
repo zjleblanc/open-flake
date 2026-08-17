@@ -159,6 +159,7 @@ async def create_cmdb_ci(
     columns["sys_id"] = sys_id
     columns["sys_class_name"] = resolved_class
     columns["sys_class_path"] = compute_class_path(resolved_class)
+    columns.pop("sys_mod_count", None)
 
     audit_username = await _resolve_audit_username(db, user_sys_id, auth)
     if audit_username:
@@ -201,6 +202,7 @@ async def update_cmdb_ci(
     columns, attributes = split_payload(class_name, payload)
     columns.pop("sys_id", None)
     columns.pop("sys_class_name", None)
+    columns.pop("sys_mod_count", None)
 
     audit_username = await _resolve_audit_username(db, user_sys_id, auth)
     if audit_username:
@@ -215,6 +217,8 @@ async def update_cmdb_ci(
         current = dict(record.attributes or {})
         current.update(attributes)
         record.attributes = current
+
+    record.sys_mod_count = (record.sys_mod_count or 0) + 1
 
     await db.flush()
     result = merge_record(record, exclude_links=exclude_links)

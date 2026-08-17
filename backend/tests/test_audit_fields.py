@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 import pytest
 from app.auth.deps import AuthContext
 from app.domain.table_service import _resolve_audit_username, create_record, update_record
-from app.models import CmdbCi, SysUser
+from app.models import CmdbCi, LifecycleMixin, SysComment, SysUser
 
 
 @pytest.mark.asyncio
@@ -128,3 +128,113 @@ async def test_update_record_sets_username_sys_updated_by():
     assert record.sys_updated_by == "jsmith"
     assert result["sys_updated_by"] == "jsmith"
     assert result["sys_created_by"] == "admin"
+
+
+def test_lifecycle_mixin_sys_mod_count_defaults_to_zero():
+    column = CmdbCi.__table__.columns["sys_mod_count"]
+    assert column.default.arg == 0
+    assert issubclass(CmdbCi, LifecycleMixin)
+
+
+@pytest.mark.asyncio
+async def test_update_record_increments_sys_mod_count_for_non_cmdb_table():
+    db = AsyncMock()
+    record = SysComment(
+        sys_id="c1",
+        table_name="incident",
+        record_sys_id="inc1",
+        comment="hello",
+        sys_mod_count=0,
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "app.domain.table_service.TABLE_MODELS",
+            {"sys_comment": SysComment},
+        )
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        result = await update_record(db, "sys_comment", "c1", {"comment": "updated"})
+
+    assert record.sys_mod_count == 1
+    assert result["sys_mod_count"] == "1"
+
+
+@pytest.mark.asyncio
+async def test_update_record_increments_sys_mod_count():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user2", user_name="jsmith", auth_method="basic")
+    record = CmdbCi(
+        sys_id="ci1",
+        name="test-host",
+        sys_class_name="cmdb_ci_linux_server",
+        sys_mod_count=2,
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "app.domain.table_service.TABLE_MODELS",
+            {"cmdb_ci": CmdbCi},
+        )
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        mp.setattr(
+            "app.domain.cmdb.ci_service.assert_record_action",
+            AsyncMock(),
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.split_payload",
+            lambda _class, payload: (payload, {}),
+        )
+        result = await update_record(
+            db,
+            "cmdb_ci",
+            "ci1",
+            {"short_description": "updated"},
+            auth.user_sys_id,
+            auth=auth,
+        )
+
+    assert record.sys_mod_count == 3
+    assert result["sys_mod_count"] == "3"
+
+
+@pytest.mark.asyncio
+async def test_update_record_ignores_client_supplied_sys_mod_count():
+    db = AsyncMock()
+    auth = AuthContext(user_sys_id="user2", user_name="jsmith", auth_method="basic")
+    record = CmdbCi(
+        sys_id="ci1",
+        name="test-host",
+        sys_class_name="cmdb_ci_linux_server",
+        sys_mod_count=2,
+    )
+    db.get = AsyncMock(return_value=record)
+    db.flush = AsyncMock()
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(
+            "app.domain.table_service.TABLE_MODELS",
+            {"cmdb_ci": CmdbCi},
+        )
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+        mp.setattr(
+            "app.domain.cmdb.ci_service.assert_record_action",
+            AsyncMock(),
+        )
+        mp.setattr(
+            "app.domain.cmdb.ci_service.split_payload",
+            lambda _class, payload: (payload, {}),
+        )
+        await update_record(
+            db,
+            "cmdb_ci",
+            "ci1",
+            {"sys_mod_count": 999},
+            auth.user_sys_id,
+            auth=auth,
+        )
+
+    assert record.sys_mod_count == 3

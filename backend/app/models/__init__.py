@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql.functions import now as sa_now
 
 from app.db import Base
 
@@ -11,21 +12,26 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
-class TimestampMixin:
+class LifecycleMixin:
+    """Record lifecycle fields: creation/update timestamps, audit usernames, and mod count."""
+
     sys_created_on: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=utcnow, server_default=func.now()
+        DateTime(timezone=True), default=utcnow, server_default=sa_now()
     )
     sys_updated_on: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=utcnow,
         onupdate=utcnow,
-        server_default=func.now(),
+        server_default=sa_now(),
     )
     sys_created_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
     sys_updated_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    sys_mod_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
 
 
 class OwnershipMixin:
+    """Record ownership fields: individual owner and owning group references."""
+
     owner: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     owner_group: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
 
@@ -51,7 +57,7 @@ class NumberSequence(Base):
     last_value: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
-class SysUser(Base, TimestampMixin):
+class SysUser(Base, LifecycleMixin):
     __tablename__ = "sys_user"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -75,7 +81,7 @@ class SysUser(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class SysUserGroup(Base, TimestampMixin):
+class SysUserGroup(Base, LifecycleMixin):
     __tablename__ = "sys_user_group"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -108,7 +114,7 @@ class SysGroupRole(Base):
     role_sys_id: Mapped[str] = mapped_column(String(32), index=True)
 
 
-class RecordAccessGrant(Base, TimestampMixin):
+class RecordAccessGrant(Base, LifecycleMixin):
     __tablename__ = "record_access_grant"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -122,7 +128,7 @@ class RecordAccessGrant(Base, TimestampMixin):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-class SysComment(Base, TimestampMixin):
+class SysComment(Base, LifecycleMixin):
     __tablename__ = "sys_comment"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -131,7 +137,7 @@ class SysComment(Base, TimestampMixin):
     comment: Mapped[str] = mapped_column(Text, default="")
 
 
-class SysUserGrMember(Base, TimestampMixin):
+class SysUserGrMember(Base, LifecycleMixin):
     __tablename__ = "sys_user_grmember"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -173,7 +179,7 @@ class ApiKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
-class Incident(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class Incident(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "incident"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -203,7 +209,7 @@ class Incident(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class Problem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class Problem(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "problem"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -229,7 +235,7 @@ class Problem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ProblemTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ProblemTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "problem_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -251,7 +257,7 @@ class ProblemTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ChangeRequest(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "change_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -289,7 +295,7 @@ class ChangeRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ChangeTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ChangeTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "change_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -338,7 +344,7 @@ class CmdbClassField(Base):
     storage: Mapped[str] = mapped_column(String(16), default="attributes")
 
 
-class CmdbCi(Base, TimestampMixin, OwnershipMixin):
+class CmdbCi(Base, LifecycleMixin, OwnershipMixin):
     __tablename__ = "cmdb_ci"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -372,7 +378,7 @@ class CmdbRelType(Base):
     name: Mapped[str] = mapped_column(String(256))
 
 
-class CmdbRelCi(Base, TimestampMixin):
+class CmdbRelCi(Base, LifecycleMixin):
     __tablename__ = "cmdb_rel_ci"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -383,7 +389,7 @@ class CmdbRelCi(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ScRequest(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "sc_request"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -411,7 +417,7 @@ class ScRequest(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScTask(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ScTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     __tablename__ = "sc_task"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -448,7 +454,7 @@ class StdChangeProducerVersion(Base):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class SysAttachment(Base, TimestampMixin):
+class SysAttachment(Base, LifecycleMixin):
     __tablename__ = "sys_attachment"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
@@ -460,7 +466,6 @@ class SysAttachment(Base, TimestampMixin):
     storage_path: Mapped[str] = mapped_column(String(1024))
     hash: Mapped[str | None] = mapped_column(String(256), nullable=True)
     state: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    sys_mod_count: Mapped[str | None] = mapped_column(String(16), nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
@@ -493,7 +498,7 @@ class ServiceCatalogItem(Base):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ItemOptionNew(Base, TimestampMixin):
+class ItemOptionNew(Base, LifecycleMixin):
     """Catalog item variable / form field definition."""
 
     __tablename__ = "item_option_new"
@@ -516,7 +521,7 @@ class ItemOptionNew(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ItemOptionNewCondition(Base, TimestampMixin):
+class ItemOptionNewCondition(Base, LifecycleMixin):
     """Inter-field dependency rules for catalog variables."""
 
     __tablename__ = "item_option_new_condition"
@@ -532,7 +537,7 @@ class ItemOptionNewCondition(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScReqItem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
+class ScReqItem(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     """Requested catalog item (ServiceNow sc_req_item / RITM)."""
 
     __tablename__ = "sc_req_item"
@@ -573,7 +578,7 @@ class ScReqItem(Base, TimestampMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScItemOption(Base, TimestampMixin):
+class ScItemOption(Base, LifecycleMixin):
     """Submitted variable value for a requested item."""
 
     __tablename__ = "sc_item_option"
@@ -585,7 +590,7 @@ class ScItemOption(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class SysSecret(Base, TimestampMixin):
+class SysSecret(Base, LifecycleMixin):
     """Named credential for outbound integrations (referenced as {{secret:name}})."""
 
     __tablename__ = "sys_secret"
@@ -598,7 +603,7 @@ class SysSecret(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScWebhook(Base, TimestampMixin):
+class ScWebhook(Base, LifecycleMixin):
     """Standalone outbound webhook destination (reusable across catalog items)."""
 
     __tablename__ = "sc_webhook"
@@ -614,7 +619,7 @@ class ScWebhook(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScCatItemWebhook(Base, TimestampMixin):
+class ScCatItemWebhook(Base, LifecycleMixin):
     """Attaches a standalone webhook to a catalog item with optional payload override."""
 
     __tablename__ = "sc_cat_item_webhook"
@@ -628,7 +633,7 @@ class ScCatItemWebhook(Base, TimestampMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class ScWebhookLog(Base, TimestampMixin):
+class ScWebhookLog(Base, LifecycleMixin):
     """Delivery log for catalog item webhooks."""
 
     __tablename__ = "sc_webhook_log"

@@ -14,7 +14,11 @@ from app.auth.security import hash_password
 from app.config import get_settings
 from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS, RBAC_RECORD_TABLES
-from app.domain.schema_migrations import AUDIT_USERNAME_TABLES, SCHEMA_COLUMN_MIGRATIONS
+from app.domain.schema_migrations import (
+    AUDIT_USERNAME_TABLES,
+    MOD_COUNT_COLUMN_MIGRATIONS,
+    SCHEMA_COLUMN_MIGRATIONS,
+)
 from app.models import (
     ChangeRequest,
     ChangeTask,
@@ -192,6 +196,29 @@ async def _migrate_cmdb_other_to_attributes(conn) -> None:
     )
 
 
+async def _migrate_sys_attachment_mod_count_type(conn) -> None:
+    """Convert the legacy VARCHAR sys_attachment.sys_mod_count column to INTEGER."""
+    result = await conn.execute(
+        text(
+            "SELECT data_type FROM information_schema.columns "
+            "WHERE table_schema = 'public' "
+            "AND table_name = 'sys_attachment' "
+            "AND column_name = 'sys_mod_count'"
+        )
+    )
+    data_type = result.scalar_one_or_none()
+    if data_type is None or data_type == "integer":
+        return
+    await conn.execute(
+        text(
+            "ALTER TABLE sys_attachment ALTER COLUMN sys_mod_count TYPE INTEGER "
+            "USING COALESCE(NULLIF(sys_mod_count, '')::integer, 0)"
+        )
+    )
+    await conn.execute(text("ALTER TABLE sys_attachment ALTER COLUMN sys_mod_count SET DEFAULT 0"))
+    logger.info("Converted sys_attachment.sys_mod_count from VARCHAR to INTEGER")
+
+
 async def run_migrations():
     async with db.engine.begin() as conn:
         await _migrate_service_catalog_item_table(conn)
@@ -201,11 +228,13 @@ async def run_migrations():
             *RBAC_COLUMN_MIGRATIONS,
             *CMDB_COLUMN_MIGRATIONS,
             *SCHEMA_COLUMN_MIGRATIONS,
+            *MOD_COUNT_COLUMN_MIGRATIONS,
         ]:
             await conn.execute(
                 text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {col_type}')
             )
         await _migrate_cmdb_other_to_attributes(conn)
+        await _migrate_sys_attachment_mod_count_type(conn)
         for table in AUDIT_USERNAME_TABLES:
             for column in ("sys_created_by", "sys_updated_by"):
                 await conn.execute(

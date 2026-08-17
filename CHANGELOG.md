@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Add sys_mod_count as a global field with automated increments
+
+### Added
+
+- `sys_mod_count` global field to all record types (via `LifecycleMixin`).
+- Automated increment logic for `sys_mod_count` in `table_service.py` and `ci_service.py`.
+- Schema migrations to add `sys_mod_count` to all timestamped tables.
+- Migration helper to convert legacy VARCHAR `sys_attachment.sys_mod_count` to INTEGER.
+- Support for `$sys_mod_count` in catalog webhook payload templates and admin previews.
+
+### Changed
+
+- Renamed `TimestampMixin` to `LifecycleMixin` to reflect its expanded scope (timestamps, audit users, and modification tracking).
+
 ## 2026-08-17 — Scope agent guidance into AGENTS.md and Cursor rules
 
 ### Added

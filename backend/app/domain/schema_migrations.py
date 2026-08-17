@@ -213,7 +213,6 @@ SCHEMA_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     # sys_attachment
     ("sys_attachment", "hash", "VARCHAR(256)"),
     ("sys_attachment", "state", "VARCHAR(32)"),
-    ("sys_attachment", "sys_mod_count", "VARCHAR(16)"),
     # sys_role
     ("sys_role", "description", "TEXT"),
     ("sys_role", "suffix", "VARCHAR(64)"),
@@ -221,7 +220,7 @@ SCHEMA_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     ("cmdb_rel_ci", "connection_strength", "VARCHAR(64)"),
 ]
 
-# Tables using TimestampMixin — widen audit columns to store usernames (ServiceNow-compatible).
+# Tables using LifecycleMixin — widen audit columns to store usernames (ServiceNow-compatible).
 AUDIT_USERNAME_TABLES = [
     "sys_user",
     "sys_user_group",
@@ -246,4 +245,9 @@ AUDIT_USERNAME_TABLES = [
     "sc_webhook_log",
     "sys_secret",
     "sys_attachment",
+]
+
+# sys_mod_count applies to every LifecycleMixin table, which is exactly AUDIT_USERNAME_TABLES.
+MOD_COUNT_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
+    (table, "sys_mod_count", "INTEGER DEFAULT 0") for table in AUDIT_USERNAME_TABLES
 ]

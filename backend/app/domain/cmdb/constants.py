@@ -36,6 +36,7 @@ SYSTEM_FIELDS = frozenset(
         "sys_updated_on",
         "sys_created_by",
         "sys_updated_by",
+        "sys_mod_count",
         "owner",
         "owner_group",
         "attributes",

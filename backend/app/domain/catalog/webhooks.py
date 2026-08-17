@@ -67,6 +67,7 @@ DEFAULT_RITM_PREVIEW_RITM: dict[str, Any] = {
     "sys_created_on": "2026-01-01 00:00:00",
     "sys_updated_by": "admin",
     "sys_updated_on": "2026-01-01 00:00:00",
+    "sys_mod_count": "0",
 }
 DEFAULT_RITM_PREVIEW_VARIABLES: dict[str, str] = {
     "example_field": "example_value",
@@ -116,6 +117,7 @@ TEMPLATE_VARIABLES: list[dict[str, str]] = [
     {"name": "$sys_created_on", "description": "Timestamp the RITM was created"},
     {"name": "$sys_updated_by", "description": "User who last updated the RITM"},
     {"name": "$sys_updated_on", "description": "Timestamp the RITM was last updated"},
+    {"name": "$sys_mod_count", "description": "Number of updates since record creation"},
     {"name": "$request_item_json", "description": "Full request_item object as JSON"},
     {"name": "$variables_json", "description": "All variable answers as a JSON object"},
     {
