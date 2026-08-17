@@ -14,7 +14,7 @@ import { GovernanceIcon, OverviewIcon, SystemIcon } from '../components/DetailIc
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordDeleteButton } from '../components/RecordDeleteButton';
 import { OFSelect } from '../components/OFSelect';
-import { referenceHref, refSysId } from '../utils/referenceFields';
+import { isReferenceDeleted, referenceHref, refSysId } from '../utils/referenceFields';
 import '../components/Layout.css';
 
 const RESOURCE = 'groups';
@@ -172,6 +172,7 @@ export function GroupDetailPage() {
         label={label}
         value={data[`${key}_display_value`] || sysIdValue}
         href={sysIdValue ? referenceHref(target, sysIdValue) : undefined}
+        deleted={isReferenceDeleted(data, key)}
       />
     );
   };

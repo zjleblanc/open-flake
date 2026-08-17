@@ -743,7 +743,7 @@ async def _seed_changes(session, ctx: LabContext) -> None:
             "requested_by": ctx.users["tchen"],
             "assigned_to": ctx.users["mwilson"],
             "assignment_group": server,
-            "std_change_producer_version": ctx.std_change_id or "",
+            "std_change_producer_version": ctx.std_change_id,
         },
         ctx.admin_id,
     )

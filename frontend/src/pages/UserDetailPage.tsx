@@ -14,7 +14,7 @@ import { OverviewIcon, SystemIcon } from '../components/DetailIcons';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordDeleteButton } from '../components/RecordDeleteButton';
 import { OFSelect } from '../components/OFSelect';
-import { referenceHref, refSysId } from '../utils/referenceFields';
+import { isReferenceDeleted, referenceHref, refSysId } from '../utils/referenceFields';
 import '../components/Layout.css';
 
 const RESOURCE = 'users';
@@ -158,6 +158,7 @@ export function UserDetailPage() {
                     label="Manager"
                     value={data.manager_display_value || managerSysId}
                     href={managerSysId ? referenceHref('user', managerSysId) : undefined}
+                    deleted={isReferenceDeleted(data, 'manager')}
                   />
                 )}
               </DetailFieldGroup>

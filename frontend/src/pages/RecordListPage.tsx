@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { api, getRecordPermissions, stateBadge, stateLabel } from '../api/client';
+import {
+  api,
+  getRecordPermissions,
+  stateBadge,
+  stateLabel,
+  type CascadePreview,
+} from '../api/client';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { buildCascadeSummary } from '../utils/cascadeSummary';
 import { EmptyValue } from '../components/EmptyValue';
 import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { usePageHeader } from '../components/PageHeaderContext';
@@ -109,10 +116,25 @@ export function RecordListPage({
     },
   });
 
+  const selectedIds = useMemo(() => [...selected], [selected]);
+
+  const bulkPreviewQuery = useQuery({
+    queryKey: ['cascade-preview', resource, selectedIds],
+    queryFn: () => Promise.all(selectedIds.map((sysId) => api.getCascadePreview(resource, sysId))),
+    enabled: confirmOpen && selectedIds.length > 0,
+    staleTime: 0,
+  });
+
   const bulkDeleteMutation = useMutation({
-    mutationFn: async (sysIds: string[]) => {
+    mutationFn: async ({
+      sysIds,
+      refMode,
+    }: {
+      sysIds: string[];
+      refMode?: 'clear' | 'cascade';
+    }) => {
       const results = await Promise.allSettled(
-        sysIds.map((sysId) => api.deleteRecord(resource, sysId)),
+        sysIds.map((sysId) => api.deleteRecord(resource, sysId, refMode)),
       );
       const succeeded = results.filter((result) => result.status === 'fulfilled').length;
       const failed = results.length - succeeded;
@@ -141,6 +163,22 @@ export function RecordListPage({
     },
   });
 
+  const bulkPreviews = bulkPreviewQuery.data;
+  const bulkLooseGroups = useMemo(() => {
+    if (!bulkPreviews) return [];
+    const groups = new Map<string, { label: string; count: number }>();
+    for (const preview of bulkPreviews) {
+      for (const group of preview.loose_references) {
+        const key = `${group.table}:${group.field}`;
+        const current = groups.get(key) ?? { label: group.label, count: 0 };
+        current.count += group.records.length;
+        groups.set(key, current);
+      }
+    }
+    return [...groups.values()];
+  }, [bulkPreviews]);
+  const bulkHasLooseReferences = bulkLooseGroups.length > 0;
+
   const toggleSelect = (sysId: string) => {
     setSelected((current) => {
       const next = new Set(current);
@@ -167,6 +205,37 @@ export function RecordListPage({
   };
 
   const selectedLabels = records.filter((record) => selected.has(record.sys_id)).map(recordLabel);
+
+  function bulkDeleteMessage(): string {
+    const fallback =
+      selected.size === 1
+        ? `Are you sure you want to permanently delete "${selectedLabels[0]}"? This action cannot be undone.`
+        : `Are you sure you want to permanently delete ${selected.size} records? This action cannot be undone.${
+            selectedLabels.length > 0
+              ? ` (${selectedLabels.slice(0, 3).join(', ')}${selectedLabels.length > 3 ? ', …' : ''})`
+              : ''
+          }`;
+    if (!bulkPreviews) return fallback;
+
+    const cascadeTotals = new Map<string, { label: string; count: number }>();
+    const peripheralTotals: Record<string, number> = {};
+    for (const preview of bulkPreviews as CascadePreview[]) {
+      for (const child of preview.cascade_children) {
+        const current = cascadeTotals.get(child.table) ?? { label: child.label, count: 0 };
+        current.count += child.count;
+        cascadeTotals.set(child.table, current);
+      }
+      for (const [key, count] of Object.entries(preview.peripheral)) {
+        peripheralTotals[key] = (peripheralTotals[key] ?? 0) + count;
+      }
+    }
+    const cascadeParts = [...cascadeTotals.values()].map(
+      (entry) => `${entry.count} ${entry.label}`,
+    );
+    const subject =
+      selected.size === 1 ? `Deleting "${selectedLabels[0]}"` : `Deleting ${selected.size} records`;
+    return buildCascadeSummary(subject, cascadeParts, peripheralTotals, fallback);
+  }
 
   const headerBreadcrumbs = useMemo(() => [{ label: title }], [title]);
   const headerActions = useMemo(
@@ -346,20 +415,48 @@ export function RecordListPage({
       <ConfirmDialog
         open={confirmOpen}
         title={`Delete ${selected.size} record${selected.size === 1 ? '' : 's'}`}
+        wide={bulkHasLooseReferences}
         message={
-          selected.size === 1
-            ? `Are you sure you want to permanently delete "${selectedLabels[0]}"? This action cannot be undone.`
-            : `Are you sure you want to permanently delete ${selected.size} records? This action cannot be undone.${
-                selectedLabels.length > 0
-                  ? ` (${selectedLabels.slice(0, 3).join(', ')}${
-                      selectedLabels.length > 3 ? ', …' : ''
-                    })`
-                  : ''
-              }`
+          <>
+            <p>{bulkDeleteMessage()}</p>
+            {bulkHasLooseReferences && (
+              <>
+                <p>The following records reference the selected items:</p>
+                <ul className="cascade-reference-groups">
+                  {bulkLooseGroups.map((group) => (
+                    <li key={group.label}>
+                      <p className="cascade-reference-group-label">
+                        {group.count} {group.label}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
         }
-        onConfirm={() => bulkDeleteMutation.mutate([...selected])}
+        confirmLabel={bulkHasLooseReferences ? 'Delete and clear references' : 'Delete'}
+        pendingLabel="Deleting…"
+        onConfirm={() =>
+          bulkDeleteMutation.mutate({
+            sysIds: selectedIds,
+            refMode: bulkHasLooseReferences ? 'clear' : undefined,
+          })
+        }
+        extraActions={
+          bulkHasLooseReferences
+            ? [
+                {
+                  label: 'Delete all',
+                  pendingLabel: 'Deleting…',
+                  onClick: () =>
+                    bulkDeleteMutation.mutate({ sysIds: selectedIds, refMode: 'cascade' }),
+                },
+              ]
+            : undefined
+        }
         onCancel={() => setConfirmOpen(false)}
-        isPending={bulkDeleteMutation.isPending}
+        isPending={bulkDeleteMutation.isPending || (confirmOpen && bulkPreviewQuery.isLoading)}
       />
     </div>
   );

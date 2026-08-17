@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { EmptyValue } from './EmptyValue';
 import {
+  isReferenceDeleted,
   referenceDisplayValue,
   referenceHref,
   refSysId,
@@ -28,6 +29,13 @@ export function ReferenceLink({ value, record, field, target, className }: Refer
   const sysId = refSysId(value);
   if (!sysId) return <EmptyValue />;
   const label = record && field ? referenceDisplayValue(record, field) : sysId;
+  if (record && field && isReferenceDeleted(record, field)) {
+    return (
+      <span className="reference-link reference-link--deleted" title="This record has been deleted">
+        {label}
+      </span>
+    );
+  }
   return (
     <Link to={referenceHref(target, sysId)} className={className ?? 'reference-link'}>
       {label}

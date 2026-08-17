@@ -24,6 +24,12 @@ from app.auth.rbac import (
 from app.auth.security import create_access_token, hash_api_key, hash_password, verify_password
 from app.config import get_settings
 from app.db import get_db
+from app.domain.registry import (
+    DISPLAY_FIELD_BY_TABLE,
+    PARENT_CHILD_RELATIONS,
+    REVERSE_REFERENCE_MAP,
+    TABLE_MODELS,
+)
 from app.domain.table_service import (
     create_record,
     delete_record,
@@ -160,6 +166,127 @@ def _table_router_name(name: str) -> str:
     return TABLE_ENDPOINTS[name]
 
 
+RESOURCE_BY_TABLE: dict[str, str] = {
+    table: resource for resource, table in TABLE_ENDPOINTS.items()
+}
+
+TABLE_LABELS: dict[str, str] = {
+    "incident": "Incidents",
+    "problem": "Problems",
+    "problem_task": "Problem Tasks",
+    "change_request": "Change Requests",
+    "change_task": "Change Tasks",
+    "cmdb_ci": "Configuration Items",
+    "cmdb_rel_ci": "CI Relationships",
+    "sys_user": "Users",
+    "sys_user_group": "Groups",
+    "sys_user_grmember": "Group Memberships",
+    "sc_request": "Requests",
+    "sc_req_item": "Requested Items",
+    "sc_task": "Catalog Tasks",
+    "sc_cat_item": "Catalog Items",
+    "item_option_new": "Catalog Variables",
+    "item_option_new_condition": "Variable Conditions",
+    "sc_item_option": "Submitted Variable Values",
+    "sc_webhook": "Webhooks",
+    "sc_cat_item_webhook": "Catalog Item Webhooks",
+    "sc_webhook_log": "Webhook Delivery Logs",
+    "record_access_grant": "Access Grants",
+    "sys_comment": "Comments",
+}
+
+# (peripheral response key, model, table-name column, record-id column). The
+# first three correspond to POLYMORPHIC_CHILDREN (deleted alongside the
+# record); attachments use a different column name so aren't in that list.
+_PERIPHERAL_MODELS: list[tuple[str, Any, str, str]] = [
+    ("comments", SysComment, "table_name", "record_sys_id"),
+    ("audit_entries", SysAudit, "table_name", "record_sys_id"),
+    ("access_grants", RecordAccessGrant, "table_name", "record_sys_id"),
+    ("attachments", SysAttachment, "table_name", "table_sys_id"),
+]
+
+
+def _table_label(table: str) -> str:
+    return TABLE_LABELS.get(table, table.replace("_", " ").title())
+
+
+async def _cascade_children_preview(
+    db: AsyncSession, table: str, sys_id: str
+) -> list[dict[str, Any]]:
+    """Count each table of strict FK-cascaded children (always deleted)."""
+    fields_by_child: dict[str, list[str]] = {}
+    for child_table, child_field in PARENT_CHILD_RELATIONS.get(table, []):
+        fields_by_child.setdefault(child_table, []).append(child_field)
+
+    previews = []
+    for child_table, fields in fields_by_child.items():
+        model = TABLE_MODELS.get(child_table)
+        if model is None:
+            continue
+        condition = getattr(model, fields[0]) == sys_id
+        for field in fields[1:]:
+            condition = condition | (getattr(model, field) == sys_id)
+        count = (
+            await db.execute(select(func.count()).select_from(model).where(condition))
+        ).scalar() or 0
+        if count:
+            previews.append(
+                {"table": child_table, "label": _table_label(child_table), "count": count}
+            )
+    return previews
+
+
+async def _loose_references_preview(
+    db: AsyncSession, table: str, sys_id: str
+) -> list[dict[str, Any]]:
+    """List records that loosely reference this record, grouped by table+field."""
+    previews = []
+    for ref_table_name, ref_field in REVERSE_REFERENCE_MAP.get(table, []):
+        model = TABLE_MODELS.get(ref_table_name)
+        if model is None:
+            continue
+        column = getattr(model, ref_field, None)
+        if column is None:
+            continue
+        rows = (await db.execute(select(model).where(column == sys_id).limit(50))).scalars().all()
+        if not rows:
+            continue
+        display_field = DISPLAY_FIELD_BY_TABLE.get(ref_table_name)
+        records = [
+            {
+                "sys_id": row.sys_id,
+                "label": (getattr(row, display_field, None) if display_field else None)
+                or row.sys_id,
+            }
+            for row in rows
+        ]
+        previews.append(
+            {
+                "table": ref_table_name,
+                "resource": RESOURCE_BY_TABLE.get(ref_table_name),
+                "label": _table_label(ref_table_name),
+                "field": ref_field,
+                "records": records,
+            }
+        )
+    return previews
+
+
+async def _peripheral_preview(db: AsyncSession, table: str, sys_id: str) -> dict[str, int]:
+    peripheral: dict[str, int] = {}
+    for key, model, table_col, id_col in _PERIPHERAL_MODELS:
+        count = (
+            await db.execute(
+                select(func.count())
+                .select_from(model)
+                .where(getattr(model, table_col) == table, getattr(model, id_col) == sys_id)
+            )
+        ).scalar() or 0
+        if count:
+            peripheral[key] = count
+    return peripheral
+
+
 @router.get("/records/{resource}")
 async def list_resource(
     resource: str,
@@ -270,17 +397,52 @@ async def update_resource(
     return record
 
 
-@router.delete("/records/{resource}/{sys_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_resource(
+@router.get("/records/{resource}/{sys_id}/cascade-preview")
+async def cascade_preview(
     resource: str,
     sys_id: str,
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
+    """Preview what deleting this record will affect before the user confirms.
+
+    `cascade_children` lists strict parent-child rows that are always deleted
+    alongside the record (via FK `ON DELETE CASCADE`). `loose_references`
+    lists other records that merely point at this one -- the caller chooses
+    whether to clear those references or cascade-delete them too.
+    """
     if resource not in TABLE_ENDPOINTS:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
-    if not await delete_record(db, table, sys_id, auth=auth):
+    record = await get_record_by_sys_id(db, table, sys_id, exclude_links=True, auth=auth)
+    if not record:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+
+    display_field = DISPLAY_FIELD_BY_TABLE.get(table)
+    label = (record.get(display_field) if display_field else None) or sys_id
+
+    return {
+        "target": {"table": table, "sys_id": sys_id, "label": label},
+        "cascade_children": await _cascade_children_preview(db, table, sys_id),
+        "loose_references": await _loose_references_preview(db, table, sys_id),
+        "peripheral": await _peripheral_preview(db, table, sys_id),
+    }
+
+
+@router.delete("/records/{resource}/{sys_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_resource(
+    resource: str,
+    sys_id: str,
+    ref_mode: str | None = None,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    if resource not in TABLE_ENDPOINTS:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
+    if ref_mode not in (None, "clear", "cascade"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "ref_mode must be 'clear' or 'cascade'")
+    table = TABLE_ENDPOINTS[resource]
+    if not await delete_record(db, table, sys_id, auth=auth, ref_mode=ref_mode):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

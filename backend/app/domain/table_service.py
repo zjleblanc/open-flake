@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy import Boolean, func, select
+from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.flake.attachment import (
@@ -24,16 +25,25 @@ from app.domain.registry import (
     DISPLAY_FIELD_BY_TABLE,
     NUMBER_PREFIXES,
     PLATFORM_TABLES,
+    POLYMORPHIC_CHILDREN,
     RBAC_RECORD_TABLES,
     REFERENCE_FIELDS,
+    REVERSE_REFERENCE_MAP,
     TABLE_MODELS,
+    ref_table,
 )
 from app.events.bus import RecordEvent, emit
-from app.models import NumberSequence, SysAudit, SysUser
+from app.models import NumberSequence, RecordAccessGrant, SysAudit, SysComment, SysUser
 from app.query.parser import QueryCondition, apply_condition_groups
 from app.utils.ids import new_sys_id
 
 settings = get_settings()
+
+_POLYMORPHIC_CHILD_MODELS: dict[str, Any] = {
+    "sys_comment": SysComment,
+    "sys_audit": SysAudit,
+    "record_access_grant": RecordAccessGrant,
+}
 
 
 def _apply_conditions(query, model, conditions: list[QueryCondition]):
@@ -75,56 +85,10 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
             if data.get(field):
                 sys_id = data[field]
                 data[field] = {
-                    "link": f"{settings.base_url}/api/flake/table/{_ref_table(field, table)}/{sys_id}",
+                    "link": f"{settings.base_url}/api/flake/table/{ref_table(field, table)}/{sys_id}",
                     "value": sys_id,
                 }
     return data
-
-
-def _ref_table(field: str, table: str | None = None) -> str:
-    if table == "sys_user_group" and field == "parent":
-        return "sys_user_group"
-    if table == "cmdb_rel_ci" and field in {"parent", "child"}:
-        return "cmdb_ci"
-    mapping = {
-        "caller_id": "sys_user",
-        "assigned_to": "sys_user",
-        "requested_by": "sys_user",
-        "requested_for": "sys_user",
-        "opened_by": "sys_user",
-        "resolved_by": "sys_user",
-        "closed_by": "sys_user",
-        "managed_by": "sys_user",
-        "manager": "sys_user",
-        "assignment_group": "sys_user_group",
-        "support_group": "sys_user_group",
-        "owner": "sys_user",
-        "owner_group": "sys_user_group",
-        "granted_by": "sys_user",
-        "change_request": "change_request",
-        "problem": "problem",
-        "request": "sc_request",
-        "cat_item": "sc_cat_item",
-        "request_item": "sc_req_item",
-        "sc_req_item": "sc_req_item",
-        "item_option_new": "item_option_new",
-        "variable": "item_option_new",
-        "depends_on": "item_option_new",
-        "webhook_id": "sc_webhook",
-        "webhook": "sc_webhook",
-        "attachment_id": "sc_cat_item_webhook",
-        "fulfillment_group": "sys_user_group",
-        "cmdb_ci": "cmdb_ci",
-        "business_service": "cmdb_ci",
-        "duplicate_of": "problem",
-        "parent_incident": "incident",
-        "first_reported_by_task": "problem_task",
-        "std_change_producer_version": "std_change_producer_version",
-        "user_sys_id": "sys_user",
-        "group_sys_id": "sys_user_group",
-        "type": "cmdb_rel_type",
-    }
-    return mapping.get(field, "sys_user")
 
 
 async def attach_reference_display_values(
@@ -137,46 +101,56 @@ async def attach_reference_display_values(
     Frontend views resolve a reference's sys_id to a human-readable label (e.g. a
     user's `user_name` or a group's `name`) using this field instead of showing the
     raw sys_id. Lookups are batched per referenced table to avoid N+1 queries.
+
+    When a reference's target row no longer exists (e.g. the referenced record
+    was deleted without clearing this loose reference), the display value
+    becomes the `[Deleted]` sentinel and `<field>_deleted` is set so the
+    frontend can render a dangling-reference indicator instead of a link.
     """
     refs = REFERENCE_FIELDS.get(table, set())
     if not refs or not records:
         return
 
-    field_ref_table: dict[str, str] = {}
-    ids_by_ref_table: dict[str, set[str]] = {}
+    field_target_table: dict[str, str] = {}
+    ids_by_target_table: dict[str, set[str]] = {}
     for field in refs:
-        ref_table = _ref_table(field, table)
-        if ref_table not in DISPLAY_FIELD_BY_TABLE:
+        target_table = ref_table(field, table)
+        if target_table not in DISPLAY_FIELD_BY_TABLE:
             continue
-        field_ref_table[field] = ref_table
-        ids = ids_by_ref_table.setdefault(ref_table, set())
+        field_target_table[field] = target_table
+        ids = ids_by_target_table.setdefault(target_table, set())
         for record in records:
             value = record.get(field)
             sys_id = value.get("value") if isinstance(value, dict) else value
             if sys_id:
                 ids.add(sys_id)
 
-    labels_by_ref_table: dict[str, dict[str, str]] = {}
-    for ref_table, ids in ids_by_ref_table.items():
+    labels_by_target_table: dict[str, dict[str, str]] = {}
+    for target_table, ids in ids_by_target_table.items():
         if not ids:
             continue
-        model = TABLE_MODELS.get(ref_table)
-        display_field = DISPLAY_FIELD_BY_TABLE.get(ref_table)
+        model = TABLE_MODELS.get(target_table)
+        display_field = DISPLAY_FIELD_BY_TABLE.get(target_table)
         if model is None or display_field is None:
             continue
         column = getattr(model, display_field, None)
         if column is None:
             continue
         result = await db.execute(select(model.sys_id, column).where(model.sys_id.in_(ids)))
-        labels_by_ref_table[ref_table] = {row[0]: (row[1] or row[0]) for row in result.all()}
+        labels_by_target_table[target_table] = {row[0]: (row[1] or row[0]) for row in result.all()}
 
-    for field, ref_table in field_ref_table.items():
-        labels = labels_by_ref_table.get(ref_table, {})
+    for field, target_table in field_target_table.items():
+        labels = labels_by_target_table.get(target_table, {})
         for record in records:
             value = record.get(field)
             sys_id = value.get("value") if isinstance(value, dict) else value
-            if sys_id:
-                record[f"{field}_display_value"] = labels.get(sys_id, sys_id)
+            if not sys_id:
+                continue
+            if sys_id in labels:
+                record[f"{field}_display_value"] = labels[sys_id]
+            else:
+                record[f"{field}_display_value"] = "[Deleted]"
+                record[f"{field}_deleted"] = True
 
 
 def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
@@ -611,17 +585,88 @@ async def update_record(
     return result
 
 
+async def _delete_polymorphic_children(db: AsyncSession, table: str, sys_id: str) -> None:
+    """Delete a record's own rows in tables keyed by a `(table_name,
+    record_sys_id)` pair rather than a real foreign key -- comments, audit
+    history, and access grants. These can't cascade via the database."""
+    for child_table in POLYMORPHIC_CHILDREN:
+        model = _POLYMORPHIC_CHILD_MODELS[child_table]
+        await db.execute(
+            sa_delete(model).where(model.table_name == table, model.record_sys_id == sys_id)
+        )
+
+
+async def clear_loose_references(
+    db: AsyncSession,
+    table: str,
+    sys_id: str,
+    username: str | None,
+    auth: AuthContext | None = None,
+) -> None:
+    """Null every loose-reference field that points to this record, writing a
+    `sys_audit` entry for each cleared field so the change shows up as an
+    old-value -> new-value entry in the referencing record's activity stream.
+
+    A reference column that is NOT NULL can't be left dangling by nulling it,
+    so rows with a required reference to this record are deleted instead.
+    """
+    for ref_table_name, ref_col in REVERSE_REFERENCE_MAP.get(table, []):
+        model = TABLE_MODELS.get(ref_table_name)
+        if model is None:
+            continue
+        column = getattr(model, ref_col, None)
+        if column is None:
+            continue
+        rows = (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        if not rows:
+            continue
+        col_def = model.__table__.columns.get(ref_col)
+        nullable = bool(col_def is not None and col_def.nullable)
+        for row in rows:
+            if nullable:
+                old_value = getattr(row, ref_col)
+                setattr(row, ref_col, None)
+                await _record_field_audit(
+                    db, ref_table_name, row.sys_id, [(ref_col, old_value, None)], username
+                )
+            else:
+                await delete_record(db, ref_table_name, row.sys_id, auth=auth)
+    await db.flush()
+
+
+async def cascade_loose_references(
+    db: AsyncSession,
+    table: str,
+    sys_id: str,
+    auth: AuthContext | None = None,
+) -> None:
+    """Delete every record that loosely references this record."""
+    for ref_table_name, ref_col in REVERSE_REFERENCE_MAP.get(table, []):
+        model = TABLE_MODELS.get(ref_table_name)
+        if model is None:
+            continue
+        column = getattr(model, ref_col, None)
+        if column is None:
+            continue
+        rows = (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        for row in rows:
+            await delete_record(db, ref_table_name, row.sys_id, auth=auth)
+
+
 async def delete_record(
     db: AsyncSession,
     table: str,
     sys_id: str,
     auth: AuthContext | None = None,
     query_class: str | None = None,
+    ref_mode: str | None = None,
 ) -> bool:
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import delete_cmdb_ci
 
-        return await delete_cmdb_ci(db, sys_id, auth=auth, query_class=query_class)
+        return await delete_cmdb_ci(
+            db, sys_id, auth=auth, query_class=query_class, ref_mode=ref_mode
+        )
 
     model = TABLE_MODELS[table]
     record = await db.get(model, sys_id)
@@ -665,7 +710,14 @@ async def delete_record(
         await emit(RecordEvent(action="delete", table=table, sys_id=sys_id, record=result))
         return True
 
+    username = auth.user_name if auth else None
+    if ref_mode == "clear":
+        await clear_loose_references(db, table, sys_id, username, auth=auth)
+    elif ref_mode == "cascade":
+        await cascade_loose_references(db, table, sys_id, auth=auth)
+
     result = _model_to_dict(record, table, exclude_links=False)
+    await _delete_polymorphic_children(db, table, sys_id)
     await delete_attachments_for_parent(db, table, sys_id)
     await db.delete(record)
     await db.flush()

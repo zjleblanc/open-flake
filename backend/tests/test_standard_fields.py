@@ -1,7 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.domain.table_service import _model_to_dict, _ref_table, attach_reference_display_values
+from app.domain.registry import ref_table
+from app.domain.table_service import _model_to_dict, attach_reference_display_values
 from app.models import ChangeRequest, Incident, ScRequest, SysUser
 
 
@@ -37,11 +38,11 @@ def test_standard_fields_serialized(model, table, fields):
 
 
 def test_sys_user_group_parent_ref_table():
-    assert _ref_table("parent", "sys_user_group") == "sys_user_group"
+    assert ref_table("parent", "sys_user_group") == "sys_user_group"
 
 
 def test_cmdb_rel_ci_parent_ref_table():
-    assert _ref_table("parent", "cmdb_rel_ci") == "cmdb_ci"
+    assert ref_table("parent", "cmdb_rel_ci") == "cmdb_ci"
 
 
 @pytest.mark.asyncio

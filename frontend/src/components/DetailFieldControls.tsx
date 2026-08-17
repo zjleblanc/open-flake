@@ -148,6 +148,11 @@ interface ReadOnlyFieldInputProps {
    * referenced object's display view instead of a plain readonly input.
    */
   href?: string;
+  /**
+   * When true, the reference target no longer exists -- render muted text
+   * instead of a link that would 404, even if `href` is set.
+   */
+  deleted?: boolean;
 }
 
 export function ReadOnlyFieldInput({
@@ -158,6 +163,7 @@ export function ReadOnlyFieldInput({
   gridColumn,
   fieldKey,
   href,
+  deleted = false,
 }: ReadOnlyFieldInputProps) {
   const { dateDisplayFormat } = useUserPreferences();
   const display = formatDetailValue(value, { fieldKey, dateDisplayFormat });
@@ -167,7 +173,15 @@ export function ReadOnlyFieldInput({
     <div className="form-group form-group--readonly" style={{ marginBottom: 0, gridColumn }}>
       <label htmlFor={id}>{label}</label>
       <div className="readonly-input-wrap">
-        {href && !isEmpty ? (
+        {deleted && !isEmpty ? (
+          <span
+            id={id}
+            className="readonly-input-link readonly-input-link--deleted"
+            title="This record has been deleted"
+          >
+            {display}
+          </span>
+        ) : href && !isEmpty ? (
           <Link id={id} to={href} className="readonly-input-link">
             {display}
           </Link>

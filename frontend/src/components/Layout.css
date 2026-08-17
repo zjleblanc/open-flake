@@ -1324,6 +1324,14 @@ button.nav-link {
   border-color: var(--of-primary);
 }
 
+.readonly-input-link--deleted,
+.readonly-input-link--deleted:hover {
+  color: var(--of-text-muted);
+  font-style: italic;
+  cursor: default;
+  border-color: color-mix(in srgb, var(--of-border) 90%, transparent);
+}
+
 /*
  * Links that resolve a reference field (owner, assigned to, etc.) to its
  * object's display view. No underline; hover only shifts color, matching the
@@ -1336,6 +1344,12 @@ button.nav-link {
 
 .reference-link:hover {
   color: var(--of-accent-dark);
+}
+
+.reference-link--deleted {
+  color: var(--of-text-muted);
+  font-style: italic;
+  cursor: default;
 }
 
 .detail-field {
@@ -2015,7 +2029,38 @@ button.nav-link {
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.625rem;
+}
+
+.confirm-dialog--wide {
+  width: min(100%, 34rem);
+}
+
+.cascade-reference-groups {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cascade-reference-group-label {
+  font-weight: 600;
+  color: var(--of-text);
+  margin: 0 0 0.25rem;
+}
+
+.cascade-reference-group-items {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--of-text-muted);
+}
+
+.cascade-reference-more {
+  color: var(--of-text-muted);
+  font-style: italic;
 }
 
 .record-select-column {

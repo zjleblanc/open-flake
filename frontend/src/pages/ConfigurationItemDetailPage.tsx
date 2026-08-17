@@ -16,6 +16,7 @@ import { DetailSectionNav, type DetailSectionNavItem } from '../components/Detai
 import { usePageHeader } from '../components/PageHeaderContext';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
 import {
+  isReferenceDeleted,
   referenceDisplayValue,
   referenceHref,
   refSysId,
@@ -495,6 +496,7 @@ export function ConfigurationItemDetailPage() {
                       label={field.label}
                       value={referenceDisplayValue(data, field.key)}
                       href={fieldSysId ? referenceHref(field.refTarget, fieldSysId) : undefined}
+                      deleted={isReferenceDeleted(data, field.key)}
                     />
                   );
                 })}

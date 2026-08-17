@@ -1,11 +1,19 @@
 import { useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Portal } from './Portal';
 import './Layout.css';
+
+export interface ConfirmDialogAction {
+  label: string;
+  pendingLabel?: string;
+  onClick: () => void;
+  variant?: 'danger' | 'secondary';
+}
 
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  message: string;
+  message: ReactNode;
   error?: string | null;
   confirmLabel?: string;
   pendingLabel?: string;
@@ -13,6 +21,10 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   isPending?: boolean;
+  /** Extra choice buttons rendered between Cancel and the primary confirm action. */
+  extraActions?: ConfirmDialogAction[];
+  /** Widen the dialog for content-heavy messages (e.g. cascade delete previews). */
+  wide?: boolean;
 }
 
 export function ConfirmDialog({
@@ -26,6 +38,8 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   isPending = false,
+  extraActions,
+  wide = false,
 }: ConfirmDialogProps) {
   useEffect(() => {
     if (!open) return;
@@ -50,7 +64,7 @@ export function ConfirmDialog({
         onClick={isPending ? undefined : onCancel}
       >
         <div
-          className="confirm-dialog"
+          className={wide ? 'confirm-dialog confirm-dialog--wide' : 'confirm-dialog'}
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="confirm-dialog-title"
@@ -60,9 +74,9 @@ export function ConfirmDialog({
           <h2 id="confirm-dialog-title" className="confirm-dialog-title">
             {title}
           </h2>
-          <p id="confirm-dialog-message" className="confirm-dialog-message">
+          <div id="confirm-dialog-message" className="confirm-dialog-message">
             {message}
-          </p>
+          </div>
           {error && <p className="confirm-dialog-error">{error}</p>}
           <div className="confirm-dialog-actions">
             <button
@@ -73,6 +87,19 @@ export function ConfirmDialog({
             >
               {cancelLabel}
             </button>
+            {extraActions?.map((action) => (
+              <button
+                key={action.label}
+                type="button"
+                className={
+                  action.variant === 'secondary' ? 'btn btn-secondary' : 'btn btn-danger-solid'
+                }
+                onClick={action.onClick}
+                disabled={isPending}
+              >
+                {isPending ? action.pendingLabel || `${action.label}…` : action.label}
+              </button>
+            ))}
             <button
               type="button"
               className="btn btn-danger-solid"

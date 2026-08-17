@@ -145,8 +145,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  deleteRecord: (resource: string, sysId: string) =>
-    request<void>(`/api/v1/records/${resource}/${sysId}`, { method: 'DELETE' }),
+  deleteRecord: (resource: string, sysId: string, refMode?: 'clear' | 'cascade') => {
+    const qs = refMode ? `?ref_mode=${refMode}` : '';
+    return request<void>(`/api/v1/records/${resource}/${sysId}${qs}`, { method: 'DELETE' });
+  },
+
+  getCascadePreview: (resource: string, sysId: string) =>
+    request<CascadePreview>(`/api/v1/records/${resource}/${sysId}/cascade-preview`),
 
   createUser: (data: {
     user_name: string;
@@ -563,6 +568,25 @@ export type CatalogWebhookAttachment = {
   webhook_url?: string;
   webhook_method?: string;
   webhook_active?: boolean;
+};
+
+export type CascadeChildPreview = { table: string; label: string; count: number };
+
+export type LooseReferenceRecord = { sys_id: string; label: string };
+
+export type LooseReferencePreview = {
+  table: string;
+  resource: string | null;
+  label: string;
+  field: string;
+  records: LooseReferenceRecord[];
+};
+
+export type CascadePreview = {
+  target: { table: string; sys_id: string; label: string };
+  cascade_children: CascadeChildPreview[];
+  loose_references: LooseReferencePreview[];
+  peripheral: Record<string, number>;
 };
 
 export type ActivityChange = { field: string; old_value: string; new_value: string };

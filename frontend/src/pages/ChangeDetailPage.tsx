@@ -22,6 +22,7 @@ import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActio
 import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
 import {
+  isReferenceDeleted,
   referenceDisplayValue,
   referenceHref,
   refSysId,
@@ -288,6 +289,7 @@ export function ChangeDetailPage() {
                             ? referenceHref(field.refTarget, fieldSysId)
                             : undefined
                         }
+                        deleted={field.refTarget ? isReferenceDeleted(data, field.key) : false}
                         multiline={field.type === 'textarea'}
                         gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
                       />

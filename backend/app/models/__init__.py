@@ -263,7 +263,9 @@ class ProblemTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     short_description: Mapped[str] = mapped_column(String(512), default="")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(8), default="1")
-    problem: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    problem: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("problem.sys_id", ondelete="CASCADE"), nullable=True
+    )
     problem_task_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -323,7 +325,9 @@ class ChangeTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     short_description: Mapped[str] = mapped_column(String(512), default="")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(8), default="1")
-    change_request: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    change_request: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("change_request.sys_id", ondelete="CASCADE"), nullable=True
+    )
     change_task_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     cmdb_ci: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -346,7 +350,7 @@ class CmdbClass(Base):
 
     name: Mapped[str] = mapped_column(String(128), primary_key=True)
     super_class: Mapped[str | None] = mapped_column(
-        String(128), ForeignKey("cmdb_class.name"), nullable=True, index=True
+        String(128), ForeignKey("cmdb_class.name", ondelete="CASCADE"), nullable=True, index=True
     )
     label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_logical: Mapped[bool] = mapped_column(default=False)
@@ -357,7 +361,9 @@ class CmdbClassField(Base):
     __table_args__ = (UniqueConstraint("class_name", "field_name"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    class_name: Mapped[str] = mapped_column(String(128), ForeignKey("cmdb_class.name"), index=True)
+    class_name: Mapped[str] = mapped_column(
+        String(128), ForeignKey("cmdb_class.name", ondelete="CASCADE"), index=True
+    )
     field_name: Mapped[str] = mapped_column(String(128))
     label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     sn_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -402,8 +408,12 @@ class CmdbRelCi(Base, LifecycleMixin):
     __tablename__ = "cmdb_rel_ci"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    parent: Mapped[str] = mapped_column(String(32), index=True)
-    child: Mapped[str] = mapped_column(String(32), index=True)
+    parent: Mapped[str] = mapped_column(
+        String(32), ForeignKey("cmdb_ci.sys_id", ondelete="CASCADE"), index=True
+    )
+    child: Mapped[str] = mapped_column(
+        String(32), ForeignKey("cmdb_ci.sys_id", ondelete="CASCADE"), index=True
+    )
     type: Mapped[str] = mapped_column(String(32))
     connection_strength: Mapped[str | None] = mapped_column(String(64), nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
@@ -445,7 +455,9 @@ class ScTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     short_description: Mapped[str] = mapped_column(String(512), default="")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     state: Mapped[str] = mapped_column(String(8), default="1")
-    request: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    request: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("sc_request.sys_id", ondelete="CASCADE"), nullable=True
+    )
     assigned_to: Mapped[str | None] = mapped_column(String(32), nullable=True)
     assignment_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
     priority: Mapped[str | None] = mapped_column(String(8), nullable=True)
@@ -524,7 +536,9 @@ class ItemOptionNew(Base, LifecycleMixin):
     __tablename__ = "item_option_new"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    cat_item: Mapped[str] = mapped_column(String(32), index=True)
+    cat_item: Mapped[str] = mapped_column(
+        String(32), ForeignKey("sc_cat_item.sys_id", ondelete="CASCADE"), index=True
+    )
     name: Mapped[str] = mapped_column(String(128), index=True)
     question_text: Mapped[str] = mapped_column(String(512), default="")
     type: Mapped[str] = mapped_column(String(32), default="string")
@@ -547,9 +561,13 @@ class ItemOptionNewCondition(Base, LifecycleMixin):
     __tablename__ = "item_option_new_condition"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    variable: Mapped[str] = mapped_column(String(32), index=True)
+    variable: Mapped[str] = mapped_column(
+        String(32), ForeignKey("item_option_new.sys_id", ondelete="CASCADE"), index=True
+    )
     condition_type: Mapped[str] = mapped_column(String(32), default="visibility")
-    depends_on: Mapped[str] = mapped_column(String(32), index=True)
+    depends_on: Mapped[str] = mapped_column(
+        String(32), ForeignKey("item_option_new.sys_id", ondelete="CASCADE"), index=True
+    )
     operator: Mapped[str] = mapped_column(String(16), default="=")
     value: Mapped[str | None] = mapped_column(String(512), nullable=True)
     filter_override: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -564,7 +582,9 @@ class ScReqItem(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     number: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    request: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    request: Mapped[str | None] = mapped_column(
+        String(32), ForeignKey("sc_request.sys_id", ondelete="CASCADE"), nullable=True, index=True
+    )
     cat_item: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     state: Mapped[str] = mapped_column(String(8), default="1")
     stage: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -605,7 +625,9 @@ class ScItemOption(Base, LifecycleMixin):
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     item_option_new: Mapped[str] = mapped_column(String(32), index=True)
-    sc_req_item: Mapped[str] = mapped_column(String(32), index=True)
+    sc_req_item: Mapped[str] = mapped_column(
+        String(32), ForeignKey("sc_req_item.sys_id", ondelete="CASCADE"), index=True
+    )
     value: Mapped[str | None] = mapped_column(Text, nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
@@ -645,8 +667,12 @@ class ScCatItemWebhook(Base, LifecycleMixin):
     __tablename__ = "sc_cat_item_webhook"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    cat_item: Mapped[str] = mapped_column(String(32), index=True)
-    webhook: Mapped[str] = mapped_column(String(32), index=True)
+    cat_item: Mapped[str] = mapped_column(
+        String(32), ForeignKey("sc_cat_item.sys_id", ondelete="CASCADE"), index=True
+    )
+    webhook: Mapped[str] = mapped_column(
+        String(32), ForeignKey("sc_webhook.sys_id", ondelete="CASCADE"), index=True
+    )
     payload_template: Mapped[str | None] = mapped_column(Text, nullable=True)
     trigger_on: Mapped[str] = mapped_column(String(32), default="order")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -659,7 +685,9 @@ class ScWebhookLog(Base, LifecycleMixin):
     __tablename__ = "sc_webhook_log"
 
     sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    webhook_id: Mapped[str] = mapped_column(String(32), index=True)
+    webhook_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("sc_webhook.sys_id", ondelete="CASCADE"), index=True
+    )
     attachment_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     sc_req_item: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)

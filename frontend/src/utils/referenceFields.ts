@@ -54,3 +54,17 @@ export function referenceDisplayValue(
   if (typeof displayValue === 'string' && displayValue) return displayValue;
   return refSysId(record[field]);
 }
+
+/**
+ * True when a reference field's target row no longer exists (see the
+ * `<field>_deleted` flag set by `attach_reference_display_values` on the
+ * backend). Used to render a dangling reference as muted text instead of a
+ * link to a page that would 404.
+ */
+export function isReferenceDeleted(
+  record: Record<string, unknown> | undefined | null,
+  field: string,
+): boolean {
+  if (!record) return false;
+  return record[`${field}_deleted`] === true;
+}

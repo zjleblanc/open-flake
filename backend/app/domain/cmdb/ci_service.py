@@ -231,8 +231,14 @@ async def delete_cmdb_ci(
     sys_id: str,
     auth: AuthContext | None = None,
     query_class: str | None = None,
+    ref_mode: str | None = None,
 ) -> bool:
     from app.api.flake.attachment import delete_attachments_for_parent
+    from app.domain.table_service import (
+        _delete_polymorphic_children,
+        cascade_loose_references,
+        clear_loose_references,
+    )
 
     record = await db.get(CmdbCi, sys_id)
     if not record:
@@ -242,7 +248,14 @@ async def delete_cmdb_ci(
     if auth:
         await assert_record_action(db, auth, "cmdb_ci", record, "delete")
 
+    username = auth.user_name if auth else None
+    if ref_mode == "clear":
+        await clear_loose_references(db, "cmdb_ci", sys_id, username, auth=auth)
+    elif ref_mode == "cascade":
+        await cascade_loose_references(db, "cmdb_ci", sys_id, auth=auth)
+
     result = merge_record(record, exclude_links=False)
+    await _delete_polymorphic_children(db, "cmdb_ci", sys_id)
     await delete_attachments_for_parent(db, "cmdb_ci", sys_id)
     await db.delete(record)
     await db.flush()

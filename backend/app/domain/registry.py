@@ -284,3 +284,105 @@ REFERENCE_FIELDS: dict[str, set[str]] = {
     "cmdb_rel_ci": {"parent", "child", "type"},
     "record_access_grant": {"user_sys_id", "group_sys_id", "granted_by"},
 }
+
+
+def ref_table(field: str, table: str | None = None) -> str:
+    """Resolve which table a reference field's sys_id points into."""
+    if table == "sys_user_group" and field == "parent":
+        return "sys_user_group"
+    if table == "cmdb_rel_ci" and field in {"parent", "child"}:
+        return "cmdb_ci"
+    mapping = {
+        "caller_id": "sys_user",
+        "assigned_to": "sys_user",
+        "requested_by": "sys_user",
+        "requested_for": "sys_user",
+        "opened_by": "sys_user",
+        "resolved_by": "sys_user",
+        "closed_by": "sys_user",
+        "managed_by": "sys_user",
+        "manager": "sys_user",
+        "assignment_group": "sys_user_group",
+        "support_group": "sys_user_group",
+        "owner": "sys_user",
+        "owner_group": "sys_user_group",
+        "granted_by": "sys_user",
+        "change_request": "change_request",
+        "problem": "problem",
+        "request": "sc_request",
+        "cat_item": "sc_cat_item",
+        "request_item": "sc_req_item",
+        "sc_req_item": "sc_req_item",
+        "item_option_new": "item_option_new",
+        "variable": "item_option_new",
+        "depends_on": "item_option_new",
+        "webhook_id": "sc_webhook",
+        "webhook": "sc_webhook",
+        "attachment_id": "sc_cat_item_webhook",
+        "fulfillment_group": "sys_user_group",
+        "cmdb_ci": "cmdb_ci",
+        "business_service": "cmdb_ci",
+        "duplicate_of": "problem",
+        "parent_incident": "incident",
+        "first_reported_by_task": "problem_task",
+        "std_change_producer_version": "std_change_producer_version",
+        "user_sys_id": "sys_user",
+        "group_sys_id": "sys_user_group",
+        "type": "cmdb_rel_type",
+    }
+    return mapping.get(field, "sys_user")
+
+
+# Strict parent-child ownership: deleting the parent row cascades to these
+# children at the database level (see `ForeignKey(..., ondelete="CASCADE")`
+# in `app.models`). Kept here too so the cascade-preview endpoint can walk
+# the same tree without touching the database schema.
+PARENT_CHILD_RELATIONS: dict[str, list[tuple[str, str]]] = {
+    "change_request": [("change_task", "change_request")],
+    "problem": [("problem_task", "problem")],
+    "sc_request": [("sc_req_item", "request"), ("sc_task", "request")],
+    "sc_req_item": [("sc_item_option", "sc_req_item")],
+    "sc_cat_item": [
+        ("item_option_new", "cat_item"),
+        ("sc_cat_item_webhook", "cat_item"),
+    ],
+    "item_option_new": [
+        ("item_option_new_condition", "variable"),
+        ("item_option_new_condition", "depends_on"),
+    ],
+    "sc_webhook": [
+        ("sc_cat_item_webhook", "webhook"),
+        ("sc_webhook_log", "webhook_id"),
+    ],
+    "cmdb_ci": [("cmdb_rel_ci", "parent"), ("cmdb_rel_ci", "child")],
+}
+
+# Polymorphic children keyed by a (table_name, record_sys_id) pair rather than
+# a real foreign key, so they can't be expressed as a `ForeignKey` constraint.
+# Deleting any record must also delete its own rows in these tables.
+POLYMORPHIC_CHILDREN: list[str] = ["sys_comment", "sys_audit", "record_access_grant"]
+
+
+def _is_parent_child_pair(table: str, field: str) -> bool:
+    return any((table, field) in children for children in PARENT_CHILD_RELATIONS.values())
+
+
+def build_reverse_reference_map() -> dict[str, list[tuple[str, str]]]:
+    """Invert `REFERENCE_FIELDS`: for each target table, list every
+    `(source_table, source_field)` pair that loosely points to it.
+
+    Excludes pairs already covered by `PARENT_CHILD_RELATIONS`, since those
+    cascade automatically via the database FK constraint rather than needing
+    a user choice (clear vs. cascade) at delete time.
+    """
+    reverse: dict[str, list[tuple[str, str]]] = {}
+    for source_table, fields in REFERENCE_FIELDS.items():
+        for field in fields:
+            if _is_parent_child_pair(source_table, field):
+                continue
+            target = ref_table(field, source_table)
+            reverse.setdefault(target, []).append((source_table, field))
+    return reverse
+
+
+REVERSE_REFERENCE_MAP: dict[str, list[tuple[str, str]]] = build_reverse_reference_map()
