@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Scope agent guidance into AGENTS.md and Cursor rules
+
+### Added
+
+- Root `AGENTS.md` with project overview, monorepo layout, and `make` workflow commands.
+- `.cursor/rules/backend-lint.mdc` — ruff/mypy suppression constraints, scoped to `backend/**/*.py`.
+- `.cursor/rules/frontend-lint.mdc` — Prettier/ESLint expectations, scoped to frontend source files.
+- `.cursor/rules/frontend-ui-patterns.mdc` — UI consistency rules (icons, references, tables, buttons, `OFSelect`, tooltips, empty states), scoped to `frontend/src/**/*.tsx`.
+
+### Changed
+
+- `backend/AGENTS.md` and `frontend/AGENTS.md` now hold stack/run/layout context only; must/never constraints moved into the glob-scoped Cursor rules above so they load only when relevant files are edited.
+
 ## 2026-08-17 — Favorite/pin any page to the sidebar
 
 ### Added

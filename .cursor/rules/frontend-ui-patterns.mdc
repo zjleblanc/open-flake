@@ -1,0 +1,206 @@
+---
+description: Frontend UI component and page patterns
+globs: frontend/src/**/*.tsx
+alwaysApply: false
+---
+
+## Expand/collapse indicators
+
+Use the up/down chevron icons (`ChevronDownIcon` / `ChevronUpIcon` in
+`src/components/DetailIcons.tsx`) for expand/collapse affordances, not
+plus/minus glyphs or characters. See `ExpandableDetailSection.tsx` for the
+reference implementation (two icons toggled via the `[open]` attribute in
+`Layout.css`). Keep this consistent across the app — do not introduce new
+`+`/`−` toggle indicators.
+
+## Edit / Delete actions
+
+When Edit and Delete actions appear together (e.g. table row actions, manage
+mode), use icon buttons — `EditIcon` / `DeleteIcon` from
+`src/components/DetailIcons.tsx` at `size={14}`, with `btn-icon` and
+`btn-icon btn-icon-danger` classes respectively — rather than text buttons
+(`btn btn-secondary` / `btn btn-danger`). See the manage actions in
+`CatalogBrowsePage.tsx` for the reference pattern. Always include a
+descriptive `aria-label` (e.g. `Edit ${name}`, `Delete ${name}`) since the
+buttons no longer carry visible text.
+
+## Resolving references (sys_id) to a name + link
+
+Never display a raw `sys_id` for a field that references another record (a
+user, group, CI, request, etc.). Resolve it to a human-readable label and
+link to that object's display view instead.
+
+- The v1 records API attaches a `<field>_display_value` sibling key next to
+  every populated reference field (see `attach_reference_display_values` in
+  `backend/app/domain/table_service.py`) — e.g. a group's `owner` field comes
+  with `owner_display_value: "jdoe"`. Use `referenceDisplayValue(record, field)`
+  from `src/utils/referenceFields.ts` to read it (it falls back to the sys_id
+  if no label was resolved).
+- Build the link target with `referenceHref(target, sysId)` from the same
+  file, where `target` is a `RefTarget` (`'user' | 'group' | 'cmdb_ci' |
+  'incident' | 'problem' | 'change_request' | 'sc_request' | 'sc_req_item' |
+  'sc_cat_item'`). Every table has a real detail route, including
+  `/users/:sysId` (`UserDetailPage.tsx`) and `/groups/:sysId`
+  (`GroupDetailPage.tsx`).
+- In a table cell, use the `<ReferenceLink value={record[field]} record={record}
+  field={field} target="..." />` component (`src/components/ReferenceLink.tsx`).
+  See the Groups table "Owner" column in `UsersPage.tsx`.
+- In a detail page's readonly field grid, pass `href={referenceHref(...)}` to
+  `ReadOnlyFieldInput` (`src/components/DetailFieldControls.tsx`) instead of
+  rendering a plain value — see the `refTarget` fields on `LOCKED_FIELDS` /
+  `CMDB_CI_ASSIGNMENT_FIELDS` in `RequestDetailPage.tsx`,
+  `RequestedItemDetailPage.tsx`, and `ConfigurationItemDetailPage.tsx`.
+- **Exception:** leave the "System" section (`sys_id`, `sys_created_by`,
+  `sys_updated_by`, `sys_class_name`, etc.) as plain raw values. Showing the
+  literal system identifiers there is intentional, not an oversight.
+- Link styling: use the `reference-link` class (or `readonly-input-link` for
+  the boxed readonly-field variant) — no underline, only a color change on
+  hover, matching the global `a`/`a:hover` rule in `src/theme/global.css`. Do
+  not add `text-decoration: underline` on hover for these links.
+
+## List-view tables must use the card wrapper
+
+Every page that renders a list table—including integration sub-tabs (Webhooks, Secrets), catalog admin, configuration items, and incidents—must wrap the `<table>` in a `.card` with zero padding and hidden overflow. This ensures uniform border-radius, background, and border treatment across all list views:
+
+```tsx
+<div className="card" style={{ padding: 0, overflow: "hidden" }}>
+  <table>…</table>
+</div>
+```
+
+Do **not** use `<section className="panel">` or the `.data-table` class for list tables; these are legacy patterns. If the table needs a description paragraph, place it *above* the card wrapper, not inside it.
+
+## Field hints use tooltips, not muted text
+
+When a form field needs supplemental guidance (allowed characters, optional context, format examples), present it with the shared [`FieldTooltip`](../../frontend/src/components/FieldTooltip.tsx) component next to the label—**not** as a `<p className="catalog-help-text">` paragraph below the input.
+
+```tsx
+<span className="field-label-with-tooltip">
+  <label htmlFor="my-field">Label</label>
+  <FieldTooltip ariaLabel="Field info">
+    Hint content here.
+  </FieldTooltip>
+</span>
+```
+
+Rules for tooltips:
+
+- Use `FieldTooltip` for every field hint so typography, spacing, and behavior stay consistent.
+- Only one tooltip is open at a time; opening another closes the previous.
+- Tooltips dismiss on scroll, resize, Escape, and when the pointer leaves the trigger/tooltip.
+- Plain string children render as muted body text. Pass React nodes (`<strong>`, `<p>`, `<ul>`, `<code>`) for structured rich content, or set `rich` with a markdown string to render via `MarkdownRenderer`.
+- Tooltips portal to `document.body` at `z-index: 1100` so they remain visible above the sidebar.
+- Elevation uses the theme token `--of-tooltip-shadow` (darker lift in dark mode, softer lift in light mode).
+
+Reserve `catalog-help-text` for transient loading/status indicators inside builders (e.g. "Loading fields…") where a tooltip is not appropriate.
+
+## No redundant section titles
+
+If the page header breadcrumbs already communicate the page identity (e.g. **Integrations → Secrets**), do not repeat that same label as an `<h3>` section title inside the page body. Create sections should use `<h2 className="section-title">New {Entity}</h2>` inside a `.card`, matching the pattern used in `RecordListPage`.
+
+## Buttons: primary solid, secondary outlined
+
+Use the global button classes in [`global.css`](../../frontend/src/theme/global.css). Do not invent per-page button skins.
+
+| Class | Role | Appearance |
+| --- | --- | --- |
+| `.btn-primary` | Main actions (Save, Create, Submit, primary page CTAs) | Solid primary fill |
+| `.btn-secondary` | Sub-actions in forms and tables (Cancel, Add row, Clear, **row Edit**) | Surface fill + primary outline; solid primary fill on hover |
+| `.btn-danger` | Destructive sub-actions (**row Delete**, Remove, attachment Delete) | Surface fill + danger outline; solid danger fill on hover |
+| `.btn-danger-solid` | Main destructive actions (confirm dialog confirm, bulk delete header CTA, record Delete) | Solid danger fill |
+
+```tsx
+{/* Main action */}
+<button type="submit" className="btn btn-primary">Save</button>
+
+{/* Sub-action */}
+<button type="button" className="btn btn-secondary">Cancel</button>
+
+{/* Row delete */}
+<button type="button" className="btn btn-danger btn-sm">Delete</button>
+```
+
+Rules:
+
+- Page-header and form submit actions use `.btn-primary`.
+- Cancel, Add header/row, Clear filter, and **row Edit** use `.btn-secondary`.
+- **Delete / Remove controls** use the danger theme—not the primary/app accent. Prefer `.btn btn-danger` (outline) for in-row and inline deletes; use `.btn-danger-solid` for confirmed or page-level destructive CTAs.
+- **Every delete/remove of persisted data** must open [`ConfirmDialog`](../../frontend/src/components/ConfirmDialog.tsx) before calling the API. Do not delete immediately on click, and do not use `window.confirm`. Name the item in the dialog message. Form-only row removers (e.g. clearing an unsaved header row) do not need confirmation.
+- Do not restyle `.btn-secondary` or `.btn-danger` back to a muted gray fill; the accent/danger outlines are intentional and app-wide.
+- Mode switches that are not actions (e.g. markdown Edit/Preview) must use tabs (`.markdown-editor-tabs` / `.markdown-editor-tab`), not secondary buttons.
+
+## Markdown editor mode uses tabs
+
+Edit/Preview (and any similar content-mode switcher) must use a `role="tablist"` control, not `.btn-secondary`:
+
+```tsx
+<div className="markdown-editor-tabs" role="tablist" aria-label="Description editor mode">
+  <button type="button" role="tab" aria-selected={mode === "edit"} className={`markdown-editor-tab${mode === "edit" ? " markdown-editor-tab--active" : ""}`}>
+    Edit
+  </button>
+  <button type="button" role="tab" aria-selected={mode === "preview"} className={`markdown-editor-tab${mode === "preview" ? " markdown-editor-tab--active" : ""}`}>
+    Preview
+  </button>
+</div>
+```
+
+Do **not** reuse `.toggle-group` with `.btn-secondary.active` for this pattern; that legacy approach is removed.
+
+## Select boxes use `OFSelect`, not native `<select>`
+
+All dropdown/select fields must use the shared [`OFSelect`](../../frontend/src/components/OFSelect/OFSelect.tsx) component, not a raw `<select>`/`<option>` pair. `OFSelect` is a fully custom combobox (trigger + portal-rendered listbox, styled like [`TemplateAutocomplete`](../../frontend/src/components/TemplateAutocomplete.tsx)) so behavior and theming stay consistent across the app, and so features unavailable to native selects (autocomplete filtering, tag-based multi-select) are available everywhere.
+
+```tsx
+import { OFSelect } from '../components/OFSelect';
+
+<OFSelect
+  id="wh-method"
+  aria-label="HTTP method"
+  options={[
+    { value: 'POST', label: 'POST' },
+    { value: 'PUT', label: 'PUT' },
+    { value: 'PATCH', label: 'PATCH' },
+  ]}
+  value={form.method}
+  onChange={(value) => setForm({ ...form, method: value as string })}
+/>
+```
+
+Rules:
+
+- Do not build a new native `<select>`, and do not hand-roll another custom dropdown — extend `OFSelect` if it's missing a capability you need.
+- Reference/async-loaded options (e.g. catalog variable choices) should still fetch via `useQuery` as before, but render results through `OFSelect`'s `options` prop instead of `<option>` children.
+- Catalog `multi_select` variables must render with `multiple` so shoppers can pick more than one value (previously these fell through to a plain text input).
+- Filter-bar instances that previously used `width: auto; min-width: …` on a native `<select>` should instead pass `size="sm"` and constrain width via a wrapping element, not by overriding `OFSelect`'s internal layout.
+
+## Floating labels (opt-in)
+
+The default field pattern is still `.form-group` + `<label>` + `<input>`/`<select>` — that remains the baseline for the whole app. Floating labels (the label rests inside the control like a placeholder, then floats up to sit centered on the top border, left-aligned, once the field is focused or filled) are an **opt-in stylistic variant**, adopted per field, not a migration.
+
+For text inputs/textareas, use [`FloatingLabelField`](../../frontend/src/components/FloatingLabelField.tsx) instead of a `.form-group`. For `OFSelect`, pass `floatingLabel` instead of using a separate `<label>`.
+
+Rules:
+
+- Do not use floating labels as the default for new fields — keep `.form-group` + `<label>` unless there's a specific reason to opt in.
+- Never mix the two patterns for a single field (e.g. a floating label _and_ a separate `<label>` above it).
+- Both primitives assume the field sits on `var(--of-surface)` (cards, popovers) since the active-state label background masks the border behind it; pass `className` to override if a field sits directly on `var(--of-bg)`.
+
+## Empty tables show a centered message
+
+Every list `<table>` that can render zero rows must include an empty-state row:
+
+```tsx
+{items.length === 0 && (
+  <tr>
+    <td colSpan={N} className="empty-state">
+      No {items} yet
+    </td>
+  </tr>
+)}
+```
+
+Use the plural noun for the entity (`No webhooks yet`, `No secrets yet`, `No variables yet`). Do not leave an empty `<tbody>`, and do not use left-aligned `text-muted` cells for this purpose.
+
+## Loading states use `.empty-state`
+
+Page-level and section-level loading copy must use `<p className="empty-state">Loading…</p>` (or a more specific variant such as `Loading catalog…`). Do not use a bare `<p>Loading...</p>`.

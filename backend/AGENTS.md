@@ -1,68 +1,34 @@
-# Backend Agent Instructions
+# Backend
 
-## Ruff lint suppressions must be scoped, never generic
+FastAPI app providing a ServiceNow-compatible REST API, using SQLAlchemy (async) against PostgreSQL.
 
-Do not add rule codes to the top-level `[tool.ruff.lint] ignore = [...]` list in
-`pyproject.toml`. A blanket ignore silences a rule for the entire codebase,
-which hides real issues in files that were never audited and quietly permits
-the same mistake everywhere in the future.
+## Run
 
-Instead, scope every suppression to the specific file(s) where it is actually
-justified, using `[tool.ruff.lint.per-file-ignores]`:
-
-```toml
-# Bad -- disables B008 project-wide, even for future non-API code.
-[tool.ruff.lint]
-ignore = ["B008"]
-
-# Good -- disables B008 only where FastAPI's Depends()/Query() pattern applies.
-[tool.ruff.lint.per-file-ignores]
-"app/api/**" = ["B008"]
+```bash
+source ../.venv/bin/activate
+cd backend && uvicorn app.main:app --reload --port 8000
 ```
 
-Before adding any suppression:
+Or `../scripts/start-backend.sh` / `../scripts/stop-backend.sh`. Requires local
+PostgreSQL (`../scripts/ensure-postgres.sh` or `make dev` from the repo root).
 
-1. Run `ruff check --select <RULE>` to find every real violation and confirm
-   which file(s) actually need it.
-2. Add the code under `per-file-ignores` scoped to those file(s) or glob,
-   with a one-line comment explaining *why* it's justified there.
-3. If a rule has zero current violations, don't add a suppression for it at
-   all -- there's nothing to scope, and pre-emptive ignores just rot.
-4. Prefer fixing the code over ignoring the rule when the fix is
-   straightforward and doesn't hurt readability.
+## Test & lint
 
-This applies to every linter/formatter config in this project (ruff, mypy,
-pylint, etc.) -- not just the current `ignore` list.
-
-## Annotate ORM query results, don't suppress `no-any-return`
-
-Helper functions in this codebase (e.g. `app/seed/lab.py`) commonly take an
-untyped `session` parameter. Because of that, `await session.execute(...)`
-resolves to `Any`, so `.scalar_one_or_none()` also resolves to `Any`. If that
-value is later `return`ed from a function with an explicit non-`Any` return
-type, mypy raises `no-any-return`.
-
-Fix this by giving the variable an explicit type annotation at the point
-it's assigned, rather than reaching for `# type: ignore` or `cast(...)`:
-
-```python
-# Bad -- mypy: no-any-return
-item = existing.scalar_one_or_none()
-if not item:
-    item = ServiceCatalogItem(...)
-...
-return item
-
-# Good -- annotation lets mypy narrow `item` to a non-Optional
-# ServiceCatalogItem after the `if not item: item = ...` branch.
-item: ServiceCatalogItem | None = existing.scalar_one_or_none()
-if not item:
-    item = ServiceCatalogItem(...)
-...
-return item
+```bash
+../.venv/bin/python -m pytest                                  # tests
+../.venv/bin/python -m ruff check app tests                    # lint
+../.venv/bin/python -m mypy --config-file pyproject.toml app   # types
 ```
 
-Run `../.venv/bin/python -m mypy --config-file pyproject.toml app` (or
-`make lint`) after adding any new helper that returns a model instance, since
-this class of error only surfaces on the `return` statement, not on the
-query itself.
+(Run from `backend/`, or use `make test` / `make lint` from the repo root.)
+
+## Layout
+
+- `app/api/` — route handlers (`flake/` mock endpoints, `v1/` REST API)
+- `app/domain/` — business logic (table service, catalog, CMDB, secrets, prefs)
+- `app/models/` — SQLAlchemy models
+- `app/auth/` — auth deps, RBAC, security
+- `app/seed/` — base + lab demo data seeding
+- `tests/` — pytest suite + fixtures
+
+Ruff and mypy config live in `pyproject.toml`.
