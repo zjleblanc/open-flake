@@ -1,0 +1,42 @@
+---
+description: OpenFlake's REST API must stay ServiceNow-compatible by tolerating unknown fields
+globs: backend/app/domain/**/*.py
+alwaysApply: false
+---
+
+## Never reject a record write just because a field name is unrecognized
+
+ITSM compatibility is paramount: real ServiceNow instances silently accept
+(or ignore) fields that aren't in a table's dictionary rather than rejecting
+the whole request. Client tooling in the wild (Ansible's `servicenow.itsm`
+modules, custom integrations, etc.) routinely sends extra fields — e.g. via
+an `other` payload that gets flattened into the top-level request — that
+have no corresponding column or class-schema entry.
+
+OpenFlake must match that tolerance. When a payload field isn't a known
+column and isn't declared in a table's/class's schema, **store it** (in the
+`other` / `attributes` JSONB column) instead of raising a 4xx error. The only
+thing that should ever be rejected is a **malformed field name** — i.e. one
+that fails snake_case validation (`validate_snake_case_field_name` /
+`validate_other_field_keys` in `backend/app/domain/errors.py`).
+
+```python
+# Bad -- rejects the whole write because the field isn't in the schema.
+if key not in merged:
+    raise InvalidFieldNameError(f"Field '{key}' is not defined for class '{class_name}'")
+
+# Good -- unknown-but-valid fields still get stored, matching ServiceNow.
+if strict and key in merged:
+    field = merged[key]
+    columns[key] = value if field.storage == "column" else None
+else:
+    validate_other_field_keys({key: value})
+    attributes[key] = value
+```
+
+This pattern is already followed by `_flatten_payload` in
+`backend/app/domain/table_service.py` (unknown keys → `other` JSONB) and
+`split_payload` in `backend/app/domain/cmdb/payload.py` (unknown keys →
+`attributes` JSONB, even for registered classes). Keep any new table/record
+write paths consistent with it — snake_case is the only hard requirement,
+schema membership is not.

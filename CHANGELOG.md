@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Relax CMDB field validation for ITSM compatibility
+
+### Added
+
+- `.cursor/rules/api-field-flexibility.mdc` — rule enforcing permissive snake_case field storage across the backend domain layer to maintain ServiceNow compatibility.
+- `test_split_payload_accepts_unknown_snake_case_field_for_registered_class` and `test_split_payload_mixed_known_and_unknown_fields` to `test_cmdb_classes.py`.
+
+### Changed
+
+- CMDB `split_payload` validation now routes unknown snake_case fields into `attributes` JSONB for all classes (registered and unregistered) instead of rejecting them with `InvalidFieldNameError`.
+- Updated `docs/cmdb-class-hierarchy.md` (and bundled `docs/README.md`) to reflect "schema-aware routing" rather than strict rejection for registered classes.
+
 ## 2026-08-17 — Add sys_mod_count as a global field with automated increments
 
 ### Added

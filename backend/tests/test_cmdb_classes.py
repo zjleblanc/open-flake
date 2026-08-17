@@ -188,9 +188,33 @@ def test_split_payload_registered_class():
     assert attributes["kernel_release"] == "6.1"
 
 
-def test_split_payload_rejects_unknown_field_for_registered_class():
+def test_split_payload_accepts_unknown_snake_case_field_for_registered_class():
+    columns, attributes = split_payload("cmdb_ci_linux_server", {"cpus": "4"})
+    assert columns == {}
+    assert attributes["cpus"] == "4"
+
+
+def test_split_payload_rejects_non_snake_case_field_for_registered_class():
     with pytest.raises(InvalidFieldNameError):
-        split_payload("cmdb_ci_linux_server", {"cpus": "4"})
+        split_payload("cmdb_ci_linux_server", {"CpuCount": "2"})
+
+
+def test_split_payload_mixed_known_and_unknown_fields():
+    columns, attributes = split_payload(
+        "cmdb_ci_linux_server",
+        {
+            "name": "host1",
+            "host_name": "host1",
+            "kernel_release": "6.1",
+            "vm_inst_id": "i-0a8f894a2cbb88b5b",
+            "cpu_count": "1",
+        },
+    )
+    assert columns["name"] == "host1"
+    assert columns["host_name"] == "host1"
+    assert attributes["kernel_release"] == "6.1"
+    assert attributes["vm_inst_id"] == "i-0a8f894a2cbb88b5b"
+    assert attributes["cpu_count"] == "1"
 
 
 def test_split_payload_unregistered_class_is_permissive(monkeypatch):

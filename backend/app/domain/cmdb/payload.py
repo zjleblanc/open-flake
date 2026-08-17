@@ -6,7 +6,7 @@ from typing import Any
 
 from app.domain.cmdb.constants import PROMOTED_COLUMNS, SYSTEM_FIELDS
 from app.domain.cmdb.registry import get_merged_fields, is_registered
-from app.domain.errors import InvalidFieldNameError, validate_other_field_keys
+from app.domain.errors import validate_other_field_keys
 from app.models import CmdbCi
 
 
@@ -41,11 +41,7 @@ def split_payload(
         if key in PROMOTED_COLUMNS:
             columns[key] = value
             continue
-        if strict:
-            if key not in merged:
-                raise InvalidFieldNameError(
-                    f"Field '{key}' is not defined for class '{class_name}'"
-                )
+        if strict and key in merged:
             field = merged[key]
             if field.storage == "column":
                 columns[key] = value

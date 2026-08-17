@@ -25,7 +25,7 @@ Classes registered in `cmdb_class` and `cmdb_class_field` at startup have:
 
 - A defined position in the class tree
 - Field definitions with labels and types
-- **Strict validation** on create/update — unknown fields are rejected
+- **Schema-aware routing** on create/update — fields defined on the class (or an ancestor) are stored as their declared column/attribute; snake_case fields not in the schema are still accepted and stored in `attributes` (matching ServiceNow's tolerance of undeclared fields); non-snake_case field names are rejected
 - **Descendant queries** — listing `/api/now/table/cmdb_ci_server` returns records whose class is `cmdb_ci_server` or any subclass
 
 ### Unregistered classes
@@ -37,7 +37,7 @@ When a CI is created with a class that is not yet in the registry (via Table API
 3. Queries against that class URL match **exact class only** until the class is added to the hierarchy with a proper parent chain
 4. `sys_class_path` is computed as `/cmdb/cmdb_ci/{class_name}`
 
-To upgrade an auto-registered class to strict mode, register a proper parent chain and field definitions in `cmdb_class` / `cmdb_class_field`, then restart the backend.
+To upgrade an auto-registered class to schema-aware routing, register a proper parent chain and field definitions in `cmdb_class` / `cmdb_class_field`, then restart the backend.
 
 ## Registered class metadata
 
