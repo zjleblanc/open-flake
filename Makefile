@@ -1,7 +1,7 @@
 # OpenFlake developer task runner
 # Run `make setup` once after cloning to install deps and pre-commit hooks.
 
-.PHONY: setup dev db db-seed db-reseed lint format test check
+.PHONY: setup dev db db-seed db-reseed migrate migrate-gen migrate-history lint format test check
 
 PYTHON ?= .venv/bin/python
 PIP ?= .venv/bin/pip
@@ -27,6 +27,15 @@ db-seed: db
 
 db-reseed: db
 	cd backend && ../$(PYTHON) -m app.seed.lab --env-file .env --force --hard
+
+migrate:
+	cd backend && ../$(PYTHON) -m alembic upgrade head
+
+migrate-gen:
+	cd backend && ../$(PYTHON) -m alembic revision --autogenerate -m "$(msg)"
+
+migrate-history:
+	cd backend && ../$(PYTHON) -m alembic history --verbose
 
 lint:
 	cd backend && ../$(PYTHON) -m ruff check app tests

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Alembic database migrations
+
+### Added
+- Alembic-based database migrations (`backend/alembic/`), with a baseline migration representing the full current schema.
+- `make migrate`, `make migrate-gen msg="..."`, and `make migrate-history` targets for generating and applying schema migrations.
+- Documented the new migration workflow in `backend/AGENTS.md`.
+
+### Changed
+- `run_migrations()` now applies `alembic upgrade head` on startup instead of `Base.metadata.create_all()`, which only created new tables and couldn't alter existing ones. It runs the upgrade on a background thread to avoid conflicting with the app's own event loop, and respects `configure_database()` overrides so lab seeding still targets the intended database.
+
+### Fixed
+- Fixed a test-isolation bug where restoring `db.engine` after `test_configure_database_updates_module_engine` used a password-masked URL, silently corrupting the shared engine's credentials for tests run afterward in the same session.
+
 ## 2026-08-18 — Reference variable enhancements and batch optimization
 
 ### Added

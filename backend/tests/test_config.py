@@ -42,4 +42,7 @@ def test_configure_database_updates_module_engine():
         assert db.engine is not original_engine
         assert "other-host" in str(db.engine.url)
     finally:
-        db.configure_database(str(original_engine.url))
+        # `str(url)` masks the password as a literal "***"; render it
+        # unmasked so the restored engine keeps working real credentials
+        # for tests that run after this one in the same session.
+        db.configure_database(original_engine.url.render_as_string(hide_password=False))

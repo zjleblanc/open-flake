@@ -1,25 +1,24 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
+from app import db
 from app.startup import run_migrations
 
 
 @pytest.mark.asyncio
-async def test_run_migrations_creates_schema_from_metadata():
-    """On a fresh database, `run_migrations` should do nothing more than run
-    `Base.metadata.create_all` -- no hand-rolled column migrations remain."""
-    conn = AsyncMock()
-    engine_ctx = MagicMock()
-    engine_ctx.__aenter__ = AsyncMock(return_value=conn)
-    engine_ctx.__aexit__ = AsyncMock(return_value=None)
-    engine = MagicMock()
-    engine.begin = MagicMock(return_value=engine_ctx)
+async def test_run_migrations_applies_alembic_upgrade_to_head():
+    """`run_migrations` should delegate schema changes to Alembic's
+    `upgrade head` (against whichever database `db.engine` currently points
+    at), not `Base.metadata.create_all`, which can't alter existing tables.
+    """
+    mock_upgrade = MagicMock()
 
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr("app.startup.db.engine", engine)
+    with patch("alembic.command.upgrade", mock_upgrade):
         await run_migrations()
 
-    conn.run_sync.assert_awaited_once()
-    from app.db import Base
-
-    assert conn.run_sync.await_args.args[0] == Base.metadata.create_all
+    mock_upgrade.assert_called_once()
+    cfg, revision = mock_upgrade.call_args.args
+    assert revision == "head"
+    assert cfg.get_main_option("sqlalchemy.url") == db.engine.url.render_as_string(
+        hide_password=False
+    )

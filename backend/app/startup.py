@@ -1,5 +1,7 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from sqlalchemy import select
 
@@ -11,7 +13,6 @@ from app.api.flake.attachment import (
 )
 from app.auth.security import hash_password
 from app.config import get_settings
-from app.db import Base
 from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS
 from app.models import (
     CmdbRelType,
@@ -33,15 +34,28 @@ settings = get_settings()
 
 
 async def run_migrations():
-    """Build the schema from the current SQLAlchemy models.
+    """Apply pending Alembic migrations up to head.
 
-    `create_all` is additive only: it creates tables (and their columns,
-    types, and FK constraints) that don't exist yet, and leaves existing
-    tables untouched. On a fresh database this produces the full schema
-    -- including cascading FK constraints -- in one shot.
+    Schema changes (new tables, columns, indexes, etc.) are version
+    controlled as Alembic revisions under `alembic/versions/`. This runs
+    them automatically on startup so the schema is always current before
+    seeding begins.
+
+    `command.upgrade` drives its own async engine (see `alembic/env.py`)
+    and internally calls `asyncio.run()`, which cannot be invoked from
+    within an already-running event loop -- so it's offloaded to a thread.
     """
-    async with db.engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    from alembic import command
+    from alembic.config import Config
+
+    alembic_cfg = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
+    # Target whichever database `db.engine` currently points at, so this
+    # respects `configure_database()` overrides (e.g. lab seeding against a
+    # custom --env-file) rather than always using the default settings.
+    alembic_cfg.set_main_option(
+        "sqlalchemy.url", db.engine.url.render_as_string(hide_password=False)
+    )
+    await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
 
 
 async def ensure_rbac_roles():
