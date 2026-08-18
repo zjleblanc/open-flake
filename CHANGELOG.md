@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Reference variable enhancements and batch optimization
+
+### Added
+- Configurable `reference_display_field` for catalog reference variables: admins can now choose which table property (e.g. `short_description` instead of `name`) is shown to shoppers.
+- Batch options endpoint `POST /api/sn_sc/servicecatalog/items/{id}/variables/options`: deduplicates underlying database queries when multiple form variables reference the same table and filter.
+- Webhook display-value resolution: catalog variables in webhook payloads now carry the human-readable display label (resolved via batched lookups) rather than an opaque sys_id.
+
+### Changed
+- Refactored `CatalogItemPage` to fetch all reference field options in a single batched HTTP call, reducing shopper-facing latency for complex forms.
+- Converted `ReferenceSelect` to a controlled component to support external state management and batch loading.
+
+### Fixed
+- Anchored the journal field edit button to the top-right corner of the field rather than vertically centering it, keeping it pinned as note content grows.
+
 ## 2026-08-18 — Activity feed refinements and inline notes editing
 
 ### Added

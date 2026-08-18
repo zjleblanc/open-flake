@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type CatalogVariable } from '../api/client';
 import { Portal } from './Portal';
 import { OFSelect } from './OFSelect';
+import { FieldTooltip } from './FieldTooltip';
 import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
 import '../pages/CatalogPages.css';
@@ -30,6 +31,7 @@ type VariableForm = {
   choice_list_text: string;
   help_text: string;
   reference_table: string;
+  reference_display_field: string;
   filter_rows: FilterRow[];
 };
 
@@ -42,6 +44,7 @@ const emptyForm = (): VariableForm => ({
   choice_list_text: '',
   help_text: '',
   reference_table: '',
+  reference_display_field: '',
   filter_rows: [],
 });
 
@@ -78,6 +81,7 @@ function variableToForm(variable: CatalogVariable): VariableForm {
     choice_list_text: formatChoiceList(variable.choice_list),
     help_text: variable.help_text || '',
     reference_table: variable.reference_table || '',
+    reference_display_field: variable.reference_display_field || '',
     filter_rows: parseFilterRows(variable.reference_filter),
   };
 }
@@ -97,6 +101,7 @@ function toPayload(form: VariableForm) {
         : [],
     reference_table: isReference ? form.reference_table || null : null,
     reference_filter: isReference ? serializeFilterRows(form.filter_rows) || null : null,
+    reference_display_field: isReference ? form.reference_display_field || null : null,
   };
 }
 
@@ -125,6 +130,12 @@ export function CatalogVariablePopover({
     queryKey: ['catalog-admin-tables'],
     queryFn: () => api.adminListTables(),
     enabled: open && form.type === 'reference',
+  });
+
+  const fieldsQuery = useQuery({
+    queryKey: ['catalog-admin-table-fields', form.reference_table],
+    queryFn: () => api.adminListTableFields(form.reference_table),
+    enabled: open && form.type === 'reference' && Boolean(form.reference_table),
   });
 
   useEffect(() => {
@@ -171,6 +182,7 @@ export function CatalogVariablePopover({
   const pending = createMutation.isPending || updateMutation.isPending;
   const title = mode === 'edit' ? 'Edit Variable' : 'Add Variable';
   const tables = tablesQuery.data?.result || [];
+  const fields = fieldsQuery.data?.result || [];
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -287,12 +299,37 @@ export function CatalogVariablePopover({
                           ...p,
                           reference_table: nextTable,
                           filter_rows: nextTable === p.reference_table ? p.filter_rows : [],
+                          reference_display_field:
+                            nextTable === p.reference_table ? p.reference_display_field : '',
                         }));
                       }}
                       options={tables.map((table) => ({ value: table.name, label: table.name }))}
                     />
                     {tablesQuery.isLoading ? (
                       <p className="catalog-help-text">Loading tables…</p>
+                    ) : null}
+                  </div>
+                  <div className="form-group catalog-form-span">
+                    <span className="field-label-with-tooltip">
+                      <label htmlFor="popover-var-ref-display-field">Display Property</label>
+                      <FieldTooltip ariaLabel="Display Property help">
+                        The property shown to shoppers and sent as the resolved value in webhooks.
+                        Defaults to "name" when left blank.
+                      </FieldTooltip>
+                    </span>
+                    <OFSelect
+                      id="popover-var-ref-display-field"
+                      autocomplete
+                      disabled={!form.reference_table}
+                      placeholder="name (default)"
+                      value={form.reference_display_field}
+                      onChange={(value) =>
+                        setForm((p) => ({ ...p, reference_display_field: value as string }))
+                      }
+                      options={fields.map((field) => ({ value: field.name, label: field.name }))}
+                    />
+                    {fieldsQuery.isLoading ? (
+                      <p className="catalog-help-text">Loading fields…</p>
                     ) : null}
                   </div>
                   <div className="form-group catalog-form-span">

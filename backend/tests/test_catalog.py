@@ -32,6 +32,7 @@ def _var(**kwargs) -> ItemOptionNew:
         "order": 100,
         "reference_table": None,
         "reference_filter": None,
+        "reference_display_field": None,
         "choice_list": [],
         "help_text": None,
         "read_only": False,
@@ -993,3 +994,318 @@ async def test_options_endpoint_respects_rbac():
     assert captured["auth"] is auth
     assert captured["table"] == "cmdb_ci"
     assert result["result"]["total"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_variable_options_uses_configured_display_field():
+    """The options endpoint should label records with reference_display_field, not name."""
+    from app.api.flake import catalog as catalog_api
+    from app.models import ServiceCatalogItem
+
+    item = ServiceCatalogItem(sys_id="item1", catalog_sys_id="cat1", name="Item", active=True)
+    variable = _var(
+        name="ci",
+        type="reference",
+        reference_table="cmdb_ci",
+        reference_display_field="short_description",
+    )
+
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=item)
+    var_result = MagicMock()
+    var_result.scalar_one_or_none.return_value = variable
+    db.execute = AsyncMock(return_value=var_result)
+
+    async def fake_list_records(db_arg, table, conditions, **kwargs):
+        return (
+            [{"sys_id": "ci1", "name": "srv01", "short_description": "Web Server 01"}],
+            1,
+        )
+
+    with patch(
+        "app.api.flake.catalog.list_records",
+        new=AsyncMock(side_effect=fake_list_records),
+    ):
+        result = await catalog_api.get_variable_options(
+            "item1", "ci", depends_on=None, auth=_auth(), db=db
+        )
+
+    assert result["result"]["options"][0]["label"] == "Web Server 01"
+
+
+@pytest.mark.asyncio
+async def test_get_variable_options_display_field_falls_back_when_blank():
+    """When the configured display field is blank on a record, fall back to name/sys_id."""
+    from app.api.flake import catalog as catalog_api
+    from app.models import ServiceCatalogItem
+
+    item = ServiceCatalogItem(sys_id="item1", catalog_sys_id="cat1", name="Item", active=True)
+    variable = _var(
+        name="ci",
+        type="reference",
+        reference_table="cmdb_ci",
+        reference_display_field="short_description",
+    )
+
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=item)
+    var_result = MagicMock()
+    var_result.scalar_one_or_none.return_value = variable
+    db.execute = AsyncMock(return_value=var_result)
+
+    async def fake_list_records(db_arg, table, conditions, **kwargs):
+        return ([{"sys_id": "ci1", "name": "srv01", "short_description": ""}], 1)
+
+    with patch(
+        "app.api.flake.catalog.list_records",
+        new=AsyncMock(side_effect=fake_list_records),
+    ):
+        result = await catalog_api.get_variable_options(
+            "item1", "ci", depends_on=None, auth=_auth(), db=db
+        )
+
+    assert result["result"]["options"][0]["label"] == "srv01"
+
+
+@pytest.mark.asyncio
+async def test_batch_variable_options_dedupes_identical_table_filter():
+    """Two variables sharing the same table+filter+display_field share one query."""
+    from app.api.flake import catalog as catalog_api
+    from app.models import ServiceCatalogItem
+
+    item = ServiceCatalogItem(sys_id="item1", catalog_sys_id="cat1", name="Item", active=True)
+    var1 = _var(
+        sys_id="v1",
+        name="primary_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_filter="active=true",
+    )
+    var2 = _var(
+        sys_id="v2",
+        name="secondary_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_filter="active=true",
+    )
+
+    async def fake_get(model, key):
+        if model is ServiceCatalogItem:
+            return item
+        return None
+
+    db = AsyncMock()
+    db.get = AsyncMock(side_effect=fake_get)
+    var_result = MagicMock()
+    var_result.scalars.return_value.all.return_value = [var1, var2]
+    db.execute = AsyncMock(return_value=var_result)
+
+    call_count = {"n": 0}
+
+    async def fake_list_records(db_arg, table, conditions, **kwargs):
+        call_count["n"] += 1
+        return ([{"sys_id": "g1", "name": "Platform Team"}], 1)
+
+    with patch(
+        "app.api.flake.catalog.list_records",
+        new=AsyncMock(side_effect=fake_list_records),
+    ):
+        result = await catalog_api.get_batch_variable_options(
+            "item1",
+            {"variables": {"primary_group": "", "secondary_group": ""}},
+            auth=_auth(),
+            db=db,
+        )
+
+    assert call_count["n"] == 1
+    assert result["result"]["primary_group"]["options"][0]["label"] == "Platform Team"
+    assert result["result"]["secondary_group"]["options"][0]["label"] == "Platform Team"
+
+
+@pytest.mark.asyncio
+async def test_batch_variable_options_separates_different_filters():
+    """Variables on the same table with different effective filters get separate queries."""
+    from app.api.flake import catalog as catalog_api
+    from app.models import ServiceCatalogItem
+
+    item = ServiceCatalogItem(sys_id="item1", catalog_sys_id="cat1", name="Item", active=True)
+    var1 = _var(
+        sys_id="v1",
+        name="group_a",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_filter="name=alpha",
+    )
+    var2 = _var(
+        sys_id="v2",
+        name="group_b",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_filter="name=beta",
+    )
+
+    async def fake_get(model, key):
+        if model is ServiceCatalogItem:
+            return item
+        return None
+
+    db = AsyncMock()
+    db.get = AsyncMock(side_effect=fake_get)
+    var_result = MagicMock()
+    var_result.scalars.return_value.all.return_value = [var1, var2]
+    db.execute = AsyncMock(return_value=var_result)
+
+    call_count = {"n": 0}
+
+    async def fake_list_records(db_arg, table, conditions, **kwargs):
+        call_count["n"] += 1
+        return ([{"sys_id": f"g{call_count['n']}", "name": f"Group {call_count['n']}"}], 1)
+
+    with patch(
+        "app.api.flake.catalog.list_records",
+        new=AsyncMock(side_effect=fake_list_records),
+    ):
+        result = await catalog_api.get_batch_variable_options(
+            "item1",
+            {"variables": {"group_a": "", "group_b": ""}},
+            auth=_auth(),
+            db=db,
+        )
+
+    assert call_count["n"] == 2
+    assert "group_a" in result["result"]
+    assert "group_b" in result["result"]
+
+
+@pytest.mark.asyncio
+async def test_load_variables_for_ritm_resolves_reference_display_value():
+    """Webhook variables should carry the resolved display value, not the raw sys_id."""
+    from app.domain.catalog.webhooks import _load_variables_for_ritm
+    from app.models import ScItemOption
+
+    option_ref = ScItemOption(
+        sys_id="opt1", item_option_new="var-ref", sc_req_item="ritm1", value="group-sys-id-1"
+    )
+    option_str = ScItemOption(
+        sys_id="opt2", item_option_new="var-str", sc_req_item="ritm1", value="plain text"
+    )
+    var_ref = _var(
+        sys_id="var-ref",
+        name="target_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_display_field="name",
+    )
+    var_str = _var(sys_id="var-str", name="notes", type="string")
+
+    db = AsyncMock()
+    join_result = MagicMock()
+    join_result.all.return_value = [(option_ref, var_ref), (option_str, var_str)]
+
+    lookup_result = MagicMock()
+    lookup_result.all.return_value = [("group-sys-id-1", "Platform Team")]
+
+    call_count = {"n": 0}
+
+    async def fake_execute(stmt):
+        call_count["n"] += 1
+        return join_result if call_count["n"] == 1 else lookup_result
+
+    db.execute = AsyncMock(side_effect=fake_execute)
+
+    result = await _load_variables_for_ritm(db, "ritm1")
+
+    assert result["target_group"] == "Platform Team"
+    assert result["notes"] == "plain text"
+
+
+@pytest.mark.asyncio
+async def test_load_variables_for_ritm_batches_same_table_lookup():
+    """Multiple reference variables on the same table+display_field share one lookup query."""
+    from app.domain.catalog.webhooks import _load_variables_for_ritm
+    from app.models import ScItemOption
+
+    option1 = ScItemOption(
+        sys_id="opt1", item_option_new="var-ref1", sc_req_item="ritm1", value="group-1"
+    )
+    option2 = ScItemOption(
+        sys_id="opt2", item_option_new="var-ref2", sc_req_item="ritm1", value="group-2"
+    )
+    var_ref1 = _var(
+        sys_id="var-ref1",
+        name="primary_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_display_field="name",
+    )
+    var_ref2 = _var(
+        sys_id="var-ref2",
+        name="secondary_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_display_field="name",
+    )
+
+    db = AsyncMock()
+    join_result = MagicMock()
+    join_result.all.return_value = [(option1, var_ref1), (option2, var_ref2)]
+
+    lookup_result = MagicMock()
+    lookup_result.all.return_value = [
+        ("group-1", "Platform Team"),
+        ("group-2", "Security Team"),
+    ]
+
+    call_count = {"n": 0}
+
+    async def fake_execute(stmt):
+        call_count["n"] += 1
+        return join_result if call_count["n"] == 1 else lookup_result
+
+    db.execute = AsyncMock(side_effect=fake_execute)
+
+    result = await _load_variables_for_ritm(db, "ritm1")
+
+    assert result["primary_group"] == "Platform Team"
+    assert result["secondary_group"] == "Security Team"
+    # One query loads the sc_item_option/item_option_new join, and a single
+    # additional query resolves both group sys_ids since they share
+    # (reference_table, display_field).
+    assert call_count["n"] == 2
+
+
+@pytest.mark.asyncio
+async def test_load_variables_for_ritm_falls_back_to_sys_id_when_unresolved():
+    """If a referenced record no longer exists, fall back to the raw sys_id."""
+    from app.domain.catalog.webhooks import _load_variables_for_ritm
+    from app.models import ScItemOption
+
+    option = ScItemOption(
+        sys_id="opt1", item_option_new="var-ref", sc_req_item="ritm1", value="missing-group"
+    )
+    var_ref = _var(
+        sys_id="var-ref",
+        name="target_group",
+        type="reference",
+        reference_table="sys_user_group",
+        reference_display_field="name",
+    )
+
+    db = AsyncMock()
+    join_result = MagicMock()
+    join_result.all.return_value = [(option, var_ref)]
+
+    lookup_result = MagicMock()
+    lookup_result.all.return_value = []
+
+    call_count = {"n": 0}
+
+    async def fake_execute(stmt):
+        call_count["n"] += 1
+        return join_result if call_count["n"] == 1 else lookup_result
+
+    db.execute = AsyncMock(side_effect=fake_execute)
+
+    result = await _load_variables_for_ritm(db, "ritm1")
+
+    assert result["target_group"] == "missing-group"

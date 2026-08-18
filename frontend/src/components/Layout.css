@@ -2133,12 +2133,13 @@ button.nav-link {
 }
 
 /* Same idle/hover treatment as the app's standard row-action `.btn-icon` (see
-   CatalogPages.css), just floated over the field and vertically centered on it. */
+   CatalogPages.css), just floated over the field and anchored to its top-right
+   corner (rather than vertically centered) so it stays put as note content
+   grows taller. */
 .journal-field-edit-btn {
   position: absolute;
-  top: 50%;
+  top: 0.5rem;
   right: 0.5rem;
-  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;

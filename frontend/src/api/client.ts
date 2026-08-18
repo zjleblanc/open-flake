@@ -326,6 +326,12 @@ export const api = {
     );
   },
 
+  getBatchVariableOptions: (itemId: string, variables: Record<string, string>) =>
+    request<{ result: Record<string, { options: CatalogChoice[]; total: number }> }>(
+      `/api/sn_sc/servicecatalog/items/${itemId}/variables/options`,
+      { method: 'POST', body: JSON.stringify({ variables }) },
+    ),
+
   adminListCatalogItems: () =>
     request<{ result: CatalogItemSummary[] }>('/api/flake/catalog/admin/items'),
 
@@ -500,6 +506,7 @@ export type CatalogVariable = {
   order: number;
   reference_table: string;
   reference_filter: string;
+  reference_display_field: string;
   choice_list: CatalogChoice[];
   help_text: string;
   read_only: boolean;

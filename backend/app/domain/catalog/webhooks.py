@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import logging
+from collections import defaultdict
 from string import Template
 from typing import Any
 
@@ -14,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import db as db_module
+from app.domain.registry import TABLE_MODELS
 from app.domain.secrets import SecretResolutionError, resolve_headers
 from app.events.bus import RecordEvent, subscribe
 from app.models import ItemOptionNew, ScCatItemWebhook, ScItemOption, ScWebhook, ScWebhookLog
@@ -228,13 +230,56 @@ def _sign_body(secret: str | None, body: bytes) -> str | None:
     return hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
 
 
+async def _batch_lookup_display_values(
+    session: AsyncSession,
+    table: str,
+    display_field: str,
+    sys_ids: set[str],
+) -> dict[str, str]:
+    """Resolve a set of sys_ids on `table` to their `display_field` value in one query."""
+    model = TABLE_MODELS.get(table)
+    if not model or not sys_ids:
+        return {}
+    column = getattr(model, display_field, None) or getattr(model, "name", None)
+    if column is None:
+        return {}
+    result = await session.execute(select(model.sys_id, column).where(model.sys_id.in_(sys_ids)))
+    return {row[0]: (row[1] or "") for row in result.all()}
+
+
 async def _load_variables_for_ritm(session: AsyncSession, ritm_sys_id: str) -> dict[str, str]:
+    """Load submitted variable answers for a RITM, resolved to display values.
+
+    Reference-type variables are stored as raw sys_ids; this resolves each to
+    its configured `reference_display_field` (default "name") instead of the
+    opaque id, so webhook payloads carry human-readable values. Lookups are
+    grouped by (reference_table, display_field) so that a form referencing the
+    same table/field combination multiple times only issues one query for it.
+    """
     result = await session.execute(
         select(ScItemOption, ItemOptionNew)
         .join(ItemOptionNew, ItemOptionNew.sys_id == ScItemOption.item_option_new)
         .where(ScItemOption.sc_req_item == ritm_sys_id)
     )
-    return {variable.name: (option.value or "") for option, variable in result.all()}
+    rows = result.all()
+
+    resolved: dict[str, str] = {}
+    to_resolve: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+    for option, variable in rows:
+        value = option.value or ""
+        if variable.type == "reference" and variable.reference_table and value:
+            display_field = variable.reference_display_field or "name"
+            to_resolve[(variable.reference_table, display_field)].append((variable.name, value))
+        else:
+            resolved[variable.name] = value
+
+    for (table, display_field), entries in to_resolve.items():
+        sys_ids = {sys_id for _, sys_id in entries}
+        labels = await _batch_lookup_display_values(session, table, display_field, sys_ids)
+        for var_name, sys_id in entries:
+            resolved[var_name] = labels.get(sys_id) or sys_id
+
+    return resolved
 
 
 async def deliver_webhooks_for_ritm(

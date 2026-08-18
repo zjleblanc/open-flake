@@ -53,6 +53,7 @@ def _variable_dict(variable: ItemOptionNew) -> dict[str, Any]:
         "order": variable.order,
         "reference_table": variable.reference_table or "",
         "reference_filter": variable.reference_filter or "",
+        "reference_display_field": variable.reference_display_field or "",
         "choice_list": variable.choice_list or [],
         "help_text": variable.help_text or "",
         "read_only": variable.read_only,
@@ -147,6 +148,97 @@ async def get_item(
     return {"result": payload}
 
 
+def _parse_depends_on(depends_on: str) -> dict[str, str]:
+    """Parse a "field_name=value&field2=value2" string into a dict."""
+    depends_map: dict[str, str] = {}
+    for part in depends_on.split("&"):
+        if "=" in part:
+            key, value = part.split("=", 1)
+            depends_map[key.strip()] = value.strip()
+    return depends_map
+
+
+async def _resolve_effective_filter(
+    db: AsyncSession,
+    variable: ItemOptionNew,
+    depends_on: str | None,
+) -> str:
+    """Resolve the reference_filter for a variable, applying any matching filter_override."""
+    query_filter = variable.reference_filter or ""
+    if not depends_on:
+        return query_filter
+
+    depends_map = _parse_depends_on(depends_on)
+    cond_result = await db.execute(
+        select(ItemOptionNewCondition).where(
+            ItemOptionNewCondition.variable == variable.sys_id,
+            ItemOptionNewCondition.condition_type == "filter",
+            ItemOptionNewCondition.active.is_(True),
+        )
+    )
+    for condition in cond_result.scalars().all():
+        dep_var = await db.get(ItemOptionNew, condition.depends_on)
+        if not dep_var:
+            continue
+        current = depends_map.get(dep_var.name)
+        if current is None:
+            continue
+        matched = False
+        if condition.operator == "=":
+            matched = current == (condition.value or "")
+        elif condition.operator == "!=":
+            matched = current != (condition.value or "")
+        elif condition.operator == "IN":
+            allowed = {p.strip() for p in (condition.value or "").split(",") if p.strip()}
+            matched = current in allowed
+        elif condition.operator == "NOT_IN":
+            allowed = {p.strip() for p in (condition.value or "").split(",") if p.strip()}
+            matched = current not in allowed
+        elif condition.operator == "EMPTY":
+            matched = current == ""
+        elif condition.operator == "NOT_EMPTY":
+            matched = current != ""
+        if matched and condition.filter_override:
+            query_filter = condition.filter_override
+            break
+    return query_filter
+
+
+def _record_label(record: dict[str, Any], display_field: str) -> str:
+    """Resolve a reference record's display label, preferring the configured field."""
+    return record.get(display_field) or record.get("name") or record.get("sys_id") or ""
+
+
+async def _load_reference_options(
+    db: AsyncSession,
+    *,
+    table: str,
+    query_filter: str,
+    display_field: str,
+    auth: AuthContext,
+) -> tuple[list[dict[str, Any]], int]:
+    """Fetch options for a single (table, filter, display_field) combination."""
+    conditions = parse_sysparm_query(query_filter) if query_filter else []
+    records, total = await list_records(
+        db,
+        table,
+        conditions,
+        limit=100,
+        offset=0,
+        exclude_links=False,
+        auth=auth,
+    )
+    options = [
+        {
+            "value": record.get("sys_id", ""),
+            "label": _record_label(record, display_field),
+            "record": record,
+        }
+        for record in records
+    ]
+    return options, total
+
+
 @router.get("/items/{item_id}/variables/{var_name}/options")
 async def get_variable_options(
     item_id: str,
@@ -175,76 +267,80 @@ async def get_variable_options(
     if not variable.reference_table:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Variable has no reference_table")
 
-    query_filter = variable.reference_filter or ""
-    if depends_on:
-        # depends_on format: "field_name=value" pairs joined by &
-        depends_map: dict[str, str] = {}
-        for part in depends_on.split("&"):
-            if "=" in part:
-                key, value = part.split("=", 1)
-                depends_map[key.strip()] = value.strip()
-
-        cond_result = await db.execute(
-            select(ItemOptionNewCondition).where(
-                ItemOptionNewCondition.variable == variable.sys_id,
-                ItemOptionNewCondition.condition_type == "filter",
-                ItemOptionNewCondition.active.is_(True),
-            )
-        )
-        for condition in cond_result.scalars().all():
-            dep_var = await db.get(ItemOptionNew, condition.depends_on)
-            if not dep_var:
-                continue
-            current = depends_map.get(dep_var.name)
-            if current is None:
-                continue
-            matched = False
-            if condition.operator == "=":
-                matched = current == (condition.value or "")
-            elif condition.operator == "!=":
-                matched = current != (condition.value or "")
-            elif condition.operator == "IN":
-                allowed = {p.strip() for p in (condition.value or "").split(",") if p.strip()}
-                matched = current in allowed
-            elif condition.operator == "NOT_IN":
-                allowed = {p.strip() for p in (condition.value or "").split(",") if p.strip()}
-                matched = current not in allowed
-            elif condition.operator == "EMPTY":
-                matched = current == ""
-            elif condition.operator == "NOT_EMPTY":
-                matched = current != ""
-            if matched and condition.filter_override:
-                query_filter = condition.filter_override
-                break
-
-    conditions = parse_sysparm_query(query_filter) if query_filter else []
-    records, total = await list_records(
+    query_filter = await _resolve_effective_filter(db, variable, depends_on)
+    options, total = await _load_reference_options(
         db,
-        variable.reference_table,
-        conditions,
-        limit=100,
-        offset=0,
-        exclude_links=False,
+        table=variable.reference_table,
+        query_filter=query_filter,
+        display_field=variable.reference_display_field or "name",
         auth=auth,
     )
-    options = []
-    for record in records:
-        label = (
-            record.get("name")
-            or record.get("user_name")
-            or record.get("number")
-            or record.get("short_description")
-            or record.get("sys_id")
-            or ""
-        )
-        options.append(
-            {
-                "value": record.get("sys_id", ""),
-                "label": label,
-                "record": record,
-            }
-        )
     return {"result": {"options": options, "total": total}}
+
+
+@router.post("/items/{item_id}/variables/options")
+async def get_batch_variable_options(
+    item_id: str,
+    payload: dict[str, Any] | None = None,
+    auth: AuthContext = Depends(authenticate_request),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return reference options for several variables in one call.
+
+    Body: {"variables": {"<var_name>": "<depends_on_string>", ...}}
+
+    Variables that share the same (reference_table, effective_filter,
+    reference_display_field) are resolved with a single underlying query,
+    which avoids redundant round-trips when a form references the same
+    table multiple times (e.g. two "assignment group" style fields).
+    """
+    item = await db.get(ServiceCatalogItem, item_id)
+    if not item or not item.active:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Item not found")
+
+    var_depends_on: dict[str, str] = (payload or {}).get("variables") or {}
+    if not var_depends_on:
+        return {"result": {}}
+
+    result = await db.execute(
+        select(ItemOptionNew).where(
+            ItemOptionNew.cat_item == item_id,
+            ItemOptionNew.name.in_(var_depends_on.keys()),
+            ItemOptionNew.active.is_(True),
+            ItemOptionNew.type == "reference",
+        )
+    )
+    variables = result.scalars().all()
+
+    # Group variable names by (table, effective_filter, display_field) so that
+    # identical combinations share a single list_records() call.
+    groups: dict[tuple[str, str, str], list[str]] = {}
+    group_key_by_var: dict[str, tuple[str, str, str]] = {}
+    for variable in variables:
+        if not variable.reference_table:
+            continue
+        depends_on = var_depends_on.get(variable.name)
+        query_filter = await _resolve_effective_filter(db, variable, depends_on)
+        display_field = variable.reference_display_field or "name"
+        key = (variable.reference_table, query_filter, display_field)
+        groups.setdefault(key, []).append(variable.name)
+        group_key_by_var[variable.name] = key
+
+    resolved: dict[tuple[str, str, str], tuple[list[dict[str, Any]], int]] = {}
+    for table, query_filter, display_field in groups:
+        resolved[(table, query_filter, display_field)] = await _load_reference_options(
+            db,
+            table=table,
+            query_filter=query_filter,
+            display_field=display_field,
+            auth=auth,
+        )
+
+    out: dict[str, Any] = {}
+    for var_name, key in group_key_by_var.items():
+        options, total = resolved[key]
+        out[var_name] = {"options": options, "total": total}
+    return {"result": out}
 
 
 @router.get("/cart")

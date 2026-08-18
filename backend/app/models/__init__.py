@@ -547,6 +547,7 @@ class ItemOptionNew(Base, LifecycleMixin):
     order: Mapped[int] = mapped_column(Integer, default=100)
     reference_table: Mapped[str | None] = mapped_column(String(128), nullable=True)
     reference_filter: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reference_display_field: Mapped[str | None] = mapped_column(String(128), nullable=True)
     choice_list: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
     help_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     read_only: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -91,6 +91,34 @@ export function CatalogItemPage() {
     [variables],
   );
 
+  const referenceDependsOn = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const variable of variables) {
+      if (variable.type !== 'reference' || !variable.active) continue;
+      map[variable.name] = buildDependsOn(variable, conditions, variablesById, values);
+    }
+    return map;
+  }, [variables, conditions, variablesById, values]);
+
+  const referenceVarNames = useMemo(
+    () => Object.keys(referenceDependsOn).sort(),
+    [referenceDependsOn],
+  );
+
+  // Batch every reference variable's current filter state into one request so
+  // variables that share the same table + filter are resolved with a single
+  // underlying query instead of one round-trip per variable.
+  const batchOptionsQuery = useQuery({
+    queryKey: [
+      'catalog-batch-variable-options',
+      itemId,
+      referenceVarNames.map((name) => `${name}=${referenceDependsOn[name]}`).join('|'),
+    ],
+    queryFn: () => api.getBatchVariableOptions(itemId, referenceDependsOn),
+    enabled: Boolean(itemId) && referenceVarNames.length > 0,
+  });
+  const batchOptionsByVar = batchOptionsQuery.data?.result ?? {};
+
   const visibleVariables = useMemo(() => {
     return variables
       .slice()
@@ -182,7 +210,6 @@ export function CatalogItemPage() {
       </section>
 
       <section className="panel">
-        <h3>Order Form</h3>
         <form onSubmit={onSubmit} className="catalog-order-form">
           {visibleVariables.map((variable) => (
             <div className="form-group" key={variable.sys_id}>
@@ -261,10 +288,12 @@ export function CatalogItemPage() {
               ) : variable.type === 'reference' ? (
                 <ReferenceSelect
                   id={`var-${variable.name}`}
-                  itemId={itemId}
-                  varName={variable.name}
                   value={values[variable.name] ?? variable.default_value ?? ''}
-                  dependsOn={buildDependsOn(variable, conditions, variablesById, values)}
+                  options={batchOptionsByVar[variable.name]?.options ?? []}
+                  loading={batchOptionsQuery.isLoading}
+                  error={
+                    batchOptionsQuery.error ? (batchOptionsQuery.error as Error).message : undefined
+                  }
                   disabled={variable.read_only}
                   onChange={(val) => setValues((prev) => ({ ...prev, [variable.name]: val }))}
                 />
