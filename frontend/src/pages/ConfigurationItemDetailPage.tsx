@@ -228,6 +228,7 @@ export function ConfigurationItemDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['record', resource, sysId] });
       queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      queryClient.invalidateQueries({ queryKey: ['activity', resource, sysId] });
       setSaveMessage({ type: 'success', text: 'Changes saved successfully.' });
     },
     onError: (error: Error) => {

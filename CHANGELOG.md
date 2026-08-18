@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Activity feed refinements and inline notes editing
+
+### Added
+
+- `journalChangeDelta` logic for the activity feed: incremental note updates now show only the newly added text instead of repeating the entire accumulated value.
+- Color-coded diffs in the activity feed: previous values use `--of-danger` (red) with strikethrough, and new values use `--of-success` (green).
+- Inline-edit pattern for the Notes section on Change Tasks: formatted read-only views swap to textareas via a discoverable floating edit button or a "+" empty-state trigger.
+- Escape and blur handling for inline notes editing to revert unsaved changes automatically.
+
+### Changed
+
+- Activity feed `ActivityChangeRow` now omits the "→" arrow and old value for net-new field changes.
+- Change Task Notes layout updated to sit Work Notes and Close Notes on a single row on wider screens.
+- Save buttons on Change Task detail views are now scoped to their respective sections (General vs Notes) for more precise activation.
+- Record detail views for Incidents, Problems, Changes, Tasks, and CIs now invalidate the activity feed cache on save for live timeline updates.
+- Removed the standalone "Comments" field from the Change Task Notes section; comments are now handled exclusively through the Activity section composer.
+
 ## 2026-08-17 — Standardize record detail views with unified activity feed and hierarchical catalog success
 
 ### Added

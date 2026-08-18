@@ -180,6 +180,7 @@ export function RequestedItemDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['record', RESOURCE, sysId] });
       queryClient.invalidateQueries({ queryKey: ['records', RESOURCE] });
+      queryClient.invalidateQueries({ queryKey: ['activity', RESOURCE, sysId] });
     },
   });
 

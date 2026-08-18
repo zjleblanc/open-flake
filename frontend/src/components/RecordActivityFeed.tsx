@@ -48,6 +48,38 @@ function fieldLabel(key: string, fieldLabels?: Record<string, string>): string {
   return fieldLabels?.[key] || humanizeFieldName(key);
 }
 
+/**
+ * Journal-style fields (ServiceNow work_notes/comments/close_notes convention) are audited
+ * like any other field, but read poorly as an old -> new diff. Instead the activity feed
+ * renders them as a message bubble with the note text (and a type label, except for plain
+ * `comments` which read fine as an unlabeled message).
+ */
+const JOURNAL_FIELD_LABELS: Record<string, string | null> = {
+  work_notes: 'Work Note',
+  close_notes: 'Close Note',
+  comments: null,
+};
+
+function isJournalField(field: string): boolean {
+  return field in JOURNAL_FIELD_LABELS;
+}
+
+/**
+ * Journal fields are free-text and typically edited by appending to the end, so the raw
+ * `new_value` accumulates everything ever written. Show only what was actually added in
+ * this update -- the text after the old value's common prefix -- so the feed reads as a
+ * log of changes rather than repeating the whole note on every edit. Falls back to the
+ * full new value when the edit wasn't a simple append (e.g. earlier text was rewritten).
+ */
+function journalChangeDelta(oldValue: string, newValue: string): string {
+  if (!oldValue) return newValue;
+  if (newValue.startsWith(oldValue)) {
+    const added = newValue.slice(oldValue.length).trim();
+    if (added) return added;
+  }
+  return newValue;
+}
+
 function changeValueLabel(field: string, value: string, resource: string): string {
   if (!value) return '—';
   if (field === 'state') return stateLabel(value, resource);
@@ -254,16 +286,22 @@ function ActivityChangeRow({
   resource: string;
   fieldLabels?: Record<string, string>;
 }) {
+  const hasOldValue = Boolean(change.old_value);
+
   return (
     <li className="activity-feed-change">
       <span className="activity-feed-change-field">{fieldLabel(change.field, fieldLabels)}</span>
       <span className="activity-feed-change-values">
-        <span className="activity-feed-change-old">
-          {changeValueLabel(change.field, change.old_value, resource)}
-        </span>
-        <span className="activity-feed-change-arrow" aria-hidden="true">
-          →
-        </span>
+        {hasOldValue && (
+          <>
+            <span className="activity-feed-change-old">
+              {changeValueLabel(change.field, change.old_value, resource)}
+            </span>
+            <span className="activity-feed-change-arrow" aria-hidden="true">
+              →
+            </span>
+          </>
+        )}
         <span className="activity-feed-change-new">
           {changeValueLabel(change.field, change.new_value, resource)}
         </span>
@@ -385,7 +423,7 @@ export function RecordActivityFeed({
                   </div>
 
                   {entry.kind === 'created' && (
-                    <p className="activity-message-system">Created this record</p>
+                    <p className="activity-message-system">Record created</p>
                   )}
 
                   {entry.kind === 'comment' && (
@@ -394,20 +432,53 @@ export function RecordActivityFeed({
                     </div>
                   )}
 
-                  {entry.kind === 'update' && (
-                    <div className="activity-message-updates">
-                      <ul className="activity-feed-changes">
-                        {entry.changes.map((change, idx) => (
-                          <ActivityChangeRow
-                            key={`${change.field}-${idx}`}
-                            change={change}
-                            resource={resource}
-                            fieldLabels={fieldLabels}
-                          />
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {entry.kind === 'update' &&
+                    (() => {
+                      const journalChanges = entry.changes.filter((change) =>
+                        isJournalField(change.field),
+                      );
+                      const regularChanges = entry.changes.filter(
+                        (change) => !isJournalField(change.field),
+                      );
+
+                      return (
+                        <div className="activity-update-groups">
+                          {journalChanges.map((change, idx) => {
+                            const journalLabel = JOURNAL_FIELD_LABELS[change.field];
+                            return (
+                              <div
+                                className="activity-message-bubble"
+                                key={`journal-${change.field}-${idx}`}
+                              >
+                                {journalLabel && (
+                                  <span className="activity-message-journal-label">
+                                    {journalLabel}
+                                  </span>
+                                )}
+                                <JournalFieldRenderer
+                                  content={journalChangeDelta(change.old_value, change.new_value)}
+                                />
+                              </div>
+                            );
+                          })}
+
+                          {regularChanges.length > 0 && (
+                            <div className="activity-message-updates">
+                              <ul className="activity-feed-changes">
+                                {regularChanges.map((change, idx) => (
+                                  <ActivityChangeRow
+                                    key={`${change.field}-${idx}`}
+                                    change={change}
+                                    resource={resource}
+                                    fieldLabels={fieldLabels}
+                                  />
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                   {entry.kind === 'attachment' &&
                     (() => {

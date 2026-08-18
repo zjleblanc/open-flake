@@ -1952,7 +1952,7 @@ button.nav-link {
 }
 
 .activity-feed-change-old {
-  color: var(--of-text-muted);
+  color: var(--of-danger);
   text-decoration: line-through;
 }
 
@@ -1962,6 +1962,7 @@ button.nav-link {
 
 .activity-feed-change-new {
   font-weight: 600;
+  color: var(--of-success);
 }
 
 .activity-message-list {
@@ -2018,11 +2019,27 @@ button.nav-link {
   font-style: italic;
 }
 
+.activity-update-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
 .activity-message-bubble {
   padding: 0.625rem 0.875rem;
   border: 1px solid var(--of-border);
   border-radius: var(--of-radius);
   background: color-mix(in srgb, var(--of-bg) 65%, var(--of-surface));
+}
+
+.activity-message-journal-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--of-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .activity-message-updates {
@@ -2095,6 +2112,98 @@ button.nav-link {
   font-family: var(--of-font-ui);
   font-size: 0.875rem;
   white-space: normal;
+}
+
+.journal-field-editable {
+  position: relative;
+}
+
+.journal-field-editable .journal-field-readonly {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  background: color-mix(in srgb, var(--of-bg) 75%, var(--of-surface));
+  border: 1px solid color-mix(in srgb, var(--of-border) 90%, transparent);
+  border-radius: var(--of-radius);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  white-space: normal;
+}
+
+/* Same idle/hover treatment as the app's standard row-action `.btn-icon` (see
+   CatalogPages.css), just floated over the field and vertically centered on it. */
+.journal-field-edit-btn {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  padding: 0;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: var(--of-surface);
+  color: var(--of-text-muted);
+  cursor: pointer;
+  /* Visible-but-subtle by default so the affordance is discoverable without
+     hovering first; hover/focus brings it to full strength. */
+  opacity: 0.6;
+  transition:
+    opacity 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+
+.journal-field-editable:hover .journal-field-edit-btn,
+.journal-field-editable:focus-within .journal-field-edit-btn,
+.journal-field-edit-btn:hover,
+.journal-field-edit-btn:focus-visible {
+  opacity: 1;
+  background: var(--of-surface-hover);
+  color: var(--of-text);
+  border-color: color-mix(in srgb, var(--of-primary) 45%, var(--of-border));
+}
+
+.journal-field-empty {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  background: color-mix(in srgb, var(--of-bg) 75%, var(--of-surface));
+  border: 1px dashed color-mix(in srgb, var(--of-border) 130%, transparent);
+  border-radius: var(--of-radius);
+  color: var(--of-text-muted);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.journal-field-empty:hover,
+.journal-field-empty:focus-visible {
+  border-color: color-mix(in srgb, var(--of-primary) 50%, var(--of-border));
+  background: color-mix(in srgb, var(--of-primary) 7%, var(--of-surface));
+  color: var(--of-text);
+}
+
+.journal-field-empty-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--of-primary);
 }
 
 @media (max-width: 768px) {

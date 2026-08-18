@@ -95,6 +95,7 @@ export function RecordDetailPage({ resource, title, listPath, fields }: RecordDe
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['record', resource, sysId] });
       queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      queryClient.invalidateQueries({ queryKey: ['activity', resource, sysId] });
     },
   });
 
