@@ -19,7 +19,8 @@ export type RefTarget =
   | 'change_request'
   | 'sc_request'
   | 'sc_req_item'
-  | 'sc_cat_item';
+  | 'sc_cat_item'
+  | 'sc_task';
 
 const REF_TARGET_BASE_PATH: Record<RefTarget, string> = {
   user: '/access/users',
@@ -31,6 +32,7 @@ const REF_TARGET_BASE_PATH: Record<RefTarget, string> = {
   sc_request: '/requests',
   sc_req_item: '/requested-items',
   sc_cat_item: '/catalog',
+  sc_task: '/catalog-tasks',
 };
 
 /** Build the frontend route to a reference target's display view. */

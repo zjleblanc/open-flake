@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Catalog Task detail views and builder UI refinements
+
+### Added
+- Dedicated `CatalogTaskDetailPage` route (`/catalog-tasks/:sysId`) and record list navigation entry for catalog fulfillment tasks.
+- `sc_task` reference target support, allowing fulfillment tasks to be linked and navigated across the UI.
+- `TaskIcon` in `NavIcons.tsx` and `alert-success-outline` theme style in `global.css`.
+
+### Changed
+- Renamed "Filter Overrides" to "Rules" in the catalog condition builder for improved clarity.
+- Updated catalog builder collapsible sections to use a cleaner header-action layout for Add/Attach buttons.
+- Reference variable labels in the condition builder now lead with the table name (e.g., `sc_task → name`) to aid identification in complex forms.
+- The catalog order success view now includes a direct link to the fulfillment task record.
+
 ## 2026-08-18 — Alembic database migrations
 
 ### Added

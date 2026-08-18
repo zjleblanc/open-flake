@@ -12,6 +12,7 @@ import {
   RequestIcon,
   SecretIcon,
   SettingsIcon,
+  TaskIcon,
   UsersIcon,
   WebhookIcon,
 } from './NavIcons';
@@ -57,6 +58,7 @@ export const NAV: NavEntry[] = [
     children: [
       { to: '/requests', label: 'Requests', icon: <RequestIcon /> },
       { to: '/requested-items', label: 'Requested Items', icon: <RequestedItemIcon /> },
+      { to: '/catalog-tasks', label: 'Catalog Tasks', icon: <TaskIcon /> },
     ],
   },
   { to: '/incidents', label: 'Incidents', icon: <IncidentIcon /> },

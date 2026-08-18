@@ -1,0 +1,529 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useParams } from 'react-router-dom';
+import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
+import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
+import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
+import {
+  ActivityIcon,
+  EditIcon,
+  FieldsIcon,
+  LockIcon,
+  PlusCircleIcon,
+  PropertiesIcon,
+  SystemIcon,
+} from '../components/DetailIcons';
+import { EmptyValue } from '../components/EmptyValue';
+import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
+import { JournalFieldRenderer } from '../components/JournalFieldRenderer';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
+import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
+import { OFSelect } from '../components/OFSelect';
+import {
+  isReferenceDeleted,
+  referenceDisplayValue,
+  referenceHref,
+  refSysId,
+  type RefTarget,
+} from '../utils/referenceFields';
+import '../components/Layout.css';
+
+const RESOURCE = 'catalog-tasks';
+const LIST_PATH = '/catalog-tasks';
+
+interface FieldConfig {
+  key: string;
+  label: string;
+  type?: 'textarea' | 'select-state';
+  refTarget?: RefTarget;
+}
+
+const EDITABLE_FIELDS: FieldConfig[] = [
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+];
+
+const LOCKED_FIELDS: FieldConfig[] = [
+  { key: 'priority', label: 'Priority' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'assigned_to', label: 'Assigned To', refTarget: 'user' },
+  { key: 'assignment_group', label: 'Assignment Group', refTarget: 'group' },
+  { key: 'cmdb_ci', label: 'Configuration Item', refTarget: 'cmdb_ci' },
+  { key: 'cat_item', label: 'Catalog Item', refTarget: 'sc_cat_item' },
+  { key: 'request_item', label: 'Requested Item', refTarget: 'sc_req_item' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'approval', label: 'Approval' },
+];
+
+/** Journal-style fields (ServiceNow work_notes/close_notes convention): rendered as plain
+ * textareas while editing, and via `JournalFieldRenderer` (which understands
+ * `[code]...[/code]` blocks) when read-only. `comments` is intentionally excluded here --
+ * unlike work/close notes it isn't a singular per-task note, so it's added as a regular
+ * comment via the Activity section's composer instead. */
+const NOTES_FIELDS: FieldConfig[] = [{ key: 'work_notes', label: 'Work Notes', type: 'textarea' }];
+
+const SYSTEM_FIELDS: FieldConfig[] = [
+  { key: 'sys_id', label: 'Sys ID' },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+];
+
+const SECTION = {
+  system: 'sctask-section-system',
+  general: 'sctask-section-general',
+  notes: 'sctask-section-notes',
+  activity: 'sctask-section-activity',
+} as const;
+
+const FORM_FIELDS: FieldConfig[] = [...EDITABLE_FIELDS, ...NOTES_FIELDS];
+
+const FIELD_LABELS: Record<string, string> = Object.fromEntries(
+  [...FORM_FIELDS, ...LOCKED_FIELDS].map((field) => [field.key, field.label]),
+);
+
+function buildEditableForm(data: Record<string, string>): Record<string, string> {
+  const form: Record<string, string> = {};
+  FORM_FIELDS.forEach((field) => {
+    form[field.key] = data[field.key] || '';
+  });
+  return form;
+}
+
+function fieldsEqual(
+  fields: FieldConfig[],
+  a: Record<string, string>,
+  b: Record<string, string>,
+): boolean {
+  return fields.every((field) => (a[field.key] ?? '') === (b[field.key] ?? ''));
+}
+
+function resolveLockedDisplay(field: FieldConfig, raw: unknown): unknown {
+  if (field.type === 'select-state') {
+    return stateLabel(String(raw), RESOURCE) || raw;
+  }
+  return raw;
+}
+
+interface ParentRequestFieldProps {
+  requestSysId: string;
+  requestNumber?: string;
+}
+
+function ParentRequestField({ requestSysId, requestNumber }: ParentRequestFieldProps) {
+  return (
+    <div className="form-group form-group--readonly" style={{ marginBottom: 0 }}>
+      <label htmlFor="sctask-parent-request">Request</label>
+      <div className="readonly-input-wrap">
+        {requestSysId ? (
+          <Link
+            id="sctask-parent-request"
+            to={`/requests/${requestSysId}`}
+            className="readonly-input-link"
+          >
+            {requestNumber || requestSysId}
+          </Link>
+        ) : (
+          <input
+            id="sctask-parent-request"
+            readOnly
+            className="readonly-input"
+            type="text"
+            value="—"
+          />
+        )}
+        <span className="readonly-input-lock" aria-hidden="true">
+          <LockIcon size={14} />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function CatalogTaskDetailPage() {
+  const { sysId } = useParams<{ sysId: string }>();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [editingNotesFields, setEditingNotesFields] = useState<Set<string>>(new Set());
+  const savingNotesRef = useRef(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['record', RESOURCE, sysId],
+    queryFn: () => api.getRecord(RESOURCE, sysId!),
+    enabled: !!sysId,
+  });
+
+  const permissions = data ? getRecordPermissions(data) : null;
+  const canWrite = !!permissions?.write;
+  const requestSysId = data ? refSysId(data.request) : '';
+
+  const { data: parentRequest } = useQuery({
+    queryKey: ['record', 'catalog-requests', requestSysId],
+    queryFn: () => api.getRecord('catalog-requests', requestSysId),
+    enabled: !!requestSysId,
+  });
+
+  useEffect(() => {
+    if (!data) return;
+    setForm(buildEditableForm(data));
+  }, [data]);
+
+  const savedForm = useMemo(() => (data ? buildEditableForm(data) : {}), [data]);
+  const isGeneralDirty = useMemo(
+    () => !fieldsEqual(EDITABLE_FIELDS, form, savedForm),
+    [form, savedForm],
+  );
+  const isNotesDirty = useMemo(
+    () => !fieldsEqual(NOTES_FIELDS, form, savedForm),
+    [form, savedForm],
+  );
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => api.updateRecord(RESOURCE, sysId!, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['record', RESOURCE, sysId] });
+      queryClient.invalidateQueries({ queryKey: ['records', RESOURCE] });
+      queryClient.invalidateQueries({ queryKey: ['activity', RESOURCE, sysId] });
+      setEditingNotesFields(new Set());
+    },
+  });
+
+  function toggleNotesFieldEdit(key: string) {
+    setEditingNotesFields((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  /** Discards an in-progress note edit and drops the field back to its last-saved value. */
+  function revertNotesFieldEdit(key: string) {
+    setForm((prev) => ({ ...prev, [key]: data?.[key] || '' }));
+    setEditingNotesFields((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  const recordTitle = data?.number || data?.sys_id || 'Loading…';
+  const editableFields = canWrite ? EDITABLE_FIELDS : [];
+  const displayedLockedFields = canWrite ? LOCKED_FIELDS : [...EDITABLE_FIELDS, ...LOCKED_FIELDS];
+  const showEditableDivider = displayedLockedFields.length > 0 && editableFields.length > 0;
+
+  const sectionNavItems = useMemo((): DetailSectionNavItem[] => {
+    const items: DetailSectionNavItem[] = [
+      {
+        id: SECTION.system,
+        title: 'System',
+        icon: <SystemIcon size={14} />,
+        accent: 'primary',
+      },
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
+        accent: 'accent',
+      },
+      {
+        id: SECTION.notes,
+        title: 'Notes',
+        icon: <FieldsIcon size={14} />,
+        accent: 'info',
+      },
+    ];
+
+    if (sysId && permissions?.read) {
+      items.push({
+        id: SECTION.activity,
+        title: 'Activity',
+        icon: <ActivityIcon size={14} />,
+        accent: 'primary',
+      });
+    }
+
+    return items;
+  }, [permissions?.read, sysId]);
+
+  const headerBreadcrumbs = useMemo(
+    () => [
+      { label: 'Catalog Tasks', to: LIST_PATH },
+      { label: isLoading || !data ? 'Loading…' : recordTitle },
+    ],
+    [isLoading, data, recordTitle],
+  );
+  const headerBadge = useMemo(() => {
+    if (isLoading || !data) return undefined;
+    if (!data.state) return <EmptyValue />;
+    return (
+      <span className={`badge ${stateBadge(data.state, RESOURCE)}`}>
+        {stateLabel(data.state, RESOURCE)}
+      </span>
+    );
+  }, [isLoading, data]);
+  const headerActions = useMemo(
+    () =>
+      !isLoading && data && sysId ? (
+        <RecordDetailHeaderActions
+          resource={RESOURCE}
+          sysId={sysId}
+          record={data}
+          recordLabel={recordTitle}
+          listPath={LIST_PATH}
+          canWrite={canWrite}
+        />
+      ) : undefined,
+    [isLoading, data, sysId, recordTitle, canWrite],
+  );
+
+  usePageHeader({ breadcrumbs: headerBreadcrumbs, badge: headerBadge, actions: headerActions });
+
+  if (isLoading || !data) {
+    return <p className="empty-state">Loading…</p>;
+  }
+
+  return (
+    <div className="detail-page-layout">
+      <div className="detail-page-main">
+        <div className="detail-sections-stack">
+          <ExpandableDetailSection
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {SYSTEM_FIELDS.map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`sctask-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
+            accent="accent"
+            defaultOpen
+          >
+            <div className="detail-field-groups">
+              <DetailFieldGroup>
+                <ParentRequestField
+                  requestSysId={requestSysId}
+                  requestNumber={parentRequest?.number}
+                />
+                {displayedLockedFields.map((field) => {
+                  const fieldSysId = field.refTarget ? refSysId(data[field.key]) : '';
+                  return (
+                    <ReadOnlyFieldInput
+                      key={field.key}
+                      id={`sctask-${field.key}`}
+                      fieldKey={field.key}
+                      label={field.label}
+                      value={
+                        field.refTarget
+                          ? referenceDisplayValue(data, field.key)
+                          : resolveLockedDisplay(field, data[field.key])
+                      }
+                      href={
+                        field.refTarget && fieldSysId
+                          ? referenceHref(field.refTarget, fieldSysId)
+                          : undefined
+                      }
+                      deleted={field.refTarget ? isReferenceDeleted(data, field.key) : false}
+                      multiline={field.type === 'textarea'}
+                      gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
+                    />
+                  );
+                })}
+              </DetailFieldGroup>
+
+              {editableFields.length > 0 && (
+                <DetailFieldGroup dividerTop={showEditableDivider}>
+                  {editableFields.map((field) => (
+                    <div
+                      className="form-group"
+                      key={field.key}
+                      style={{
+                        marginBottom: 0,
+                        gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
+                      }}
+                    >
+                      <label htmlFor={`sctask-${field.key}`}>{field.label}</label>
+                      {field.type === 'select-state' ? (
+                        <OFSelect
+                          id={`sctask-${field.key}`}
+                          value={form[field.key] ?? ''}
+                          onChange={(value) => setForm({ ...form, [field.key]: value as string })}
+                          options={stateOptionsFor(RESOURCE)}
+                        />
+                      ) : field.type === 'textarea' ? (
+                        <textarea
+                          id={`sctask-${field.key}`}
+                          rows={3}
+                          value={form[field.key] ?? ''}
+                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                        />
+                      ) : (
+                        <input
+                          id={`sctask-${field.key}`}
+                          type="text"
+                          value={form[field.key] ?? ''}
+                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </DetailFieldGroup>
+              )}
+            </div>
+
+            {canWrite && editableFields.length > 0 && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => updateMutation.mutate(form)}
+                  disabled={!isGeneralDirty || updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.notes}
+            title="Notes"
+            icon={<FieldsIcon size={14} />}
+            accent="info"
+          >
+            <div className="detail-field-groups">
+              <DetailFieldGroup>
+                {NOTES_FIELDS.map((field) => {
+                  if (!canWrite) {
+                    return (
+                      <div
+                        className="form-group form-group--readonly"
+                        key={field.key}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <label htmlFor={`sctask-${field.key}`}>{field.label}</label>
+                        <div className="readonly-input-wrap journal-field-wrap">
+                          <div id={`sctask-${field.key}`} className="journal-field-readonly">
+                            <JournalFieldRenderer content={String(data[field.key] || '')} />
+                          </div>
+                          <span className="readonly-input-lock" aria-hidden="true">
+                            <LockIcon size={14} />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const isEditing = editingNotesFields.has(field.key);
+                  const hasContent = Boolean((form[field.key] ?? '').trim());
+
+                  return (
+                    <div className="form-group" key={field.key} style={{ marginBottom: 0 }}>
+                      <label htmlFor={`sctask-${field.key}`}>{field.label}</label>
+                      {isEditing ? (
+                        <textarea
+                          id={`sctask-${field.key}`}
+                          rows={4}
+                          autoFocus
+                          value={form[field.key] ?? ''}
+                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                          onBlur={() => {
+                            if (savingNotesRef.current) return;
+                            revertNotesFieldEdit(field.key);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
+                              e.preventDefault();
+                              revertNotesFieldEdit(field.key);
+                            }
+                          }}
+                        />
+                      ) : hasContent ? (
+                        <div className="journal-field-editable">
+                          <div id={`sctask-${field.key}`} className="journal-field-readonly">
+                            <JournalFieldRenderer content={String(form[field.key] ?? '')} />
+                          </div>
+                          <button
+                            type="button"
+                            className="journal-field-edit-btn"
+                            aria-label={`Edit ${field.label}`}
+                            onClick={() => toggleNotesFieldEdit(field.key)}
+                          >
+                            <EditIcon size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          id={`sctask-${field.key}`}
+                          className="journal-field-empty"
+                          onClick={() => toggleNotesFieldEdit(field.key)}
+                        >
+                          <span className="journal-field-empty-icon" aria-hidden="true">
+                            <PlusCircleIcon size={16} />
+                          </span>
+                          <span>No {field.label.toLowerCase()} yet</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </DetailFieldGroup>
+            </div>
+
+            {canWrite && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onMouseDown={() => {
+                    savingNotesRef.current = true;
+                  }}
+                  onClick={() => {
+                    updateMutation.mutate(form);
+                    savingNotesRef.current = false;
+                  }}
+                  disabled={!isNotesDirty || updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Notes'}
+                </button>
+              </div>
+            )}
+          </ExpandableDetailSection>
+
+          {sysId && permissions?.read && (
+            <RecordActivityFeed
+              resource={RESOURCE}
+              sysId={sysId}
+              sectionId={SECTION.activity}
+              fieldLabels={FIELD_LABELS}
+              canComment={!!(permissions?.comment || permissions?.write)}
+              canManageAttachments={!!(permissions?.write || permissions?.delete)}
+            />
+          )}
+        </div>
+      </div>
+
+      <DetailSectionNav sections={sectionNavItems} />
+    </div>
+  );
+}

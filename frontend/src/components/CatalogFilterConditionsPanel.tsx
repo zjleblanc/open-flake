@@ -74,7 +74,7 @@ export function CatalogFilterConditionsPanel({
       setForm(emptyConditionForm(selectedVarId));
       setEditingId(null);
       setError('');
-      onToast('Filter condition created.');
+      onToast('Rule created.');
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -89,7 +89,7 @@ export function CatalogFilterConditionsPanel({
       setForm(emptyConditionForm(selectedVarId));
       setEditingId(null);
       setError('');
-      onToast('Filter condition updated.');
+      onToast('Rule updated.');
     },
     onError: (err: Error) => setError(err.message),
   });
@@ -101,7 +101,7 @@ export function CatalogFilterConditionsPanel({
         queryKey: ['catalog-admin-conditions', itemId, selectedVarId],
       });
       setPendingDelete(null);
-      onToast('Filter condition deleted.');
+      onToast('Rule deleted.');
     },
     onError: (err: Error) => onToast(err.message, 'error'),
   });
@@ -155,11 +155,7 @@ export function CatalogFilterConditionsPanel({
     <div className="catalog-filter-conditions-panel">
       <div className="section-header-row">
         <div>
-          <h4>Dynamic Filter Overrides</h4>
-          <p className="catalog-browse-intro">
-            When another form field matches a rule, replace the reference filter for the selected
-            variable.
-          </p>
+          <h4>Dynamic Rules</h4>
         </div>
       </div>
 
@@ -177,9 +173,9 @@ export function CatalogFilterConditionsPanel({
           }}
           options={referenceVariables.map((variable) => ({
             value: variable.sys_id,
-            label: `${variable.question_text || variable.name}${
-              variable.reference_table ? ` → ${variable.reference_table}` : ''
-            }`,
+            label: variable.reference_table
+              ? `${variable.reference_table} → ${variable.name}`
+              : variable.name,
           }))}
         />
       </div>
@@ -198,7 +194,7 @@ export function CatalogFilterConditionsPanel({
           {conditions.length === 0 ? (
             <tr>
               <td colSpan={5} className="empty-state">
-                No filter overrides yet
+                No rules yet
               </td>
             </tr>
           ) : (
@@ -216,7 +212,7 @@ export function CatalogFilterConditionsPanel({
                     <button
                       type="button"
                       className="btn-icon"
-                      aria-label={`Edit filter override for ${depends?.question_text || depends?.name || condition.depends_on}`}
+                      aria-label={`Edit rule for ${depends?.question_text || depends?.name || condition.depends_on}`}
                       onClick={() => startEdit(condition)}
                     >
                       <EditIcon size={14} />
@@ -224,7 +220,7 @@ export function CatalogFilterConditionsPanel({
                     <button
                       type="button"
                       className="btn-icon btn-icon-danger"
-                      aria-label={`Delete filter override for ${depends?.question_text || depends?.name || condition.depends_on}`}
+                      aria-label={`Delete rule for ${depends?.question_text || depends?.name || condition.depends_on}`}
                       onClick={() =>
                         setPendingDelete({
                           id: condition.sys_id,
@@ -232,7 +228,7 @@ export function CatalogFilterConditionsPanel({
                             depends?.question_text ||
                             depends?.name ||
                             condition.depends_on ||
-                            'this filter override',
+                            'this rule',
                         })
                       }
                     >
@@ -247,7 +243,7 @@ export function CatalogFilterConditionsPanel({
       </table>
 
       <form onSubmit={onSubmit} className="catalog-builder-form catalog-condition-form">
-        <h4>{editingId ? 'Edit Override' : 'Add Override'}</h4>
+        <h4>{editingId ? 'Edit Rule' : 'Add Rule'}</h4>
         <div className="catalog-form-grid">
           <div className="form-group">
             <label htmlFor="filter-cond-depends">Depends On</label>
@@ -283,7 +279,7 @@ export function CatalogFilterConditionsPanel({
             </div>
           ) : null}
           <div className="form-group catalog-form-span">
-            <label>Filter Override</label>
+            <label>Filter</label>
             <ReferenceFilterBuilder
               table={selectedVariable?.reference_table || ''}
               rows={form.filterRows}
@@ -308,17 +304,17 @@ export function CatalogFilterConditionsPanel({
             </button>
           ) : null}
           <button type="submit" className="btn btn-primary" disabled={pending}>
-            {pending ? 'Saving…' : editingId ? 'Save Override' : 'Add Override'}
+            {pending ? 'Saving…' : 'Save Rule'}
           </button>
         </div>
       </form>
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}
-        title="Delete filter override"
+        title="Delete rule"
         message={
           pendingDelete
-            ? `Are you sure you want to permanently delete the filter override for "${pendingDelete.label}"? This action cannot be undone.`
+            ? `Are you sure you want to permanently delete the rule for "${pendingDelete.label}"? This action cannot be undone.`
             : ''
         }
         onConfirm={() => {

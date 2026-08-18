@@ -323,7 +323,7 @@ export function CatalogItemPage() {
 
           {error ? <p className="error">{error}</p> : null}
           {success ? (
-            <div className="alert alert-success">
+            <div className="alert alert-success-outline">
               <p className="order-hierarchy-title">Order submitted successfully.</p>
               <ul className="order-hierarchy">
                 <li className="order-hierarchy-node">
@@ -349,7 +349,13 @@ export function CatalogItemPage() {
                 {success.task ? (
                   <li className="order-hierarchy-node order-hierarchy-node--depth-2">
                     <span className="order-hierarchy-type">Fulfillment Task</span>
-                    <span>{success.task.number}</span>
+                    {success.task.sys_id ? (
+                      <Link to={`/catalog-tasks/${success.task.sys_id}`}>
+                        {success.task.number}
+                      </Link>
+                    ) : (
+                      success.task.number
+                    )}
                   </li>
                 ) : null}
               </ul>

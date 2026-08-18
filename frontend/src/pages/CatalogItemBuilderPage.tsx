@@ -379,9 +379,7 @@ export function CatalogItemBuilderPage() {
               accent="info"
               count={variables.length}
               defaultOpen
-            >
-              <div className="section-header-row">
-                <p className="catalog-browse-intro">Form fields shown when ordering this item.</p>
+              headerActions={
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -389,8 +387,8 @@ export function CatalogItemBuilderPage() {
                 >
                   Add
                 </button>
-              </div>
-
+              }
+            >
               <table className="data-table">
                 <thead>
                   <tr>
@@ -463,9 +461,7 @@ export function CatalogItemBuilderPage() {
               accent="success"
               count={attachments.length}
               defaultOpen
-            >
-              <div className="section-header-row">
-                <p className="catalog-browse-intro">Attach processes to this catalog item.</p>
+              headerActions={
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -473,8 +469,8 @@ export function CatalogItemBuilderPage() {
                 >
                   Attach
                 </button>
-              </div>
-
+              }
+            >
               <table className="data-table">
                 <thead>
                   <tr>

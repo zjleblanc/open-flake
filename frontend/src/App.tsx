@@ -4,6 +4,7 @@ import { getToken } from './api/client';
 import { CatalogBrowsePage } from './pages/CatalogBrowsePage';
 import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
 import { CatalogItemPage } from './pages/CatalogItemPage';
+import { CatalogTaskDetailPage } from './pages/CatalogTaskDetailPage';
 import { CatalogWebhooksPage } from './pages/CatalogWebhooksPage';
 import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
 import { ChangeDetailPage } from './pages/ChangeDetailPage';
@@ -173,6 +174,17 @@ export function App() {
           }
         />
         <Route path="requested-items/:sysId" element={<RequestedItemDetailPage />} />
+        <Route
+          path="catalog-tasks"
+          element={
+            <RecordListPage
+              resource="catalog-tasks"
+              title="Catalog Tasks"
+              basePath="/catalog-tasks"
+            />
+          }
+        />
+        <Route path="catalog-tasks/:sysId" element={<CatalogTaskDetailPage />} />
         <Route path="catalog" element={<CatalogBrowsePage />} />
         <Route path="catalog/admin" element={<Navigate to="/catalog" replace />} />
         <Route path="catalog/admin/:itemId" element={<CatalogItemBuilderPage />} />

@@ -597,6 +597,12 @@ tr:hover td {
   border: 1px solid var(--of-success);
 }
 
+.alert-success-outline {
+  background: var(--of-surface);
+  color: var(--of-text);
+  border: 1px solid var(--of-success);
+}
+
 .alert-error {
   background: var(--of-alert-error-bg);
   color: var(--of-alert-error-text);
