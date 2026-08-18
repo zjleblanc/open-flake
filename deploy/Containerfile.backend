@@ -16,6 +16,8 @@ COPY --from=builder /install /usr/local
 # Lab seed (backend/app/seed/) is excluded via .dockerignore — not shipped in production.
 COPY backend/app ./app
 COPY backend/pyproject.toml .
+COPY backend/alembic.ini .
+COPY backend/alembic ./alembic
 COPY deploy/backend-entrypoint.sh /app/entrypoint.sh
 COPY deploy/backend-healthcheck.sh /app/backend-healthcheck.sh
 COPY deploy/ssl-readability-hint.sh /app/ssl-readability-hint.sh
