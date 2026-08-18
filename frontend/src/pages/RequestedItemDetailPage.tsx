@@ -6,20 +6,16 @@ import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldC
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import {
   ActivityIcon,
-  AttachmentsIcon,
-  CommentsIcon,
   FieldsIcon,
   HierarchyIcon,
   LockIcon,
-  OverviewIcon,
+  PropertiesIcon,
   SystemIcon,
 } from '../components/DetailIcons';
 import { EmptyValue } from '../components/EmptyValue';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
-import { RecordActivitySection } from '../components/RecordActivitySection';
-import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
-import { RecordCommentsSection } from '../components/RecordCommentsSection';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
@@ -69,12 +65,10 @@ const SYSTEM_FIELDS: FieldConfig[] = [
 ];
 
 const SECTION = {
-  details: 'ritm-section-details',
-  siblings: 'ritm-section-siblings',
-  variables: 'ritm-section-variables',
   system: 'ritm-section-system',
-  attachments: 'ritm-section-attachments',
-  comments: 'ritm-section-comments',
+  general: 'ritm-section-general',
+  references: 'ritm-section-references',
+  variables: 'ritm-section-variables',
   activity: 'ritm-section-activity',
 } as const;
 
@@ -157,18 +151,6 @@ export function RequestedItemDetailPage() {
     enabled: !!parentReqSysId,
   });
 
-  const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
-    queryKey: ['attachments', RESOURCE, sysId],
-    queryFn: () => api.listAttachments(RESOURCE, sysId!),
-    enabled: !!sysId && !!permissions?.read,
-  });
-
-  const { data: comments = [] } = useQuery({
-    queryKey: ['comments', RESOURCE, sysId],
-    queryFn: () => api.listComments(RESOURCE, sysId!),
-    enabled: !!sysId && !!(permissions?.comment || permissions?.write),
-  });
-
   const { data: siblingsData, isLoading: siblingsLoading } = useQuery({
     queryKey: ['records', 'catalog-request-items', 'request', parentReqSysId],
     queryFn: () => api.listRecords('catalog-request-items', { query: `request=${parentReqSysId}` }),
@@ -209,22 +191,18 @@ export function RequestedItemDetailPage() {
   const sectionNavItems = useMemo((): DetailSectionNavItem[] => {
     const items: DetailSectionNavItem[] = [
       {
-        id: SECTION.details,
-        title: 'Details',
-        icon: <OverviewIcon size={14} />,
+        id: SECTION.system,
+        title: 'System',
+        icon: <SystemIcon size={14} />,
+        accent: 'primary',
+      },
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
         accent: 'accent',
       },
     ];
-
-    if (parentReqSysId) {
-      items.push({
-        id: SECTION.siblings,
-        title: 'Sibling Items',
-        icon: <HierarchyIcon size={14} />,
-        accent: 'info',
-        count: siblingsLoading ? '…' : siblingItems.length,
-      });
-    }
 
     items.push({
       id: SECTION.variables,
@@ -233,33 +211,6 @@ export function RequestedItemDetailPage() {
       accent: 'accent',
       count: variablesLoading ? '…' : variables.length,
     });
-
-    items.push({
-      id: SECTION.system,
-      title: 'System',
-      icon: <SystemIcon size={14} />,
-      accent: 'primary',
-    });
-
-    if (sysId && permissions?.read) {
-      items.push({
-        id: SECTION.attachments,
-        title: 'Attachments',
-        icon: <AttachmentsIcon size={14} />,
-        accent: 'info',
-        count: attachmentsLoading ? '…' : attachments.length,
-      });
-    }
-
-    if (sysId && (permissions?.comment || permissions?.write)) {
-      items.push({
-        id: SECTION.comments,
-        title: 'Comments',
-        icon: <CommentsIcon size={14} />,
-        accent: 'accent',
-        count: comments.length,
-      });
-    }
 
     if (sysId && permissions?.read) {
       items.push({
@@ -270,15 +221,20 @@ export function RequestedItemDetailPage() {
       });
     }
 
+    if (parentReqSysId) {
+      items.push({
+        id: SECTION.references,
+        title: 'References',
+        icon: <HierarchyIcon size={14} />,
+        accent: 'info',
+        count: siblingsLoading ? '…' : siblingItems.length,
+      });
+    }
+
     return items;
   }, [
-    attachments.length,
-    attachmentsLoading,
-    comments.length,
     parentReqSysId,
-    permissions?.comment,
     permissions?.read,
-    permissions?.write,
     siblingItems.length,
     siblingsLoading,
     sysId,
@@ -328,9 +284,28 @@ export function RequestedItemDetailPage() {
       <div className="detail-page-main">
         <div className="detail-sections-stack">
           <ExpandableDetailSection
-            id={SECTION.details}
-            title="Details"
-            icon={<OverviewIcon size={14} />}
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {SYSTEM_FIELDS.map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`ritm-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
             accent="accent"
             defaultOpen
           >
@@ -416,20 +391,6 @@ export function RequestedItemDetailPage() {
             )}
           </ExpandableDetailSection>
 
-          {parentReqSysId && (
-            <RelatedRecordsSection
-              id={SECTION.siblings}
-              title="Sibling Items"
-              icon={<HierarchyIcon size={14} />}
-              accent="info"
-              basePath={LIST_PATH}
-              resource={RESOURCE}
-              records={siblingItems}
-              isLoading={siblingsLoading}
-              emptyMessage="No other items on this request"
-            />
-          )}
-
           <ExpandableDetailSection
             id={SECTION.variables}
             title="Variables"
@@ -457,49 +418,28 @@ export function RequestedItemDetailPage() {
             )}
           </ExpandableDetailSection>
 
-          <ExpandableDetailSection
-            id={SECTION.system}
-            title="System"
-            icon={<SystemIcon size={14} />}
-            accent="primary"
-          >
-            <DetailFieldGroup>
-              {SYSTEM_FIELDS.map((field) => (
-                <ReadOnlyFieldInput
-                  key={field.key}
-                  id={`ritm-${field.key}`}
-                  fieldKey={field.key}
-                  label={field.label}
-                  value={data[field.key]}
-                />
-              ))}
-            </DetailFieldGroup>
-          </ExpandableDetailSection>
-
           {sysId && permissions?.read && (
-            <RecordAttachmentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.attachments}
-              canManageAttachments={!!(permissions?.write || permissions?.delete)}
-            />
-          )}
-
-          {sysId && (permissions?.comment || permissions?.write) && (
-            <RecordCommentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.comments}
-              canComment={!!(permissions?.comment || permissions?.write)}
-            />
-          )}
-
-          {sysId && permissions?.read && (
-            <RecordActivitySection
+            <RecordActivityFeed
               resource={RESOURCE}
               sysId={sysId}
               sectionId={SECTION.activity}
               fieldLabels={FIELD_LABELS}
+              canComment={!!(permissions?.comment || permissions?.write)}
+              canManageAttachments={!!(permissions?.write || permissions?.delete)}
+            />
+          )}
+
+          {parentReqSysId && (
+            <RelatedRecordsSection
+              id={SECTION.references}
+              icon={<HierarchyIcon size={14} />}
+              accent="info"
+              basePath={LIST_PATH}
+              resource={RESOURCE}
+              typeLabel="Sibling Item"
+              records={siblingItems}
+              isLoading={siblingsLoading}
+              emptyMessage="No other referenced records on this request"
             />
           )}
         </div>

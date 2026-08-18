@@ -1719,6 +1719,67 @@ button.nav-link {
   color: var(--of-primary);
 }
 
+.detail-subsection-divider {
+  border: none;
+  border-top: 1px solid var(--of-border);
+  margin: 1.25rem 0;
+}
+
+.nested-collapsible {
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 65%, transparent);
+}
+
+.nested-collapsible summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  font-family: var(--of-font-ui);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--of-text);
+  list-style: none;
+}
+
+.nested-collapsible summary::-webkit-details-marker {
+  display: none;
+}
+
+.nested-collapsible[open] summary {
+  border-bottom: 1px solid var(--of-border);
+}
+
+.nested-collapsible-count {
+  color: var(--of-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.nested-collapsible-spacer {
+  flex: 1;
+}
+
+.nested-collapsible-toggle-icon {
+  display: flex;
+  align-items: center;
+  color: var(--of-text-muted);
+}
+
+.nested-collapsible[open] .nested-collapsible-toggle-icon--collapsed {
+  display: none;
+}
+
+.nested-collapsible:not([open]) .nested-collapsible-toggle-icon--expanded {
+  display: none;
+}
+
+.nested-collapsible-body {
+  padding: 1rem;
+}
+
 .property-add-row {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
@@ -1901,6 +1962,106 @@ button.nav-link {
 
 .activity-feed-change-new {
   font-weight: 600;
+}
+
+.activity-message-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.activity-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.activity-message-avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--of-primary) 16%, transparent);
+  color: var(--of-primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.activity-message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-message-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.activity-message-user {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.activity-message-system {
+  margin: 0;
+  color: var(--of-text-muted);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+.activity-message-bubble {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-bg) 65%, var(--of-surface));
+}
+
+.activity-message-updates {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-info) 6%, transparent);
+}
+
+.activity-message-attachment {
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  background: color-mix(in srgb, var(--of-accent) 6%, transparent);
+}
+
+.activity-message-attachment-title {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.activity-message-attachment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+
+.activity-composer {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--of-border);
+}
+
+.activity-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .journal-field-content {

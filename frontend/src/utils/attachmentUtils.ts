@@ -4,6 +4,7 @@ export interface AttachmentRecord {
   content_type: string;
   size_bytes: string;
   sys_created_on: string;
+  sys_created_by?: string;
 }
 
 export type PreviewKind = 'image' | 'pdf' | 'text' | 'audio' | 'video' | 'none';

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { api, getRecordPermissions } from '../api/client';
-import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
+import {
+  ExpandableDetailSection,
+  NestedCollapsibleSection,
+} from '../components/ExpandableDetailSection';
 import { ClassHierarchyPanel } from '../components/ClassHierarchyPanel';
 import {
-  AttachmentsIcon,
-  CommentsIcon,
-  FieldsIcon,
+  ActivityIcon,
   GovernanceIcon,
   PropertiesIcon,
   SystemIcon,
@@ -22,8 +23,7 @@ import {
   refSysId,
   type RefTarget,
 } from '../utils/referenceFields';
-import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
-import { RecordCommentsSection } from '../components/RecordCommentsSection';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { ToastBanner } from '../components/ToastBanner';
 import '../components/Layout.css';
@@ -107,11 +107,14 @@ const KNOWN_FIELD_KEYS = new Set([
 const CI_SECTION = {
   system: 'ci-section-system',
   general: 'ci-section-general',
-  governance: 'ci-section-governance',
   additional: 'ci-section-additional-properties',
-  attachments: 'ci-section-attachments',
-  comments: 'ci-section-comments',
+  governance: 'ci-section-governance',
+  activity: 'ci-section-activity',
 } as const;
+
+const FIELD_LABELS: Record<string, string> = Object.fromEntries(
+  [...CMDB_CI_FIELDS, ...CMDB_CI_SYSTEM_FIELDS].map((field) => [field.key, field.label]),
+);
 
 type SaveMessage = { type: 'success' | 'error'; text: string };
 
@@ -207,18 +210,6 @@ export function ConfigurationItemDetailPage() {
 
   const permissions = data ? getRecordPermissions(data) : null;
 
-  const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
-    queryKey: ['attachments', resource, sysId],
-    queryFn: () => api.listAttachments(resource, sysId!),
-    enabled: !!sysId && !!permissions?.read,
-  });
-
-  const { data: comments = [] } = useQuery({
-    queryKey: ['comments', resource, sysId],
-    queryFn: () => api.listComments(resource, sysId!),
-    enabled: !!sysId && !!(permissions?.comment || permissions?.write),
-  });
-
   useEffect(() => {
     if (!data) return;
     setForm(buildFormFromData(data));
@@ -277,46 +268,19 @@ export function ConfigurationItemDetailPage() {
         icon: <GovernanceIcon size={14} />,
         accent: 'info',
       },
-      {
-        id: CI_SECTION.additional,
-        title: 'Additional Properties',
-        icon: <FieldsIcon size={14} />,
-        accent: 'accent',
-        count: otherPropertyKeys.length,
-      },
     ];
 
     if (sysId && permissions?.read) {
       items.push({
-        id: CI_SECTION.attachments,
-        title: 'Attachments',
-        icon: <AttachmentsIcon size={14} />,
-        accent: 'info',
-        count: attachmentsLoading ? '…' : attachments.length,
-      });
-    }
-
-    if (sysId && (permissions?.comment || permissions?.write)) {
-      items.push({
-        id: CI_SECTION.comments,
-        title: 'Comments',
-        icon: <CommentsIcon size={14} />,
-        accent: 'accent',
-        count: comments.length,
+        id: CI_SECTION.activity,
+        title: 'Activity',
+        icon: <ActivityIcon size={14} />,
+        accent: 'primary',
       });
     }
 
     return items;
-  }, [
-    attachments.length,
-    attachmentsLoading,
-    comments.length,
-    otherPropertyKeys.length,
-    permissions?.comment,
-    permissions?.read,
-    permissions?.write,
-    sysId,
-  ]);
+  }, [permissions?.read, sysId]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -466,6 +430,104 @@ export function ConfigurationItemDetailPage() {
                 )}
               </div>
 
+              <NestedCollapsibleSection
+                id={CI_SECTION.additional}
+                title="Additional Properties"
+                count={otherPropertyKeys.length}
+              >
+                {otherPropertyKeys.length > 0 && (
+                  <DetailFieldGroup style={{ marginBottom: canWrite ? '1.25rem' : 0 }}>
+                    {otherPropertyKeys.map((key) => {
+                      if (canWrite) {
+                        return (
+                          <div className="form-group" key={key} style={{ marginBottom: 0 }}>
+                            <label htmlFor={`ci-other-${key}`}>{humanizeFieldKey(key)}</label>
+                            <input
+                              id={`ci-other-${key}`}
+                              type="text"
+                              value={otherForm[key] ?? ''}
+                              onChange={(e) =>
+                                setOtherForm({ ...otherForm, [key]: e.target.value })
+                              }
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <ReadOnlyFieldInput
+                          key={key}
+                          id={`ci-other-${key}`}
+                          fieldKey={key}
+                          label={humanizeFieldKey(key)}
+                          value={data[key]}
+                        />
+                      );
+                    })}
+                  </DetailFieldGroup>
+                )}
+
+                {!permissions?.write && otherPropertyKeys.length === 0 && (
+                  <p className="empty-state">No additional properties yet</p>
+                )}
+
+                {permissions?.write && (
+                  <>
+                    <div className="property-add-row">
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="new-property-key">Property Name</label>
+                        <input
+                          id="new-property-key"
+                          type="text"
+                          placeholder="e.g. model_number"
+                          value={newPropertyKey}
+                          onChange={(e) => {
+                            setNewPropertyKey(e.target.value);
+                            setAddPropertyError(null);
+                          }}
+                          onBlur={() => {
+                            if (newPropertyKey.trim()) {
+                              setNewPropertyKey(normalizePropertyKey(newPropertyKey));
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddProperty();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label htmlFor="new-property-value">Value</label>
+                        <input
+                          id="new-property-value"
+                          type="text"
+                          placeholder="Property value"
+                          value={newPropertyValue}
+                          onChange={(e) => setNewPropertyValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddProperty();
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="property-add-action">
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={handleAddProperty}
+                        >
+                          Add Property
+                        </button>
+                      </div>
+                    </div>
+                    {addPropertyError && <p className="error">{addPropertyError}</p>}
+                  </>
+                )}
+              </NestedCollapsibleSection>
+
               {permissions?.write && (
                 <div style={{ marginTop: '1.25rem' }}>
                   <button
@@ -503,119 +565,14 @@ export function ConfigurationItemDetailPage() {
               </DetailFieldGroup>
             </ExpandableDetailSection>
 
-            <ExpandableDetailSection
-              id={CI_SECTION.additional}
-              title="Additional Properties"
-              icon={<FieldsIcon size={14} />}
-              accent="accent"
-              count={otherPropertyKeys.length}
-            >
-              {otherPropertyKeys.length > 0 && (
-                <DetailFieldGroup style={{ marginBottom: canWrite ? '1.25rem' : 0 }}>
-                  {otherPropertyKeys.map((key) => {
-                    if (canWrite) {
-                      return (
-                        <div className="form-group" key={key} style={{ marginBottom: 0 }}>
-                          <label htmlFor={`ci-other-${key}`}>{humanizeFieldKey(key)}</label>
-                          <input
-                            id={`ci-other-${key}`}
-                            type="text"
-                            value={otherForm[key] ?? ''}
-                            onChange={(e) => setOtherForm({ ...otherForm, [key]: e.target.value })}
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <ReadOnlyFieldInput
-                        key={key}
-                        id={`ci-other-${key}`}
-                        fieldKey={key}
-                        label={humanizeFieldKey(key)}
-                        value={data[key]}
-                      />
-                    );
-                  })}
-                </DetailFieldGroup>
-              )}
-
-              {!permissions?.write && otherPropertyKeys.length === 0 && (
-                <p className="empty-state">No additional properties yet</p>
-              )}
-
-              {permissions?.write && (
-                <>
-                  <div className="property-add-row">
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label htmlFor="new-property-key">Property Name</label>
-                      <input
-                        id="new-property-key"
-                        type="text"
-                        placeholder="e.g. model_number"
-                        value={newPropertyKey}
-                        onChange={(e) => {
-                          setNewPropertyKey(e.target.value);
-                          setAddPropertyError(null);
-                        }}
-                        onBlur={() => {
-                          if (newPropertyKey.trim()) {
-                            setNewPropertyKey(normalizePropertyKey(newPropertyKey));
-                          }
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddProperty();
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label htmlFor="new-property-value">Value</label>
-                      <input
-                        id="new-property-value"
-                        type="text"
-                        placeholder="Property value"
-                        value={newPropertyValue}
-                        onChange={(e) => setNewPropertyValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddProperty();
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="property-add-action">
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={handleAddProperty}
-                      >
-                        Add Property
-                      </button>
-                    </div>
-                  </div>
-                  {addPropertyError && <p className="error">{addPropertyError}</p>}
-                </>
-              )}
-            </ExpandableDetailSection>
-
             {sysId && permissions?.read && (
-              <RecordAttachmentsSection
+              <RecordActivityFeed
                 resource={resource}
                 sysId={sysId}
-                sectionId={CI_SECTION.attachments}
-                canManageAttachments={!!(permissions?.write || permissions?.delete)}
-              />
-            )}
-
-            {sysId && (permissions?.comment || permissions?.write) && (
-              <RecordCommentsSection
-                resource={resource}
-                sysId={sysId}
-                sectionId={CI_SECTION.comments}
+                sectionId={CI_SECTION.activity}
+                fieldLabels={FIELD_LABELS}
                 canComment={!!(permissions?.comment || permissions?.write)}
+                canManageAttachments={!!(permissions?.write || permissions?.delete)}
               />
             )}
           </div>

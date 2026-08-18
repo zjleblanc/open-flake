@@ -925,3 +925,46 @@
   justify-content: flex-end;
   gap: 0.5rem;
 }
+
+.order-hierarchy-title {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.order-hierarchy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.order-hierarchy-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+}
+
+.order-hierarchy-node--depth-1 {
+  margin-left: 1.5rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid color-mix(in srgb, var(--of-success) 40%, var(--of-border));
+}
+
+.order-hierarchy-node--depth-2 {
+  margin-left: 3rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid color-mix(in srgb, var(--of-success) 40%, var(--of-border));
+}
+
+.order-hierarchy-type {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--of-success) 18%, transparent);
+  color: var(--of-alert-success-text);
+}

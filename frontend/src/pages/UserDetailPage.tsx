@@ -92,8 +92,8 @@ export function UserDetailPage() {
 
   const sectionNavItems = useMemo(
     (): DetailSectionNavItem[] => [
-      { id: SECTION.profile, title: 'Profile', icon: <OverviewIcon size={14} />, accent: 'accent' },
       { id: SECTION.system, title: 'System', icon: <SystemIcon size={14} />, accent: 'primary' },
+      { id: SECTION.profile, title: 'Profile', icon: <OverviewIcon size={14} />, accent: 'accent' },
     ],
     [],
   );
@@ -130,6 +130,33 @@ export function UserDetailPage() {
     <div className="detail-page-layout">
       <div className="detail-page-main">
         <div className="detail-sections-stack">
+          <ExpandableDetailSection
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {(
+                [
+                  { key: 'sys_id', label: 'Sys ID' },
+                  { key: 'sys_created_on', label: 'Created' },
+                  { key: 'sys_updated_on', label: 'Updated' },
+                  { key: 'sys_created_by', label: 'Created By' },
+                  { key: 'sys_updated_by', label: 'Updated By' },
+                ] as const
+              ).map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`user-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
           <ExpandableDetailSection
             id={SECTION.profile}
             title="Profile"
@@ -214,33 +241,6 @@ export function UserDetailPage() {
                 </button>
               </div>
             )}
-          </ExpandableDetailSection>
-
-          <ExpandableDetailSection
-            id={SECTION.system}
-            title="System"
-            icon={<SystemIcon size={14} />}
-            accent="primary"
-          >
-            <DetailFieldGroup>
-              {(
-                [
-                  { key: 'sys_id', label: 'Sys ID' },
-                  { key: 'sys_created_on', label: 'Created' },
-                  { key: 'sys_updated_on', label: 'Updated' },
-                  { key: 'sys_created_by', label: 'Created By' },
-                  { key: 'sys_updated_by', label: 'Updated By' },
-                ] as const
-              ).map((field) => (
-                <ReadOnlyFieldInput
-                  key={field.key}
-                  id={`user-${field.key}`}
-                  fieldKey={field.key}
-                  label={field.label}
-                  value={data[field.key]}
-                />
-              ))}
-            </DetailFieldGroup>
           </ExpandableDetailSection>
         </div>
       </div>

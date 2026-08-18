@@ -8,12 +8,14 @@ import { isEmptyDisplayValue } from '../utils/emptyDisplay';
 
 interface RelatedRecordsSectionProps {
   id: string;
-  title: string;
+  title?: string;
   icon: ReactNode;
   accent?: DetailSectionAccent;
   basePath: string;
   /** Resource slug of the related records (e.g. `change-tasks`), used to resolve state labels/badges correctly. */
   resource?: string;
+  /** Human-readable type shown in the "Type" column (e.g. "Change Task", "Requested Item"). */
+  typeLabel: string;
   records: Record<string, string>[];
   isLoading?: boolean;
   emptyMessage: string;
@@ -25,11 +27,12 @@ function recordLabel(record: Record<string, string>): string {
 
 export function RelatedRecordsSection({
   id,
-  title,
+  title = 'References',
   icon,
   accent = 'accent',
   basePath,
   resource,
+  typeLabel,
   records,
   isLoading,
   emptyMessage,
@@ -48,18 +51,18 @@ export function RelatedRecordsSection({
         <table>
           <thead>
             <tr>
-              <th>Number</th>
-              <th>Short Description</th>
+              <th>Type</th>
+              <th>Name</th>
               <th>State</th>
             </tr>
           </thead>
           <tbody>
             {records.map((record) => (
               <tr key={record.sys_id}>
+                <td>{typeLabel}</td>
                 <td>
                   <Link to={`${basePath}/${record.sys_id}`}>{recordLabel(record)}</Link>
                 </td>
-                <td>{record.short_description ? record.short_description : <EmptyValue />}</td>
                 <td>
                   {isEmptyDisplayValue(record.state) ? (
                     <EmptyValue />

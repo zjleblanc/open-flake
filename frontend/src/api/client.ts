@@ -232,6 +232,7 @@ export const api = {
         content_type: string;
         size_bytes: string;
         sys_created_on: string;
+        sys_created_by?: string;
       }[]
     >(`/api/v1/records/${resource}/${sysId}/attachments`),
 
@@ -311,10 +312,10 @@ export const api = {
       short_description?: string;
     },
   ) =>
-    request<{ result: Record<string, unknown> }>(
-      `/api/sn_sc/servicecatalog/items/${itemId}/order_now`,
-      { method: 'POST', body: JSON.stringify(data) },
-    ),
+    request<{ result: CatalogOrderResult }>(`/api/sn_sc/servicecatalog/items/${itemId}/order_now`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   getVariableOptions: (itemId: string, varName: string, dependsOn?: string) => {
     const qs = new URLSearchParams();
@@ -535,6 +536,20 @@ export type CatalogItemSummary = {
 export type CatalogItemDetail = CatalogItemSummary & {
   variables: CatalogVariable[];
   conditions: CatalogCondition[];
+};
+
+export type CatalogOrderRecordRef = {
+  sys_id: string;
+  number?: string;
+  short_description?: string;
+};
+
+export type CatalogOrderResult = {
+  request_id: string;
+  request_number: string;
+  request: CatalogOrderRecordRef;
+  request_item: CatalogOrderRecordRef;
+  task: CatalogOrderRecordRef | null;
 };
 
 export type CatalogWebhook = {

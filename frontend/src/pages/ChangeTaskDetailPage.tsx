@@ -6,20 +6,16 @@ import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldC
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import {
   ActivityIcon,
-  AttachmentsIcon,
-  CommentsIcon,
   FieldsIcon,
   LockIcon,
-  OverviewIcon,
+  PropertiesIcon,
   SystemIcon,
 } from '../components/DetailIcons';
 import { EmptyValue } from '../components/EmptyValue';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { JournalFieldRenderer } from '../components/JournalFieldRenderer';
 import { usePageHeader } from '../components/PageHeaderContext';
-import { RecordActivitySection } from '../components/RecordActivitySection';
-import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
-import { RecordCommentsSection } from '../components/RecordCommentsSection';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { OFSelect } from '../components/OFSelect';
 import {
@@ -78,11 +74,9 @@ const SYSTEM_FIELDS: FieldConfig[] = [
 ];
 
 const SECTION = {
-  details: 'ctask-section-details',
-  notes: 'ctask-section-notes',
   system: 'ctask-section-system',
-  attachments: 'ctask-section-attachments',
-  comments: 'ctask-section-comments',
+  general: 'ctask-section-general',
+  notes: 'ctask-section-notes',
   activity: 'ctask-section-activity',
 } as const;
 
@@ -167,18 +161,6 @@ export function ChangeTaskDetailPage() {
     enabled: !!changeSysId,
   });
 
-  const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
-    queryKey: ['attachments', RESOURCE, sysId],
-    queryFn: () => api.listAttachments(RESOURCE, sysId!),
-    enabled: !!sysId && !!permissions?.read,
-  });
-
-  const { data: comments = [] } = useQuery({
-    queryKey: ['comments', RESOURCE, sysId],
-    queryFn: () => api.listComments(RESOURCE, sysId!),
-    enabled: !!sysId && !!(permissions?.comment || permissions?.write),
-  });
-
   useEffect(() => {
     if (!data) return;
     setForm(buildEditableForm(data));
@@ -203,9 +185,15 @@ export function ChangeTaskDetailPage() {
   const sectionNavItems = useMemo((): DetailSectionNavItem[] => {
     const items: DetailSectionNavItem[] = [
       {
-        id: SECTION.details,
-        title: 'Details',
-        icon: <OverviewIcon size={14} />,
+        id: SECTION.system,
+        title: 'System',
+        icon: <SystemIcon size={14} />,
+        accent: 'primary',
+      },
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
         accent: 'accent',
       },
       {
@@ -214,33 +202,7 @@ export function ChangeTaskDetailPage() {
         icon: <FieldsIcon size={14} />,
         accent: 'info',
       },
-      {
-        id: SECTION.system,
-        title: 'System',
-        icon: <SystemIcon size={14} />,
-        accent: 'primary',
-      },
     ];
-
-    if (sysId && permissions?.read) {
-      items.push({
-        id: SECTION.attachments,
-        title: 'Attachments',
-        icon: <AttachmentsIcon size={14} />,
-        accent: 'info',
-        count: attachmentsLoading ? '…' : attachments.length,
-      });
-    }
-
-    if (sysId && (permissions?.comment || permissions?.write)) {
-      items.push({
-        id: SECTION.comments,
-        title: 'Comments',
-        icon: <CommentsIcon size={14} />,
-        accent: 'accent',
-        count: comments.length,
-      });
-    }
 
     if (sysId && permissions?.read) {
       items.push({
@@ -252,15 +214,7 @@ export function ChangeTaskDetailPage() {
     }
 
     return items;
-  }, [
-    attachments.length,
-    attachmentsLoading,
-    comments.length,
-    permissions?.comment,
-    permissions?.read,
-    permissions?.write,
-    sysId,
-  ]);
+  }, [permissions?.read, sysId]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -304,9 +258,28 @@ export function ChangeTaskDetailPage() {
       <div className="detail-page-main">
         <div className="detail-sections-stack">
           <ExpandableDetailSection
-            id={SECTION.details}
-            title="Details"
-            icon={<OverviewIcon size={14} />}
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {SYSTEM_FIELDS.map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`ctask-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
             accent="accent"
             defaultOpen
           >
@@ -449,49 +422,14 @@ export function ChangeTaskDetailPage() {
             )}
           </ExpandableDetailSection>
 
-          <ExpandableDetailSection
-            id={SECTION.system}
-            title="System"
-            icon={<SystemIcon size={14} />}
-            accent="primary"
-          >
-            <DetailFieldGroup>
-              {SYSTEM_FIELDS.map((field) => (
-                <ReadOnlyFieldInput
-                  key={field.key}
-                  id={`ctask-${field.key}`}
-                  fieldKey={field.key}
-                  label={field.label}
-                  value={data[field.key]}
-                />
-              ))}
-            </DetailFieldGroup>
-          </ExpandableDetailSection>
-
           {sysId && permissions?.read && (
-            <RecordAttachmentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.attachments}
-              canManageAttachments={!!(permissions?.write || permissions?.delete)}
-            />
-          )}
-
-          {sysId && (permissions?.comment || permissions?.write) && (
-            <RecordCommentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.comments}
-              canComment={!!(permissions?.comment || permissions?.write)}
-            />
-          )}
-
-          {sysId && permissions?.read && (
-            <RecordActivitySection
+            <RecordActivityFeed
               resource={RESOURCE}
               sysId={sysId}
               sectionId={SECTION.activity}
               fieldLabels={FIELD_LABELS}
+              canComment={!!(permissions?.comment || permissions?.write)}
+              canManageAttachments={!!(permissions?.write || permissions?.delete)}
             />
           )}
         </div>

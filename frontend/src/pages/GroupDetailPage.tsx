@@ -10,7 +10,7 @@ import {
 } from '../components/DetailFieldControls';
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
-import { GovernanceIcon, OverviewIcon, SystemIcon } from '../components/DetailIcons';
+import { GovernanceIcon, PropertiesIcon, SystemIcon } from '../components/DetailIcons';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordDeleteButton } from '../components/RecordDeleteButton';
 import { OFSelect } from '../components/OFSelect';
@@ -32,9 +32,9 @@ interface FormState {
 }
 
 const SECTION = {
-  details: 'group-section-details',
-  governance: 'group-section-governance',
   system: 'group-section-system',
+  general: 'group-section-general',
+  governance: 'group-section-governance',
 } as const;
 
 function buildForm(data: Record<string, string>): FormState {
@@ -105,14 +105,19 @@ export function GroupDetailPage() {
 
   const sectionNavItems = useMemo(
     (): DetailSectionNavItem[] => [
-      { id: SECTION.details, title: 'Details', icon: <OverviewIcon size={14} />, accent: 'accent' },
+      { id: SECTION.system, title: 'System', icon: <SystemIcon size={14} />, accent: 'primary' },
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
+        accent: 'accent',
+      },
       {
         id: SECTION.governance,
         title: 'Governance',
         icon: <GovernanceIcon size={14} />,
         accent: 'info',
       },
-      { id: SECTION.system, title: 'System', icon: <SystemIcon size={14} />, accent: 'primary' },
     ],
     [],
   );
@@ -182,9 +187,36 @@ export function GroupDetailPage() {
       <div className="detail-page-main">
         <div className="detail-sections-stack">
           <ExpandableDetailSection
-            id={SECTION.details}
-            title="Details"
-            icon={<OverviewIcon size={14} />}
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {(
+                [
+                  { key: 'sys_id', label: 'Sys ID' },
+                  { key: 'sys_created_on', label: 'Created' },
+                  { key: 'sys_updated_on', label: 'Updated' },
+                  { key: 'sys_created_by', label: 'Created By' },
+                  { key: 'sys_updated_by', label: 'Updated By' },
+                ] as const
+              ).map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`group-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
             accent="accent"
             defaultOpen
           >
@@ -249,33 +281,6 @@ export function GroupDetailPage() {
               {referenceField('owner', 'Owner', 'user', userOptions)}
               {referenceField('manager', 'Manager', 'user', userOptions)}
               {referenceField('parent', 'Parent Group', 'group', groupOptions)}
-            </DetailFieldGroup>
-          </ExpandableDetailSection>
-
-          <ExpandableDetailSection
-            id={SECTION.system}
-            title="System"
-            icon={<SystemIcon size={14} />}
-            accent="primary"
-          >
-            <DetailFieldGroup>
-              {(
-                [
-                  { key: 'sys_id', label: 'Sys ID' },
-                  { key: 'sys_created_on', label: 'Created' },
-                  { key: 'sys_updated_on', label: 'Updated' },
-                  { key: 'sys_created_by', label: 'Created By' },
-                  { key: 'sys_updated_by', label: 'Updated By' },
-                ] as const
-              ).map((field) => (
-                <ReadOnlyFieldInput
-                  key={field.key}
-                  id={`group-${field.key}`}
-                  fieldKey={field.key}
-                  label={field.label}
-                  value={data[field.key]}
-                />
-              ))}
             </DetailFieldGroup>
           </ExpandableDetailSection>
         </div>

@@ -1,7 +1,12 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { api, type CatalogCondition, type CatalogVariable } from '../api/client';
+import {
+  api,
+  type CatalogCondition,
+  type CatalogOrderResult,
+  type CatalogVariable,
+} from '../api/client';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import { FieldTooltip } from '../components/FieldTooltip';
 import { ReferenceSelect } from '../components/ReferenceSelect';
@@ -66,7 +71,7 @@ export function CatalogItemPage() {
   const canAdmin = hasPermission('records.*.write');
   const [values, setValues] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState<{ number: string; sysId: string } | null>(null);
+  const [success, setSuccess] = useState<CatalogOrderResult | null>(null);
 
   const {
     data,
@@ -142,14 +147,7 @@ export function CatalogItemPage() {
         ),
       }),
     onSuccess: (res) => {
-      const result = res.result as {
-        request_id?: string;
-        request_number?: string;
-        request?: { number?: string; sys_id?: string };
-      };
-      const number = result.request_number || result.request?.number || '';
-      const sysId = result.request_id || result.request?.sys_id || '';
-      setSuccess({ number, sysId });
+      setSuccess(res.result);
       setError('');
     },
     onError: (err: Error) => {
@@ -296,15 +294,37 @@ export function CatalogItemPage() {
 
           {error ? <p className="error">{error}</p> : null}
           {success ? (
-            <p className="alert alert-success">
-              Request{' '}
-              {success.sysId ? (
-                <Link to={`/requests/${success.sysId}`}>{success.number}</Link>
-              ) : (
-                success.number
-              )}{' '}
-              created successfully.
-            </p>
+            <div className="alert alert-success">
+              <p className="order-hierarchy-title">Order submitted successfully.</p>
+              <ul className="order-hierarchy">
+                <li className="order-hierarchy-node">
+                  <span className="order-hierarchy-type">Request</span>
+                  {success.request.sys_id ? (
+                    <Link to={`/requests/${success.request.sys_id}`}>
+                      {success.request.number || success.request_number}
+                    </Link>
+                  ) : (
+                    success.request.number || success.request_number
+                  )}
+                </li>
+                <li className="order-hierarchy-node order-hierarchy-node--depth-1">
+                  <span className="order-hierarchy-type">Requested Item</span>
+                  {success.request_item.sys_id ? (
+                    <Link to={`/requested-items/${success.request_item.sys_id}`}>
+                      {success.request_item.number}
+                    </Link>
+                  ) : (
+                    success.request_item.number
+                  )}
+                </li>
+                {success.task ? (
+                  <li className="order-hierarchy-node order-hierarchy-node--depth-2">
+                    <span className="order-hierarchy-type">Fulfillment Task</span>
+                    <span>{success.task.number}</span>
+                  </li>
+                ) : null}
+              </ul>
+            </div>
           ) : null}
 
           <button type="submit" className="btn btn-primary" disabled={orderMutation.isPending}>

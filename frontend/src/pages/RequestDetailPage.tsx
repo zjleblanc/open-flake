@@ -4,20 +4,11 @@ import { useParams } from 'react-router-dom';
 import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
 import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
-import {
-  ActivityIcon,
-  AttachmentsIcon,
-  CommentsIcon,
-  FieldsIcon,
-  OverviewIcon,
-  SystemIcon,
-} from '../components/DetailIcons';
+import { ActivityIcon, HierarchyIcon, PropertiesIcon, SystemIcon } from '../components/DetailIcons';
 import { EmptyValue } from '../components/EmptyValue';
 import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
-import { RecordActivitySection } from '../components/RecordActivitySection';
-import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
-import { RecordCommentsSection } from '../components/RecordCommentsSection';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
@@ -69,11 +60,9 @@ const SYSTEM_FIELDS: FieldConfig[] = [
 ];
 
 const SECTION = {
-  details: 'req-section-details',
-  items: 'req-section-items',
   system: 'req-section-system',
-  attachments: 'req-section-attachments',
-  comments: 'req-section-comments',
+  general: 'req-section-general',
+  references: 'req-section-references',
   activity: 'req-section-activity',
 } as const;
 
@@ -114,18 +103,6 @@ export function RequestDetailPage() {
   const permissions = data ? getRecordPermissions(data) : null;
   const canWrite = !!permissions?.write;
 
-  const { data: attachments = [], isLoading: attachmentsLoading } = useQuery({
-    queryKey: ['attachments', RESOURCE, sysId],
-    queryFn: () => api.listAttachments(RESOURCE, sysId!),
-    enabled: !!sysId && !!permissions?.read,
-  });
-
-  const { data: comments = [] } = useQuery({
-    queryKey: ['comments', RESOURCE, sysId],
-    queryFn: () => api.listComments(RESOURCE, sysId!),
-    enabled: !!sysId && !!(permissions?.comment || permissions?.write),
-  });
-
   const { data: childItemsData, isLoading: childItemsLoading } = useQuery({
     queryKey: ['records', 'catalog-request-items', 'request', sysId],
     queryFn: () => api.listRecords('catalog-request-items', { query: `request=${sysId}` }),
@@ -157,45 +134,18 @@ export function RequestDetailPage() {
   const sectionNavItems = useMemo((): DetailSectionNavItem[] => {
     const items: DetailSectionNavItem[] = [
       {
-        id: SECTION.details,
-        title: 'Details',
-        icon: <OverviewIcon size={14} />,
-        accent: 'accent',
-      },
-      {
-        id: SECTION.items,
-        title: 'Requested Items',
-        icon: <FieldsIcon size={14} />,
-        accent: 'info',
-        count: childItemsLoading ? '…' : childItems.length,
-      },
-      {
         id: SECTION.system,
         title: 'System',
         icon: <SystemIcon size={14} />,
         accent: 'primary',
       },
-    ];
-
-    if (sysId && permissions?.read) {
-      items.push({
-        id: SECTION.attachments,
-        title: 'Attachments',
-        icon: <AttachmentsIcon size={14} />,
-        accent: 'info',
-        count: attachmentsLoading ? '…' : attachments.length,
-      });
-    }
-
-    if (sysId && (permissions?.comment || permissions?.write)) {
-      items.push({
-        id: SECTION.comments,
-        title: 'Comments',
-        icon: <CommentsIcon size={14} />,
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
         accent: 'accent',
-        count: comments.length,
-      });
-    }
+      },
+    ];
 
     if (sysId && permissions?.read) {
       items.push({
@@ -206,18 +156,16 @@ export function RequestDetailPage() {
       });
     }
 
+    items.push({
+      id: SECTION.references,
+      title: 'References',
+      icon: <HierarchyIcon size={14} />,
+      accent: 'info',
+      count: childItemsLoading ? '…' : childItems.length,
+    });
+
     return items;
-  }, [
-    attachments.length,
-    attachmentsLoading,
-    childItems.length,
-    childItemsLoading,
-    comments.length,
-    permissions?.comment,
-    permissions?.read,
-    permissions?.write,
-    sysId,
-  ]);
+  }, [childItems.length, childItemsLoading, permissions?.read, sysId]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -261,9 +209,28 @@ export function RequestDetailPage() {
       <div className="detail-page-main">
         <div className="detail-sections-stack">
           <ExpandableDetailSection
-            id={SECTION.details}
-            title="Details"
-            icon={<OverviewIcon size={14} />}
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
+            <DetailFieldGroup>
+              {SYSTEM_FIELDS.map((field) => (
+                <ReadOnlyFieldInput
+                  key={field.key}
+                  id={`req-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
+              ))}
+            </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
             accent="accent"
             defaultOpen
           >
@@ -350,63 +317,28 @@ export function RequestDetailPage() {
             )}
           </ExpandableDetailSection>
 
-          <RelatedRecordsSection
-            id={SECTION.items}
-            title="Requested Items"
-            icon={<FieldsIcon size={14} />}
-            accent="info"
-            basePath="/requested-items"
-            resource="catalog-request-items"
-            records={childItems}
-            isLoading={childItemsLoading}
-            emptyMessage="No requested items linked to this request yet"
-          />
-
-          <ExpandableDetailSection
-            id={SECTION.system}
-            title="System"
-            icon={<SystemIcon size={14} />}
-            accent="primary"
-          >
-            <DetailFieldGroup>
-              {SYSTEM_FIELDS.map((field) => (
-                <ReadOnlyFieldInput
-                  key={field.key}
-                  id={`req-${field.key}`}
-                  fieldKey={field.key}
-                  label={field.label}
-                  value={data[field.key]}
-                />
-              ))}
-            </DetailFieldGroup>
-          </ExpandableDetailSection>
-
           {sysId && permissions?.read && (
-            <RecordAttachmentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.attachments}
-              canManageAttachments={!!(permissions?.write || permissions?.delete)}
-            />
-          )}
-
-          {sysId && (permissions?.comment || permissions?.write) && (
-            <RecordCommentsSection
-              resource={RESOURCE}
-              sysId={sysId}
-              sectionId={SECTION.comments}
-              canComment={!!(permissions?.comment || permissions?.write)}
-            />
-          )}
-
-          {sysId && permissions?.read && (
-            <RecordActivitySection
+            <RecordActivityFeed
               resource={RESOURCE}
               sysId={sysId}
               sectionId={SECTION.activity}
               fieldLabels={FIELD_LABELS}
+              canComment={!!(permissions?.comment || permissions?.write)}
+              canManageAttachments={!!(permissions?.write || permissions?.delete)}
             />
           )}
+
+          <RelatedRecordsSection
+            id={SECTION.references}
+            icon={<HierarchyIcon size={14} />}
+            accent="info"
+            basePath="/requested-items"
+            resource="catalog-request-items"
+            typeLabel="Requested Item"
+            records={childItems}
+            isLoading={childItemsLoading}
+            emptyMessage="No referenced records linked to this request yet"
+          />
         </div>
       </div>
 

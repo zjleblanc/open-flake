@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-17 — Standardize record detail views with unified activity feed and hierarchical catalog success
+
+### Added
+
+- `RecordActivityFeed` consolidates comments, attachments, and field history into a single chronological message-style feed with human-friendly relative timestamps (e.g. "Just now", "5 minutes ago").
+- `NestedCollapsibleSection` component for creating hr-separated collapsible sub-groups like "Additional Properties" inside a main detail section.
+- Catalog item submission now visualizes the full hierarchy of created items (Request → Requested Item → Task) in a tree-style list rather than just a single link.
+- Standardized detail page conventions (layout structure, section ordering, and naming) documented in `frontend/AGENTS.md`.
+
+### Changed
+
+- Record detail views (Incidents, Problems, Changes, etc.) now follow a strict section order: **System** (collapsed) at the top, then **General** fields, **Activity**, and **References** (linked records) last.
+- The main fields section on all detail pages is renamed from "Details" to "General".
+- Linked-record sections use a standardized `RelatedRecordsSection` titled "References" with "Type" and "Name" (link) columns by default.
+- Activity feed timestamps respect the user's "Local Dates" preference (UTC vs. local timezone) for absolute-time fallbacks and tooltips.
+
+### Deleted
+
+- Removed legacy `RecordActivitySection`, `RecordAttachmentsSection`, and `RecordCommentsSection` components now superseded by the unified activity feed.
+
 ## 2026-08-17 — Detailed delete previews with cascaded record samples
 
 ### Added

@@ -2,15 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { api, getRecordPermissions, stateBadge, stateLabel, stateOptionsFor } from '../api/client';
-import { DetailSection } from '../components/DetailSection';
-import { usePageHeader } from '../components/PageHeaderContext';
-import { OverviewIcon } from '../components/DetailIcons';
 import { DetailFieldGroup, ReadOnlyFieldInput } from '../components/DetailFieldControls';
-import { RecordActivitySection } from '../components/RecordActivitySection';
-import { RecordAttachmentsSection } from '../components/RecordAttachmentsSection';
-import { RecordCommentsSection } from '../components/RecordCommentsSection';
-import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
+import { DetailSectionNav, type DetailSectionNavItem } from '../components/DetailSectionNav';
+import { ActivityIcon, PropertiesIcon, SystemIcon } from '../components/DetailIcons';
 import { EmptyValue } from '../components/EmptyValue';
+import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
+import { usePageHeader } from '../components/PageHeaderContext';
+import { RecordActivityFeed } from '../components/RecordActivityFeed';
+import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
 import { OFSelect } from '../components/OFSelect';
 import '../components/Layout.css';
 
@@ -26,8 +25,21 @@ interface RecordDetailProps {
   title: string;
   listPath: string;
   fields: DetailFieldConfig[];
-  sectionTitle?: string;
 }
+
+const SYSTEM_FIELDS: DetailFieldConfig[] = [
+  { key: 'sys_id', label: 'Sys ID' },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+];
+
+const SECTION = {
+  system: 'record-section-system',
+  general: 'record-section-general',
+  activity: 'record-section-activity',
+} as const;
 
 function formatReadOnlyValue(value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
@@ -37,13 +49,7 @@ function formatReadOnlyValue(value: unknown): string {
   return String(value);
 }
 
-export function RecordDetailPage({
-  resource,
-  title,
-  listPath,
-  fields,
-  sectionTitle = 'Details',
-}: RecordDetailProps) {
+export function RecordDetailPage({ resource, title, listPath, fields }: RecordDetailProps) {
   const { sysId } = useParams<{ sysId: string }>();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Record<string, string>>({});
@@ -99,6 +105,34 @@ export function RecordDetailPage({
   const lockedFields = fields.filter((field) => !canWrite || field.readOnly);
   const showEditableDivider = lockedFields.length > 0 && editableFields.length > 0;
 
+  const sectionNavItems = useMemo((): DetailSectionNavItem[] => {
+    const items: DetailSectionNavItem[] = [
+      {
+        id: SECTION.system,
+        title: 'System',
+        icon: <SystemIcon size={14} />,
+        accent: 'primary',
+      },
+      {
+        id: SECTION.general,
+        title: 'General',
+        icon: <PropertiesIcon size={14} />,
+        accent: 'accent',
+      },
+    ];
+
+    if (sysId && permissions?.read) {
+      items.push({
+        id: SECTION.activity,
+        title: 'Activity',
+        icon: <ActivityIcon size={14} />,
+        accent: 'primary',
+      });
+    }
+
+    return items;
+  }, [permissions?.read, sysId]);
+
   const headerBreadcrumbs = useMemo(
     () => [
       { label: title, to: listPath },
@@ -137,109 +171,127 @@ export function RecordDetailPage({
   }
 
   return (
-    <div>
-      <DetailSection title={sectionTitle} icon={<OverviewIcon />} accent="accent">
-        <div className="detail-field-groups">
-          {lockedFields.length > 0 && (
+    <div className="detail-page-layout">
+      <div className="detail-page-main">
+        <div className="detail-sections-stack">
+          <ExpandableDetailSection
+            id={SECTION.system}
+            title="System"
+            icon={<SystemIcon size={14} />}
+            accent="primary"
+          >
             <DetailFieldGroup>
-              {lockedFields.map((field) => {
-                const raw = data[field.key];
-                const display =
-                  field.type === 'select-state'
-                    ? stateLabel(String(raw), resource) || formatReadOnlyValue(raw)
-                    : raw;
-
-                return (
-                  <ReadOnlyFieldInput
-                    key={field.key}
-                    id={`field-${field.key}`}
-                    fieldKey={field.key}
-                    label={field.label}
-                    value={display}
-                    multiline={field.type === 'textarea'}
-                    gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
-                  />
-                );
-              })}
-            </DetailFieldGroup>
-          )}
-
-          {editableFields.length > 0 && (
-            <DetailFieldGroup dividerTop={showEditableDivider}>
-              {editableFields.map((field) => (
-                <div
-                  className="form-group"
+              {SYSTEM_FIELDS.map((field) => (
+                <ReadOnlyFieldInput
                   key={field.key}
-                  style={{
-                    marginBottom: 0,
-                    gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
-                  }}
-                >
-                  <label htmlFor={`field-${field.key}`}>{field.label}</label>
-                  {field.type === 'select-state' ? (
-                    <OFSelect
-                      id={`field-${field.key}`}
-                      value={form[field.key] ?? ''}
-                      onChange={(value) => setForm({ ...form, [field.key]: value as string })}
-                      options={stateOptionsFor(resource)}
-                    />
-                  ) : field.type === 'textarea' ? (
-                    <textarea
-                      id={`field-${field.key}`}
-                      rows={3}
-                      value={form[field.key] ?? ''}
-                      onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                    />
-                  ) : (
-                    <input
-                      id={`field-${field.key}`}
-                      type="text"
-                      value={form[field.key] ?? ''}
-                      onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                    />
-                  )}
-                </div>
+                  id={`field-${field.key}`}
+                  fieldKey={field.key}
+                  label={field.label}
+                  value={data[field.key]}
+                />
               ))}
             </DetailFieldGroup>
+          </ExpandableDetailSection>
+
+          <ExpandableDetailSection
+            id={SECTION.general}
+            title="General"
+            icon={<PropertiesIcon size={14} />}
+            accent="accent"
+            defaultOpen
+          >
+            <div className="detail-field-groups">
+              {lockedFields.length > 0 && (
+                <DetailFieldGroup>
+                  {lockedFields.map((field) => {
+                    const raw = data[field.key];
+                    const display =
+                      field.type === 'select-state'
+                        ? stateLabel(String(raw), resource) || formatReadOnlyValue(raw)
+                        : raw;
+
+                    return (
+                      <ReadOnlyFieldInput
+                        key={field.key}
+                        id={`field-${field.key}`}
+                        fieldKey={field.key}
+                        label={field.label}
+                        value={display}
+                        multiline={field.type === 'textarea'}
+                        gridColumn={field.type === 'textarea' ? '1 / -1' : undefined}
+                      />
+                    );
+                  })}
+                </DetailFieldGroup>
+              )}
+
+              {editableFields.length > 0 && (
+                <DetailFieldGroup dividerTop={showEditableDivider}>
+                  {editableFields.map((field) => (
+                    <div
+                      className="form-group"
+                      key={field.key}
+                      style={{
+                        marginBottom: 0,
+                        gridColumn: field.type === 'textarea' ? '1 / -1' : undefined,
+                      }}
+                    >
+                      <label htmlFor={`field-${field.key}`}>{field.label}</label>
+                      {field.type === 'select-state' ? (
+                        <OFSelect
+                          id={`field-${field.key}`}
+                          value={form[field.key] ?? ''}
+                          onChange={(value) => setForm({ ...form, [field.key]: value as string })}
+                          options={stateOptionsFor(resource)}
+                        />
+                      ) : field.type === 'textarea' ? (
+                        <textarea
+                          id={`field-${field.key}`}
+                          rows={3}
+                          value={form[field.key] ?? ''}
+                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                        />
+                      ) : (
+                        <input
+                          id={`field-${field.key}`}
+                          type="text"
+                          value={form[field.key] ?? ''}
+                          onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </DetailFieldGroup>
+              )}
+            </div>
+
+            {canWrite && editableFields.length > 0 && (
+              <div style={{ marginTop: '1.25rem' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => updateMutation.mutate(form)}
+                  disabled={!isDirty || updateMutation.isPending}
+                >
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
+          </ExpandableDetailSection>
+
+          {sysId && permissions?.read && (
+            <RecordActivityFeed
+              resource={resource}
+              sysId={sysId}
+              sectionId={SECTION.activity}
+              fieldLabels={Object.fromEntries(fields.map((field) => [field.key, field.label]))}
+              canComment={!!(permissions?.comment || permissions?.write)}
+              canManageAttachments={!!(permissions?.write || permissions?.delete)}
+            />
           )}
         </div>
+      </div>
 
-        {canWrite && editableFields.length > 0 && (
-          <div style={{ marginTop: '1.25rem' }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => updateMutation.mutate(form)}
-              disabled={!isDirty || updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        )}
-      </DetailSection>
-
-      {sysId && permissions?.read && (
-        <RecordAttachmentsSection
-          resource={resource}
-          sysId={sysId}
-          canManageAttachments={!!(permissions?.write || permissions?.delete)}
-        />
-      )}
-
-      {sysId && (permissions?.comment || permissions?.write) && (
-        <RecordCommentsSection
-          resource={resource}
-          sysId={sysId}
-          canComment={!!(permissions?.comment || permissions?.write)}
-        />
-      )}
-
-      {sysId && permissions?.read && (
-        <RecordActivitySection
-          resource={resource}
-          sysId={sysId}
-          fieldLabels={Object.fromEntries(fields.map((field) => [field.key, field.label]))}
-        />
-      )}
+      <DetailSectionNav sections={sectionNavItems} />
     </div>
   );
 }
