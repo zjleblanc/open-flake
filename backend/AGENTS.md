@@ -58,6 +58,32 @@ See `backend/app/domain/table_service.py` (`clear_loose_references`,
 `cascade_loose_references`, `delete_record`) and
 `backend/app/api/v1/router.py` (`cascade_preview`) for the implementation.
 
+## Resolving table names that may be CMDB subclasses
+
+Any table name that can come from user input or config (e.g. a catalog
+variable's `reference_table`, a query param, a URL path segment) can be a
+CMDB subclass like `cmdb_ci_server` -- these never appear in `TABLE_MODELS`
+since their data actually lives in the physical `cmdb_ci` table. Code that
+does `TABLE_MODELS.get(table)` directly on such a name will silently treat
+it as unknown instead of raising, e.g. returning no rows/no display value
+rather than an error.
+
+Always resolve the name first with `resolve_table_name()` from
+`app/domain/registry.py`, which returns `(physical_table, class_filter)` and
+correctly maps a CMDB subclass to `("cmdb_ci", "cmdb_ci_server")`:
+
+```python
+resolved = resolve_table_name(table)
+physical_table, class_filter = resolved if resolved else (table, None)
+model = TABLE_MODELS.get(physical_table)
+```
+
+`app/domain/table_service.py`'s CRUD entry points already do this via the
+`_resolve_subclass_table()` helper; `app/domain/catalog/webhooks.py`'s
+`_batch_lookup_display_values()` is another example. When adding a new code
+path that looks up a table by name, check whether it needs the same
+treatment.
+
 ## Database migrations (Alembic)
 
 Schema changes are managed exclusively through Alembic (`backend/alembic/`).

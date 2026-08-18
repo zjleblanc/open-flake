@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { getToken } from './api/client';
+import { AdminTablesPage } from './pages/AdminTablesPage';
 import { CatalogBrowsePage } from './pages/CatalogBrowsePage';
 import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
 import { CatalogItemPage } from './pages/CatalogItemPage';
@@ -201,6 +202,7 @@ export function App() {
         <Route path="groups" element={<Navigate to="/access/groups" replace />} />
         <Route path="groups/:sysId" element={<LegacyGroupRedirect />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin/tables" element={<AdminTablesPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

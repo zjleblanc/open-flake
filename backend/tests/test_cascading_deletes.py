@@ -232,7 +232,8 @@ async def test_delete_record_cascade_mode_calls_cascade_loose_references(monkeyp
     db.get = AsyncMock(return_value=record)
     db.flush = AsyncMock()
 
-    monkeypatch.setattr("app.domain.table_service.TABLE_MODELS", {"cmdb_ci_shim": CmdbCi})
+    monkeypatch.setattr("app.domain.table_service.TABLE_MODELS", {"widget_shim": CmdbCi})
+    monkeypatch.setattr("app.domain.table_service.resolve_table_name", lambda _table: None)
     monkeypatch.setattr("app.domain.table_service.emit", AsyncMock())
     clear_mock = AsyncMock()
     cascade_mock = AsyncMock()
@@ -241,12 +242,13 @@ async def test_delete_record_cascade_mode_calls_cascade_loose_references(monkeyp
     monkeypatch.setattr("app.domain.table_service._delete_polymorphic_children", AsyncMock())
     monkeypatch.setattr("app.domain.table_service.delete_attachments_for_parent", AsyncMock())
 
-    # Use a non-"cmdb_ci" table name to avoid the special-cased redirect to
-    # ci_service.delete_cmdb_ci and exercise the generic delete_record path.
-    result = await delete_record(db, "cmdb_ci_shim", "ci1", ref_mode="cascade")
+    # Use a table name outside both the literal "cmdb_ci" special case and the
+    # "cmdb_ci_*" subclass-resolution convention, to exercise the generic
+    # delete_record path rather than redirecting to ci_service.delete_cmdb_ci.
+    result = await delete_record(db, "widget_shim", "ci1", ref_mode="cascade")
 
     assert result is True
-    cascade_mock.assert_awaited_once_with(db, "cmdb_ci_shim", "ci1", auth=None)
+    cascade_mock.assert_awaited_once_with(db, "widget_shim", "ci1", auth=None)
     clear_mock.assert_not_called()
 
 

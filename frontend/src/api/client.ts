@@ -380,6 +380,28 @@ export const api = {
       `/api/flake/catalog/admin/tables/${encodeURIComponent(table)}/fields`,
     ),
 
+  listTableRegistry: () => request<{ result: TableRegistryEntry[] }>('/api/flake/admin/tables'),
+
+  getTableSchema: (name: string) =>
+    request<{ result: CmdbClassSchema }>(
+      `/api/flake/admin/tables/${encodeURIComponent(name)}/schema`,
+    ),
+
+  createTableClass: (data: Record<string, unknown>) =>
+    request<{ result: CmdbClassSchema }>('/api/flake/admin/tables', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  addTableClassField: (name: string, data: Record<string, unknown>) =>
+    request<{ result: CmdbClassSchema }>(
+      `/api/flake/admin/tables/${encodeURIComponent(name)}/fields`,
+      { method: 'PUT', body: JSON.stringify(data) },
+    ),
+
+  deleteTableClass: (name: string) =>
+    request<void>(`/api/flake/admin/tables/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+
   adminListConditions: (itemId: string, varId: string) =>
     request<{ result: CatalogCondition[] }>(
       `/api/flake/catalog/admin/items/${itemId}/variables/${varId}/conditions`,
@@ -492,8 +514,26 @@ export type RecordVariable = {
 
 export type CatalogChoice = { value: string; label: string; record?: Record<string, unknown> };
 
-export type TableInfo = { name: string };
+export type TableInfo = {
+  name: string;
+  label?: string;
+  super_class?: string | null;
+  is_extendable?: boolean;
+};
 export type TableField = { name: string; type: string };
+
+export type TableRegistryEntry = {
+  name: string;
+  label: string;
+  super_class: string | null;
+  is_logical: boolean;
+  is_extendable: boolean;
+  storage_type: string;
+  base_table: string | null;
+  user_defined: boolean;
+  active: boolean;
+  children_count: number;
+};
 
 export type CatalogVariable = {
   sys_id: string;

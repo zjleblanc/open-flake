@@ -9,6 +9,7 @@ from sqlalchemy import and_, exists, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.deps import AuthContext
+from app.domain.cmdb.registry import is_cmdb_class_name
 from app.domain.registry import PLATFORM_TABLES, RBAC_RECORD_TABLES, TABLE_MODELS
 from app.models import RecordAccessGrant, SysGroupRole, SysRole, SysUserGrMember, SysUserGroup
 
@@ -314,7 +315,8 @@ async def can_read_table(db: AsyncSession, auth: AuthContext, table: str) -> boo
     perms = await get_user_permissions(db, auth.user_sys_id)
     if has_permission(perms, "records.*.read") or has_permission(perms, "records.*.write"):
         return True
-    if table in RBAC_RECORD_TABLES:
+    # CMDB subclasses (cmdb_ci_server, ...) share cmdb_ci's storage and RBAC.
+    if table in RBAC_RECORD_TABLES or is_cmdb_class_name(table):
         return False
     if table in PLATFORM_TABLES:
         required = PLATFORM_TABLES[table].get("read")

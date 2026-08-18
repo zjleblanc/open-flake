@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
+from app.api.flake.admin_tables import router as admin_tables_router
 from app.api.flake.attachment import router as attachment_router
 from app.api.flake.catalog import router as catalog_router
 from app.api.flake.catalog_admin import router as catalog_admin_router
@@ -77,6 +78,7 @@ def create_app() -> FastAPI:
     app.include_router(schema_router)
     app.include_router(catalog_router)
     app.include_router(catalog_admin_router)
+    app.include_router(admin_tables_router)
     app.include_router(secrets_router)
     app.include_router(v1_router)
 

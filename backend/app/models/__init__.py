@@ -345,29 +345,64 @@ class ChangeTask(Base, LifecycleMixin, OwnershipMixin, TaskFieldsMixin):
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
-class CmdbClass(Base):
-    __tablename__ = "cmdb_class"
+class SysDbObject(Base, LifecycleMixin):
+    """Table/class registry, unifying physical ITSM tables and CMDB classes.
 
-    name: Mapped[str] = mapped_column(String(128), primary_key=True)
+    Mirrors ServiceNow's `sys_db_object`: every table (physical or STI-backed
+    class) is a row here, with `super_class` forming a single inheritance
+    tree across the whole platform rather than a CMDB-only overlay.
+    """
+
+    __tablename__ = "sys_db_object"
+    # A named table-level UNIQUE constraint (rather than a separately created
+    # unique index) so Postgres can resolve the self-referential `super_class`
+    # foreign key within the same `CREATE TABLE` statement.
+    __table_args__ = (UniqueConstraint("name", name="uq_sys_db_object_name"),)
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), index=True)
+    label: Mapped[str] = mapped_column(String(256))
     super_class: Mapped[str | None] = mapped_column(
-        String(128), ForeignKey("cmdb_class.name", ondelete="CASCADE"), nullable=True, index=True
+        String(128),
+        ForeignKey("sys_db_object.name", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
-    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
     is_logical: Mapped[bool] = mapped_column(default=False)
+    is_extendable: Mapped[bool] = mapped_column(default=False)
+    number_prefix: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # "physical" (own SQL table) | "sti" (single-table inheritance row on `base_table`)
+    storage_type: Mapped[str] = mapped_column(String(16), default="physical")
+    base_table: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    user_defined: Mapped[bool] = mapped_column(default=False)
+    active: Mapped[bool] = mapped_column(default=True)
 
 
-class CmdbClassField(Base):
-    __tablename__ = "cmdb_class_field"
-    __table_args__ = (UniqueConstraint("class_name", "field_name"),)
+class SysDictionary(Base, LifecycleMixin):
+    """Field/column registry for any table in `sys_db_object`.
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    class_name: Mapped[str] = mapped_column(
-        String(128), ForeignKey("cmdb_class.name", ondelete="CASCADE"), index=True
+    Mirrors ServiceNow's `sys_dictionary`: replaces the CMDB-only
+    `cmdb_class_field` table so field metadata (labels, types, reference
+    targets) is queryable for every table, not just CMDB classes.
+    """
+
+    __tablename__ = "sys_dictionary"
+    __table_args__ = (UniqueConstraint("name", "element"),)
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    name: Mapped[str] = mapped_column(
+        String(128), ForeignKey("sys_db_object.name", ondelete="CASCADE"), index=True
     )
-    field_name: Mapped[str] = mapped_column(String(128))
-    label: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    sn_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    element: Mapped[str] = mapped_column(String(128))
+    column_label: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    internal_type: Mapped[str] = mapped_column(String(64), default="string")
+    max_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
     storage: Mapped[str] = mapped_column(String(16), default="attributes")
+    default_value: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    mandatory: Mapped[bool] = mapped_column(default=False)
+    active: Mapped[bool] = mapped_column(default=True)
+    user_defined: Mapped[bool] = mapped_column(default=False)
 
 
 class CmdbCi(Base, LifecycleMixin, OwnershipMixin):

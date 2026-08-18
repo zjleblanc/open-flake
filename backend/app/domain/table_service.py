@@ -31,6 +31,7 @@ from app.domain.registry import (
     REVERSE_REFERENCE_MAP,
     TABLE_MODELS,
     ref_table,
+    resolve_table_name,
 )
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence, RecordAccessGrant, SysAudit, SysComment, SysUser
@@ -238,6 +239,18 @@ async def next_number(db: AsyncSession, table: str) -> str | None:
     return f"{prefix}{seq.last_value:07d}"
 
 
+def _resolve_subclass_table(table: str, query_class: str | None) -> tuple[str, str | None]:
+    """Resolve a CMDB subclass table name (e.g. `cmdb_ci_server`) to its
+    physical storage table plus a class filter, so callers that pass a
+    subclass name directly (e.g. a catalog variable's `reference_table`)
+    behave the same as going through the `table.py` API route, which
+    already resolves subclass names before calling into this module."""
+    if query_class is not None:
+        return table, query_class
+    resolved = resolve_table_name(table)
+    return resolved if resolved else (table, None)
+
+
 async def list_records(
     db: AsyncSession,
     table: str,
@@ -249,6 +262,7 @@ async def list_records(
     include_permissions: bool = False,
     query_class: str | None = None,
 ) -> tuple[list[dict], int]:
+    table, query_class = _resolve_subclass_table(table, query_class)
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import list_cmdb_ci
 
@@ -311,6 +325,7 @@ async def get_record_by_sys_id(
     skip_auth: bool = False,
     query_class: str | None = None,
 ) -> dict | None:
+    table, query_class = _resolve_subclass_table(table, query_class)
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import get_cmdb_ci
 
@@ -417,6 +432,7 @@ async def create_record(
     auth: AuthContext | None = None,
     class_name: str | None = None,
 ) -> dict:
+    table, class_name = _resolve_subclass_table(table, class_name)
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import create_cmdb_ci
 
@@ -508,6 +524,7 @@ async def update_record(
     auth: AuthContext | None = None,
     query_class: str | None = None,
 ) -> dict | None:
+    table, query_class = _resolve_subclass_table(table, query_class)
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import update_cmdb_ci
 
@@ -661,6 +678,7 @@ async def delete_record(
     query_class: str | None = None,
     ref_mode: str | None = None,
 ) -> bool:
+    table, query_class = _resolve_subclass_table(table, query_class)
     if table == "cmdb_ci":
         from app.domain.cmdb.ci_service import delete_cmdb_ci
 

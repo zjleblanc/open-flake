@@ -7,12 +7,15 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.cmdb.constants import CMDB_ROOT, LAB_CLASS_PARENTS, LOGICAL_ROOT, PROMOTED_COLUMNS
-from app.domain.cmdb.registry import ensure_class, refresh_cache, register_export_inheritance_path
-from app.models import CmdbClassField
+from app.domain.cmdb.constants import CMDB_ROOT, LAB_CLASS_PARENTS, LOGICAL_ROOT
+from app.domain.cmdb.registry import (
+    ensure_class,
+    refresh_cache,
+    register_export_inheritance_path,
+    upsert_field,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,42 +28,6 @@ def parse_hierarchy_export(raw: str) -> dict:
         text = text.split("---START_JSON_DATA---", 1)[1].strip()
     parsed: dict[str, Any] = json.loads(text)
     return parsed
-
-
-def _field_storage(field_name: str) -> str:
-    return "column" if field_name in PROMOTED_COLUMNS else "attributes"
-
-
-async def _upsert_field(
-    db: AsyncSession,
-    class_name: str,
-    field_name: str,
-    *,
-    label: str | None,
-    sn_type: str | None,
-) -> None:
-    result = await db.execute(
-        select(CmdbClassField).where(
-            CmdbClassField.class_name == class_name,
-            CmdbClassField.field_name == field_name,
-        )
-    )
-    row = result.scalar_one_or_none()
-    storage = _field_storage(field_name)
-    if row:
-        row.label = label
-        row.sn_type = sn_type
-        row.storage = storage
-        return
-    db.add(
-        CmdbClassField(
-            class_name=class_name,
-            field_name=field_name,
-            label=label,
-            sn_type=sn_type,
-            storage=storage,
-        )
-    )
 
 
 async def _import_export(db: AsyncSession, export: dict) -> None:
@@ -86,7 +53,7 @@ async def _import_export(db: AsyncSession, export: dict) -> None:
         defined_on = field.get("source_table") or target_table
         if defined_on == LOGICAL_ROOT:
             defined_on = CMDB_ROOT
-        await _upsert_field(
+        await upsert_field(
             db,
             defined_on,
             field["name"],
@@ -99,17 +66,22 @@ async def import_hierarchy_from_directory(
     db: AsyncSession,
     directory: Path | None = None,
 ) -> int:
+    # Always bootstrap the logical root and `cmdb_ci` itself so the CMDB tree
+    # exists (and `cmdb_ci` is registered as extendable) even on a deployment
+    # with no hierarchy JSON exports checked in yet.
+    await ensure_class(db, LOGICAL_ROOT, super_class=None, label="CMDB", is_logical=True)
+    await ensure_class(db, CMDB_ROOT, super_class=LOGICAL_ROOT, label="Configuration Item")
+
     path = directory or DEFAULT_HIERARCHY_DIR
+    count = 0
     if not path.is_dir():
         logger.warning("CMDB hierarchy directory not found: %s", path)
-        return 0
-
-    count = 0
-    for json_file in sorted(path.glob("*.json")):
-        export = parse_hierarchy_export(json_file.read_text(encoding="utf-8"))
-        await _import_export(db, export)
-        count += 1
-        logger.info("Imported CMDB class hierarchy from %s", json_file.name)
+    else:
+        for json_file in sorted(path.glob("*.json")):
+            export = parse_hierarchy_export(json_file.read_text(encoding="utf-8"))
+            await _import_export(db, export)
+            count += 1
+            logger.info("Imported CMDB class hierarchy from %s", json_file.name)
 
     for class_name, super_class in LAB_CLASS_PARENTS.items():
         await ensure_class(db, class_name, super_class=super_class, label=class_name)

@@ -13,7 +13,7 @@ from app.api.flake.attachment import (
 )
 from app.auth.security import hash_password
 from app.config import get_settings
-from app.domain.registry import PLATFORM_ADMIN_PERMISSIONS
+from app.domain.registry import NUMBER_PREFIXES, PLATFORM_ADMIN_PERMISSIONS, TABLE_MODELS
 from app.models import (
     CmdbRelType,
     NumberSequence,
@@ -21,6 +21,7 @@ from app.models import (
     ServiceCatalog,
     ServiceCatalogItem,
     StdChangeProducerVersion,
+    SysDbObject,
     SysGroupRole,
     SysRole,
     SysUser,
@@ -329,19 +330,63 @@ async def seed_data():
         logger.info("Seeded default admin user and reference data")
 
 
-async def ensure_cmdb_class_metadata():
+def _humanize_table_name(name: str) -> str:
+    return " ".join(word.capitalize() for word in name.split("_"))
+
+
+async def _ensure_physical_table_registry(session) -> None:
+    """Seed one `sys_db_object` row per physical table in `TABLE_MODELS`.
+
+    `cmdb_ci` is skipped: the CMDB hierarchy importer already registers it
+    (and its subclasses) as part of loading `docs/class-hierarchy/*.json`.
+    """
+    from app.domain.cmdb.registry import ensure_class
+
+    for name in sorted(TABLE_MODELS):
+        if name == "cmdb_ci":
+            continue
+        await ensure_class(
+            session,
+            name,
+            super_class=None,
+            label=_humanize_table_name(name),
+            is_extendable=False,
+            storage_type="physical",
+            base_table=None,
+        )
+        prefix = NUMBER_PREFIXES.get(name)
+        if prefix:
+            obj = (
+                await session.execute(select(SysDbObject).where(SysDbObject.name == name))
+            ).scalar_one_or_none()
+            if obj:
+                obj.number_prefix = prefix
+    await session.commit()
+
+
+async def ensure_table_registry():
+    """Populate `sys_db_object` / `sys_dictionary` for every table.
+
+    Loads the CMDB class hierarchy (JSON exports under
+    `docs/class-hierarchy/`) and registers every other `TABLE_MODELS` entry
+    as a plain physical table, then refreshes the in-memory registry cache
+    used for reference-field resolution and class-hierarchy APIs.
+    """
     from app.domain.cmdb.importer import ensure_cmdb_hierarchy
+    from app.domain.cmdb.registry import refresh_cache
 
     async with db.async_session_factory() as session:
         await ensure_cmdb_hierarchy(session)
-    logger.info("CMDB class hierarchy loaded")
+        await _ensure_physical_table_registry(session)
+        await refresh_cache(session)
+    logger.info("Table registry (sys_db_object / sys_dictionary) loaded")
 
 
 @asynccontextmanager
 async def lifespan(app):
     resolve_attachments_path().mkdir(parents=True, exist_ok=True)
     await run_migrations()
-    await ensure_cmdb_class_metadata()
+    await ensure_table_registry()
     await seed_data()
     from app.domain.catalog.webhooks import register_webhook_subscriber
 

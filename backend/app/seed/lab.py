@@ -2024,7 +2024,7 @@ async def seed_lab(*, ensure_base: bool = True, force: bool = False, hard: bool 
     if ensure_base:
         await run_migrations()
         await seed_data()
-        await startup.ensure_cmdb_class_metadata()
+        await startup.ensure_table_registry()
 
     if not force and await is_lab_seeded():
         logger.info("Lab environment already seeded; skipping")

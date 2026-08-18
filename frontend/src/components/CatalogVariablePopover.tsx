@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type CatalogVariable } from '../api/client';
 import { Portal } from './Portal';
 import { OFSelect } from './OFSelect';
+import { TableTreeSelect } from './TableTreeSelect';
 import { FieldTooltip } from './FieldTooltip';
 import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
@@ -288,13 +289,11 @@ export function CatalogVariablePopover({
                 <>
                   <div className="form-group catalog-form-span">
                     <label htmlFor="popover-var-ref-table">Reference Table</label>
-                    <OFSelect
+                    <TableTreeSelect
                       id="popover-var-ref-table"
-                      autocomplete
-                      placeholder="Select a table…"
+                      tables={tables}
                       value={form.reference_table}
-                      onChange={(value) => {
-                        const nextTable = value as string;
+                      onChange={(nextTable) => {
                         setForm((p) => ({
                           ...p,
                           reference_table: nextTable,
@@ -303,7 +302,6 @@ export function CatalogVariablePopover({
                             nextTable === p.reference_table ? p.reference_display_field : '',
                         }));
                       }}
-                      options={tables.map((table) => ({ value: table.name, label: table.name }))}
                     />
                     {tablesQuery.isLoading ? (
                       <p className="catalog-help-text">Loading tables…</p>

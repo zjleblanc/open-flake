@@ -12,6 +12,7 @@ from app.auth.deps import AuthContext, authenticate_request
 from app.auth.rbac import can_read_table, get_user_permissions
 from app.db import get_db
 from app.domain.catalog.webhooks import TEMPLATE_VARIABLES, preview_payload
+from app.domain.cmdb.registry import _require_snapshot
 from app.domain.registry import TABLE_MODELS
 from app.domain.table_service import create_record, delete_record, update_record
 from app.models import (
@@ -137,12 +138,29 @@ async def list_reference_tables(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return tables the current user may reference, filtered by RBAC read access."""
+    """Return every table -- physical tables and CMDB subclasses alike --
+    the current user may reference, filtered by RBAC read access.
+
+    Sourced from the `sys_db_object` registry (rather than the static
+    `TABLE_MODELS` map) so CMDB classes like `cmdb_ci_server` are directly
+    selectable, not just the top-level `cmdb_ci` table.
+    """
     await _require_catalog_admin(db, auth)
+    snap = _require_snapshot()
     tables = []
-    for name in sorted(TABLE_MODELS.keys()):
-        if await can_read_table(db, auth, name):
-            tables.append({"name": name})
+    for name, obj in sorted(snap.classes.items()):
+        if obj.is_logical:
+            continue
+        if not await can_read_table(db, auth, name):
+            continue
+        tables.append(
+            {
+                "name": name,
+                "label": obj.label,
+                "super_class": obj.super_class,
+                "is_extendable": obj.is_extendable,
+            }
+        )
     return {"result": tables}
 
 

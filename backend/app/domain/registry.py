@@ -123,15 +123,25 @@ NUMBER_PREFIXES: dict[str, str] = {
     "sc_task": "SCTASK",
 }
 
+from app.domain.cmdb.constants import CMDB_ROOT  # noqa: E402
 from app.domain.cmdb.registry import is_cmdb_class_name, is_registered  # noqa: E402
 
 
 def resolve_table_name(table: str) -> tuple[str, str | None] | None:
-    """Map a table URL name to an internal table and optional CMDB class filter."""
+    """Map a table URL name to an internal table and optional CMDB class filter.
+
+    Registered classes (loaded CMDB hierarchy entries, plus any table an
+    admin extended at runtime) resolve via the registry regardless of naming
+    convention; unregistered `cmdb_ci_*` names still fall back to `cmdb_ci`
+    so auto-registration on write (see `ci_service._ensure_class_for_write`)
+    continues to work for brand-new class names.
+    """
     if table in TABLE_MODELS:
         return table, None
+    if is_registered(table):
+        return CMDB_ROOT, table
     if is_cmdb_class_name(table):
-        return "cmdb_ci", table
+        return CMDB_ROOT, table
     return None
 
 

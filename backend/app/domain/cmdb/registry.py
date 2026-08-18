@@ -1,4 +1,10 @@
-"""In-memory cache of CMDB class hierarchy loaded from the database."""
+"""In-memory cache of the table/class hierarchy loaded from the database.
+
+Backed by `sys_db_object` (class tree) and `sys_dictionary` (field
+definitions) — the same platform-wide metadata tables ServiceNow uses for
+every table, not a CMDB-only overlay. The CMDB hierarchy is simply the
+subtree rooted at `cmdb_ci`.
+"""
 
 from __future__ import annotations
 
@@ -8,8 +14,9 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.cmdb.constants import CMDB_ROOT, LOGICAL_ROOT
-from app.models import CmdbClass, CmdbClassField
+from app.domain.cmdb.constants import CMDB_ROOT, LOGICAL_ROOT, PROMOTED_COLUMNS
+from app.models import SysDbObject, SysDictionary
+from app.utils.ids import new_sys_id
 
 
 @dataclass(frozen=True)
@@ -23,7 +30,7 @@ class FieldMeta:
 
 @dataclass
 class _RegistrySnapshot:
-    classes: dict[str, CmdbClass]
+    classes: dict[str, SysDbObject]
     fields_by_class: dict[str, list[FieldMeta]]
     children: dict[str, set[str]]
 
@@ -47,20 +54,24 @@ def register_export_inheritance_path(class_name: str, path: list[str]) -> None:
         _EXPORT_INHERITANCE_PATHS[class_name] = list(path)
 
 
+def field_storage(field_name: str) -> str:
+    return "column" if field_name in PROMOTED_COLUMNS else "attributes"
+
+
 async def refresh_cache(db: AsyncSession) -> None:
     global _snapshot
-    classes_result = await db.execute(select(CmdbClass))
+    classes_result = await db.execute(select(SysDbObject))
     classes = {row.name: row for row in classes_result.scalars().all()}
 
-    fields_result = await db.execute(select(CmdbClassField))
+    fields_result = await db.execute(select(SysDictionary))
     fields_by_class: dict[str, list[FieldMeta]] = {}
     for row in fields_result.scalars().all():
-        fields_by_class.setdefault(row.class_name, []).append(
+        fields_by_class.setdefault(row.name, []).append(
             FieldMeta(
-                field_name=row.field_name,
-                label=row.label,
-                sn_type=row.sn_type,
-                defined_on=row.class_name,
+                field_name=row.element,
+                label=row.column_label,
+                sn_type=row.internal_type,
+                defined_on=row.name,
                 storage=row.storage,
             )
         )
@@ -77,7 +88,7 @@ async def refresh_cache(db: AsyncSession) -> None:
 
 def _require_snapshot() -> _RegistrySnapshot:
     if _snapshot is None:
-        raise RuntimeError("CMDB class registry not loaded; call refresh_cache first")
+        raise RuntimeError("Table registry not loaded; call refresh_cache first")
     return _snapshot
 
 
@@ -207,9 +218,30 @@ async def ensure_class(
     super_class: str | None = CMDB_ROOT,
     label: str | None = None,
     is_logical: bool = False,
+    is_extendable: bool = True,
+    user_defined: bool = False,
     update: bool = False,
-) -> CmdbClass:
-    existing = await db.get(CmdbClass, class_name)
+    storage_type: str | None = None,
+    base_table: str | None = None,
+) -> SysDbObject:
+    """Create (or optionally update) a `sys_db_object` row.
+
+    By default, storage is derived from the class's position in the CMDB
+    tree: the logical root and `cmdb_ci` itself are physically stored
+    tables, and every other CMDB class is a single-table-inheritance row on
+    `cmdb_ci`. Callers registering a plain physical table (see
+    `startup._ensure_physical_table_registry`) pass `storage_type="physical"`
+    explicitly to opt out of that inference.
+    """
+    if storage_type is None:
+        if class_name in (LOGICAL_ROOT, CMDB_ROOT):
+            storage_type, base_table = "physical", None
+        else:
+            storage_type, base_table = "sti", CMDB_ROOT
+
+    existing = (
+        await db.execute(select(SysDbObject).where(SysDbObject.name == class_name))
+    ).scalar_one_or_none()
     if existing:
         if update:
             if existing.super_class != super_class:
@@ -219,10 +251,12 @@ async def ensure_class(
             if existing.is_logical != is_logical:
                 existing.is_logical = is_logical
             await db.flush()
-        return cast(CmdbClass, existing)
+        return cast(SysDbObject, existing)
 
     if super_class:
-        parent = await db.get(CmdbClass, super_class)
+        parent = (
+            await db.execute(select(SysDbObject).where(SysDbObject.name == super_class))
+        ).scalar_one_or_none()
         if not parent:
             if super_class == CMDB_ROOT:
                 await ensure_class(
@@ -243,12 +277,61 @@ async def ensure_class(
                     f"Parent class '{super_class}' must exist before registering '{class_name}'"
                 )
 
-    record = CmdbClass(
+    record = SysDbObject(
+        sys_id=new_sys_id(),
         name=class_name,
         super_class=super_class,
         label=label or class_name,
         is_logical=is_logical,
+        is_extendable=is_extendable,
+        storage_type=storage_type,
+        base_table=base_table,
+        user_defined=user_defined,
     )
     db.add(record)
     await db.flush()
     return record
+
+
+async def upsert_field(
+    db: AsyncSession,
+    class_name: str,
+    field_name: str,
+    *,
+    label: str | None,
+    sn_type: str | None,
+    reference: str | None = None,
+    mandatory: bool = False,
+    storage: str | None = None,
+    user_defined: bool = False,
+) -> SysDictionary:
+    """Create or update a `sys_dictionary` row for a field on a registered class."""
+    resolved_storage = storage or field_storage(field_name)
+    resolved_type = sn_type or "string"
+    result = await db.execute(
+        select(SysDictionary).where(
+            SysDictionary.name == class_name,
+            SysDictionary.element == field_name,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row:
+        row.column_label = label
+        row.internal_type = resolved_type
+        row.storage = resolved_storage
+        row.reference = reference
+        row.mandatory = mandatory
+        return row
+    row = SysDictionary(
+        sys_id=new_sys_id(),
+        name=class_name,
+        element=field_name,
+        column_label=label,
+        internal_type=resolved_type,
+        storage=resolved_storage,
+        reference=reference,
+        mandatory=mandatory,
+        user_defined=user_defined,
+    )
+    db.add(row)
+    return row

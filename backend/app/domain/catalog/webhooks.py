@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import db as db_module
-from app.domain.registry import TABLE_MODELS
+from app.domain.registry import TABLE_MODELS, resolve_table_name
 from app.domain.secrets import SecretResolutionError, resolve_headers
 from app.events.bus import RecordEvent, subscribe
 from app.models import ItemOptionNew, ScCatItemWebhook, ScItemOption, ScWebhook, ScWebhookLog
@@ -236,8 +236,15 @@ async def _batch_lookup_display_values(
     display_field: str,
     sys_ids: set[str],
 ) -> dict[str, str]:
-    """Resolve a set of sys_ids on `table` to their `display_field` value in one query."""
-    model = TABLE_MODELS.get(table)
+    """Resolve a set of sys_ids on `table` to their `display_field` value in one query.
+
+    `table` may be a CMDB subclass name (e.g. `cmdb_ci_server`) when it comes
+    from a catalog variable's `reference_table` -- resolve it to the physical
+    table those rows actually live in before looking up the model.
+    """
+    resolved = resolve_table_name(table)
+    physical_table = resolved[0] if resolved else table
+    model = TABLE_MODELS.get(physical_table)
     if not model or not sys_ids:
         return {}
     column = getattr(model, display_field, None) or getattr(model, "name", None)

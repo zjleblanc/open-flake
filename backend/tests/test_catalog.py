@@ -833,30 +833,84 @@ async def test_get_variable_options_condition_operators():
             assert "active" in fields, f"operator {operator} should keep base filter"
 
 
+def _table_registry_snapshot(names: list[str], cmdb_subclasses: list[str] | None = None):
+    from app.domain.cmdb.registry import _RegistrySnapshot
+    from app.models import SysDbObject
+
+    classes = {
+        name: SysDbObject(sys_id=name, name=name, super_class=None, label=name, is_logical=False)
+        for name in names
+    }
+    for name in cmdb_subclasses or []:
+        classes[name] = SysDbObject(
+            sys_id=name, name=name, super_class="cmdb_ci", label=name, is_logical=False
+        )
+    return _RegistrySnapshot(classes=classes, fields_by_class={}, children={})
+
+
 @pytest.mark.asyncio
 async def test_list_reference_tables():
     from app.api.flake import catalog_admin as admin_api
+    from app.domain.cmdb import registry
     from app.domain.registry import TABLE_MODELS
 
     db = AsyncMock()
     auth = _auth()
+    registry._snapshot = _table_registry_snapshot(list(TABLE_MODELS.keys()))
 
-    with (
-        patch(
-            "app.api.flake.catalog_admin._require_catalog_admin",
-            new=AsyncMock(),
-        ),
-        patch(
-            "app.api.flake.catalog_admin.can_read_table",
-            new=AsyncMock(return_value=True),
-        ),
-    ):
-        result = await admin_api.list_reference_tables(auth=auth, db=db)
+    try:
+        with (
+            patch(
+                "app.api.flake.catalog_admin._require_catalog_admin",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.api.flake.catalog_admin.can_read_table",
+                new=AsyncMock(return_value=True),
+            ),
+        ):
+            result = await admin_api.list_reference_tables(auth=auth, db=db)
+    finally:
+        registry.clear_cache()
 
     names = [t["name"] for t in result["result"]]
     assert names == sorted(TABLE_MODELS.keys())
     assert "sys_user" in names
     assert "incident" in names
+
+
+@pytest.mark.asyncio
+async def test_list_reference_tables_includes_cmdb_subclasses():
+    """CMDB subclasses (e.g. cmdb_ci_server) must be directly selectable, not
+    just the top-level cmdb_ci table."""
+    from app.api.flake import catalog_admin as admin_api
+    from app.domain.cmdb import registry
+
+    db = AsyncMock()
+    auth = _auth()
+    registry._snapshot = _table_registry_snapshot(
+        ["cmdb_ci", "incident"], cmdb_subclasses=["cmdb_ci_server", "cmdb_ci_linux_server"]
+    )
+
+    try:
+        with (
+            patch(
+                "app.api.flake.catalog_admin._require_catalog_admin",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.api.flake.catalog_admin.can_read_table",
+                new=AsyncMock(return_value=True),
+            ),
+        ):
+            result = await admin_api.list_reference_tables(auth=auth, db=db)
+    finally:
+        registry.clear_cache()
+
+    by_name = {t["name"]: t for t in result["result"]}
+    assert "cmdb_ci_server" in by_name
+    assert by_name["cmdb_ci_server"]["super_class"] == "cmdb_ci"
+    assert "cmdb_ci_linux_server" in by_name
 
 
 @pytest.mark.asyncio
@@ -927,24 +981,30 @@ async def test_list_table_fields_forbidden_without_read():
 @pytest.mark.asyncio
 async def test_list_reference_tables_filters_by_rbac():
     from app.api.flake import catalog_admin as admin_api
+    from app.domain.cmdb import registry
+    from app.domain.registry import TABLE_MODELS
 
     db = AsyncMock()
     auth = _auth("user1", "alice")
+    registry._snapshot = _table_registry_snapshot(list(TABLE_MODELS.keys()))
 
     async def fake_can_read(_db, _auth, table: str) -> bool:
         return table in {"sys_user", "sc_webhook"}
 
-    with (
-        patch(
-            "app.api.flake.catalog_admin._require_catalog_admin",
-            new=AsyncMock(),
-        ),
-        patch(
-            "app.api.flake.catalog_admin.can_read_table",
-            new=AsyncMock(side_effect=fake_can_read),
-        ),
-    ):
-        result = await admin_api.list_reference_tables(auth=auth, db=db)
+    try:
+        with (
+            patch(
+                "app.api.flake.catalog_admin._require_catalog_admin",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.api.flake.catalog_admin.can_read_table",
+                new=AsyncMock(side_effect=fake_can_read),
+            ),
+        ):
+            result = await admin_api.list_reference_tables(auth=auth, db=db)
+    finally:
+        registry.clear_cache()
 
     names = {t["name"] for t in result["result"]}
     assert names == {"sc_webhook", "sys_user"}
@@ -1309,3 +1369,42 @@ async def test_load_variables_for_ritm_falls_back_to_sys_id_when_unresolved():
     result = await _load_variables_for_ritm(db, "ritm1")
 
     assert result["target_group"] == "missing-group"
+
+
+@pytest.mark.asyncio
+async def test_load_variables_for_ritm_resolves_cmdb_subclass_reference():
+    """A reference variable pointed at a CMDB subclass (e.g. cmdb_ci_server,
+    selectable directly via the tree-aware table picker) must resolve its
+    display value from the physical cmdb_ci table, not fail silently."""
+    from app.domain.catalog.webhooks import _load_variables_for_ritm
+    from app.models import ScItemOption
+
+    option = ScItemOption(
+        sys_id="opt1", item_option_new="var-ref", sc_req_item="ritm1", value="ci-sys-id-1"
+    )
+    var_ref = _var(
+        sys_id="var-ref",
+        name="target_server",
+        type="reference",
+        reference_table="cmdb_ci_server",
+        reference_display_field="name",
+    )
+
+    db = AsyncMock()
+    join_result = MagicMock()
+    join_result.all.return_value = [(option, var_ref)]
+
+    lookup_result = MagicMock()
+    lookup_result.all.return_value = [("ci-sys-id-1", "web01.example.com")]
+
+    call_count = {"n": 0}
+
+    async def fake_execute(stmt):
+        call_count["n"] += 1
+        return join_result if call_count["n"] == 1 else lookup_result
+
+    db.execute = AsyncMock(side_effect=fake_execute)
+
+    result = await _load_variables_for_ritm(db, "ritm1")
+
+    assert result["target_server"] == "web01.example.com"

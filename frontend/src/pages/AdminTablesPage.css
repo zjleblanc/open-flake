@@ -1,0 +1,87 @@
+.admin-tables-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.6fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .admin-tables-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-tables-tree-card {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.admin-tables-tree,
+.admin-tables-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-tables-tree-children {
+  margin-top: 0.15rem;
+}
+
+.admin-tables-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--of-radius);
+}
+
+.admin-tables-row:hover {
+  background: var(--of-surface-hover);
+}
+
+.admin-tables-row--selected {
+  background: color-mix(in srgb, var(--of-primary) 16%, transparent);
+}
+
+.admin-tables-row-label {
+  display: flex;
+  align-items: baseline;
+  flex: 1;
+  min-width: 0;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--of-text);
+  font-family: var(--of-font-ui);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-tables-row-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-tables-row-code {
+  color: var(--of-text-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-tables-row-tags {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.admin-tables-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}

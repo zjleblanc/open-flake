@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — CMDB class hierarchy redesign and table extension admin UI
+
+### Added
+- `sys_db_object` and `sys_dictionary` platform-wide metadata tables (ServiceNow-aligned), replacing `cmdb_class`/`cmdb_class_field` with a single registry covering physical tables and CMDB subclasses alike.
+- Admin API (`/api/flake/admin/tables`) to create CMDB classes extended from an existing extendable class, add fields to any table, and delete unused user-defined classes; every write hot-reloads the in-memory registry with no backend restart.
+- `/admin/tables` page: a tree view of the full table/class hierarchy, an "Extend" form for creating new CMDB subclasses, and a field editor.
+- `TableTreeSelect` component: a tree-aware, searchable table picker that shows CMDB subclasses indented under their parent, so a subclass like `cmdb_ci_server` is directly selectable instead of only the top-level `cmdb_ci`.
+- Fresh baseline migration (`0001_initial_schema.py`) representing the full schema from scratch, replacing the previous Alembic baseline.
+
+### Changed
+- `/api/flake/catalog/admin/tables` now returns the full table/class hierarchy (with label, parent class, and extendability) sourced from the `sys_db_object` registry instead of the static physical-table map.
+- Table CRUD operations (list/get/create/update/delete) now resolve a CMDB subclass name to its physical `cmdb_ci` table plus a class filter, so subclass-scoped requests work end-to-end.
+- RBAC read checks now treat CMDB subclasses the same as `cmdb_ci`, closing a gap where subclass names previously bypassed access control.
+
+### Fixed
+- Webhook payload previews and RITM variable resolution no longer silently drop the display value when a catalog variable's reference table is a CMDB subclass.
+
+### Deleted
+- Removed the `cmdb_class` and `cmdb_class_field` tables/models, superseded by the unified `sys_db_object`/`sys_dictionary` registry.
+
 ## 2026-08-18 — Catalog Task detail views and builder UI refinements
 
 ### Added

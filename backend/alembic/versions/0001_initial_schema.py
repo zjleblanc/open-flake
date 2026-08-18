@@ -1,8 +1,8 @@
-"""baseline schema
+"""initial schema
 
-Revision ID: 17d1dfeabb17
+Revision ID: 0001
 Revises:
-Create Date: 2026-08-18 14:49:33.812030
+Create Date: 2026-08-18 16:47:35.453175
 
 """
 
@@ -13,7 +13,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "17d1dfeabb17"
+revision: str = "0001"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -154,16 +154,6 @@ def upgrade() -> None:
     op.create_index(op.f("ix_cmdb_ci_owner"), "cmdb_ci", ["owner"], unique=False)
     op.create_index(op.f("ix_cmdb_ci_owner_group"), "cmdb_ci", ["owner_group"], unique=False)
     op.create_index(op.f("ix_cmdb_ci_sys_class_name"), "cmdb_ci", ["sys_class_name"], unique=False)
-    op.create_table(
-        "cmdb_class",
-        sa.Column("name", sa.String(length=128), nullable=False),
-        sa.Column("super_class", sa.String(length=128), nullable=True),
-        sa.Column("label", sa.String(length=256), nullable=True),
-        sa.Column("is_logical", sa.Boolean(), nullable=False),
-        sa.ForeignKeyConstraint(["super_class"], ["cmdb_class.name"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("name"),
-    )
-    op.create_index(op.f("ix_cmdb_class_super_class"), "cmdb_class", ["super_class"], unique=False)
     op.create_table(
         "cmdb_rel_type",
         sa.Column("sys_id", sa.String(length=32), nullable=False),
@@ -600,6 +590,42 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_sys_comment_table_name"), "sys_comment", ["table_name"], unique=False)
     op.create_table(
+        "sys_db_object",
+        sa.Column("sys_id", sa.String(length=32), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.Column("label", sa.String(length=256), nullable=False),
+        sa.Column("super_class", sa.String(length=128), nullable=True),
+        sa.Column("is_logical", sa.Boolean(), nullable=False),
+        sa.Column("is_extendable", sa.Boolean(), nullable=False),
+        sa.Column("number_prefix", sa.String(length=16), nullable=True),
+        sa.Column("storage_type", sa.String(length=16), nullable=False),
+        sa.Column("base_table", sa.String(length=128), nullable=True),
+        sa.Column("user_defined", sa.Boolean(), nullable=False),
+        sa.Column("active", sa.Boolean(), nullable=False),
+        sa.Column(
+            "sys_created_on",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "sys_updated_on",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column("sys_created_by", sa.String(length=128), nullable=True),
+        sa.Column("sys_updated_by", sa.String(length=128), nullable=True),
+        sa.Column("sys_mod_count", sa.Integer(), server_default="0", nullable=False),
+        sa.ForeignKeyConstraint(["super_class"], ["sys_db_object.name"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("sys_id"),
+        sa.UniqueConstraint("name", name="uq_sys_db_object_name"),
+    )
+    op.create_index(op.f("ix_sys_db_object_name"), "sys_db_object", ["name"], unique=False)
+    op.create_index(
+        op.f("ix_sys_db_object_super_class"), "sys_db_object", ["super_class"], unique=False
+    )
+    op.create_table(
         "sys_group_role",
         sa.Column("sys_id", sa.String(length=32), nullable=False),
         sa.Column("group_sys_id", sa.String(length=32), nullable=False),
@@ -829,21 +855,6 @@ def upgrade() -> None:
     op.create_index(op.f("ix_change_task_owner"), "change_task", ["owner"], unique=False)
     op.create_index(
         op.f("ix_change_task_owner_group"), "change_task", ["owner_group"], unique=False
-    )
-    op.create_table(
-        "cmdb_class_field",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("class_name", sa.String(length=128), nullable=False),
-        sa.Column("field_name", sa.String(length=128), nullable=False),
-        sa.Column("label", sa.String(length=256), nullable=True),
-        sa.Column("sn_type", sa.String(length=64), nullable=True),
-        sa.Column("storage", sa.String(length=16), nullable=False),
-        sa.ForeignKeyConstraint(["class_name"], ["cmdb_class.name"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("class_name", "field_name"),
-    )
-    op.create_index(
-        op.f("ix_cmdb_class_field_class_name"), "cmdb_class_field", ["class_name"], unique=False
     )
     op.create_table(
         "cmdb_rel_ci",
@@ -1184,6 +1195,40 @@ def upgrade() -> None:
         op.f("ix_sc_webhook_log_webhook_id"), "sc_webhook_log", ["webhook_id"], unique=False
     )
     op.create_table(
+        "sys_dictionary",
+        sa.Column("sys_id", sa.String(length=32), nullable=False),
+        sa.Column("name", sa.String(length=128), nullable=False),
+        sa.Column("element", sa.String(length=128), nullable=False),
+        sa.Column("column_label", sa.String(length=256), nullable=True),
+        sa.Column("internal_type", sa.String(length=64), nullable=False),
+        sa.Column("max_length", sa.Integer(), nullable=True),
+        sa.Column("reference", sa.String(length=128), nullable=True),
+        sa.Column("storage", sa.String(length=16), nullable=False),
+        sa.Column("default_value", sa.String(length=512), nullable=True),
+        sa.Column("mandatory", sa.Boolean(), nullable=False),
+        sa.Column("active", sa.Boolean(), nullable=False),
+        sa.Column("user_defined", sa.Boolean(), nullable=False),
+        sa.Column(
+            "sys_created_on",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "sys_updated_on",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column("sys_created_by", sa.String(length=128), nullable=True),
+        sa.Column("sys_updated_by", sa.String(length=128), nullable=True),
+        sa.Column("sys_mod_count", sa.Integer(), server_default="0", nullable=False),
+        sa.ForeignKeyConstraint(["name"], ["sys_db_object.name"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("sys_id"),
+        sa.UniqueConstraint("name", "element"),
+    )
+    op.create_index(op.f("ix_sys_dictionary_name"), "sys_dictionary", ["name"], unique=False)
+    op.create_table(
         "item_option_new_condition",
         sa.Column("sys_id", sa.String(length=32), nullable=False),
         sa.Column("variable", sa.String(length=32), nullable=False),
@@ -1279,6 +1324,8 @@ def downgrade() -> None:
         op.f("ix_item_option_new_condition_depends_on"), table_name="item_option_new_condition"
     )
     op.drop_table("item_option_new_condition")
+    op.drop_index(op.f("ix_sys_dictionary_name"), table_name="sys_dictionary")
+    op.drop_table("sys_dictionary")
     op.drop_index(op.f("ix_sc_webhook_log_webhook_id"), table_name="sc_webhook_log")
     op.drop_index(op.f("ix_sc_webhook_log_sc_req_item"), table_name="sc_webhook_log")
     op.drop_index(op.f("ix_sc_webhook_log_attachment_id"), table_name="sc_webhook_log")
@@ -1306,8 +1353,6 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_cmdb_rel_ci_parent"), table_name="cmdb_rel_ci")
     op.drop_index(op.f("ix_cmdb_rel_ci_child"), table_name="cmdb_rel_ci")
     op.drop_table("cmdb_rel_ci")
-    op.drop_index(op.f("ix_cmdb_class_field_class_name"), table_name="cmdb_class_field")
-    op.drop_table("cmdb_class_field")
     op.drop_index(op.f("ix_change_task_owner_group"), table_name="change_task")
     op.drop_index(op.f("ix_change_task_owner"), table_name="change_task")
     op.drop_index(op.f("ix_change_task_number"), table_name="change_task")
@@ -1327,6 +1372,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_sys_group_role_role_sys_id"), table_name="sys_group_role")
     op.drop_index(op.f("ix_sys_group_role_group_sys_id"), table_name="sys_group_role")
     op.drop_table("sys_group_role")
+    op.drop_index(op.f("ix_sys_db_object_super_class"), table_name="sys_db_object")
+    op.drop_index(op.f("ix_sys_db_object_name"), table_name="sys_db_object")
+    op.drop_table("sys_db_object")
     op.drop_index(op.f("ix_sys_comment_table_name"), table_name="sys_comment")
     op.drop_index(op.f("ix_sys_comment_record_sys_id"), table_name="sys_comment")
     op.drop_table("sys_comment")
@@ -1368,8 +1416,6 @@ def downgrade() -> None:
     op.drop_table("incident")
     op.drop_index(op.f("ix_cmdb_rel_type_sys_name"), table_name="cmdb_rel_type")
     op.drop_table("cmdb_rel_type")
-    op.drop_index(op.f("ix_cmdb_class_super_class"), table_name="cmdb_class")
-    op.drop_table("cmdb_class")
     op.drop_index(op.f("ix_cmdb_ci_sys_class_name"), table_name="cmdb_ci")
     op.drop_index(op.f("ix_cmdb_ci_owner_group"), table_name="cmdb_ci")
     op.drop_index(op.f("ix_cmdb_ci_owner"), table_name="cmdb_ci")

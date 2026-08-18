@@ -14,7 +14,7 @@ from app.domain.cmdb.registry import (
     get_merged_fields,
 )
 from app.domain.errors import InvalidFieldNameError
-from app.models import CmdbClass
+from app.models import SysDbObject
 
 HIERARCHY_DIR = Path(__file__).resolve().parent / "fixtures" / "class-hierarchy"
 
@@ -23,41 +23,53 @@ def _load_snapshot() -> None:
     from app.domain.cmdb import registry
 
     classes = {
-        "cmdb": CmdbClass(name="cmdb", super_class=None, label="cmdb", is_logical=True),
-        CMDB_ROOT: CmdbClass(
-            name=CMDB_ROOT, super_class="cmdb", label=CMDB_ROOT, is_logical=False
+        "cmdb": SysDbObject(
+            sys_id="cmdb", name="cmdb", super_class=None, label="cmdb", is_logical=True
         ),
-        "cmdb_ci_hardware": CmdbClass(
+        CMDB_ROOT: SysDbObject(
+            sys_id=CMDB_ROOT,
+            name=CMDB_ROOT,
+            super_class="cmdb",
+            label=CMDB_ROOT,
+            is_logical=False,
+        ),
+        "cmdb_ci_hardware": SysDbObject(
+            sys_id="cmdb_ci_hardware",
             name="cmdb_ci_hardware",
             super_class=CMDB_ROOT,
             label="cmdb_ci_hardware",
             is_logical=False,
         ),
-        "cmdb_ci_computer": CmdbClass(
+        "cmdb_ci_computer": SysDbObject(
+            sys_id="cmdb_ci_computer",
             name="cmdb_ci_computer",
             super_class="cmdb_ci_hardware",
             label="cmdb_ci_computer",
             is_logical=False,
         ),
-        "cmdb_ci_server": CmdbClass(
+        "cmdb_ci_server": SysDbObject(
+            sys_id="cmdb_ci_server",
             name="cmdb_ci_server",
             super_class="cmdb_ci_computer",
             label="cmdb_ci_server",
             is_logical=False,
         ),
-        "cmdb_ci_linux_server": CmdbClass(
+        "cmdb_ci_linux_server": SysDbObject(
+            sys_id="cmdb_ci_linux_server",
             name="cmdb_ci_linux_server",
             super_class="cmdb_ci_server",
             label="cmdb_ci_linux_server",
             is_logical=False,
         ),
-        "cmdb_ci_vm_object": CmdbClass(
+        "cmdb_ci_vm_object": SysDbObject(
+            sys_id="cmdb_ci_vm_object",
             name="cmdb_ci_vm_object",
             super_class=CMDB_ROOT,
             label="cmdb_ci_vm_object",
             is_logical=False,
         ),
-        "cmdb_ci_vm_instance": CmdbClass(
+        "cmdb_ci_vm_instance": SysDbObject(
+            sys_id="cmdb_ci_vm_instance",
             name="cmdb_ci_vm_instance",
             super_class="cmdb_ci_vm_object",
             label="cmdb_ci_vm_instance",
@@ -265,14 +277,17 @@ async def test_ensure_class_updates_super_class_when_requested():
 
     from app.domain.cmdb.registry import ensure_class
 
-    existing = CmdbClass(
+    existing = SysDbObject(
+        sys_id="cmdb_ci_linux_server",
         name="cmdb_ci_linux_server",
         super_class="cmdb_ci",
         label="cmdb_ci_linux_server",
         is_logical=False,
     )
     db = AsyncMock()
-    db.get = AsyncMock(return_value=existing)
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = lambda: existing
+    db.execute = AsyncMock(return_value=execute_result)
     db.flush = AsyncMock()
 
     result = await ensure_class(

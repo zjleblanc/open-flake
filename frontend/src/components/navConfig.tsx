@@ -98,5 +98,11 @@ export const NAV: NavEntry[] = [
       },
     ],
   },
+  {
+    to: '/admin/tables',
+    label: 'Tables',
+    icon: <HierarchyIcon />,
+    permission: 'records.*.write',
+  },
   { to: '/settings', label: 'Settings', icon: <SettingsIcon /> },
 ];
