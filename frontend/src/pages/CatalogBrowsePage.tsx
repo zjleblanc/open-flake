@@ -6,7 +6,6 @@ import { usePageHeader } from '../components/PageHeaderContext';
 import { useAuth } from '../auth/AuthContext';
 import { CardViewIcon, FilterIcon, ListViewIcon } from '../components/NavIcons';
 import { DeleteIcon, EditIcon } from '../components/DetailIcons';
-import { ToggleSwitch } from '../components/DetailFieldControls';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OFSelect } from '../components/OFSelect';
 import { FloatingLabelField } from '../components/FloatingLabelField';
@@ -21,7 +20,6 @@ const ADMIN_ITEMS_QUERY_KEY = ['catalog-admin-items'];
 const PUBLIC_ITEMS_QUERY_KEY = ['catalog-items'];
 
 type CatalogManageHandlers = {
-  onToggleActive: (item: CatalogItemSummary, active: boolean) => void;
   onRequestDelete: (item: CatalogItemSummary) => void;
 };
 
@@ -139,38 +137,27 @@ function CatalogViewToggle({
 function CatalogManageActions({
   item,
   manage,
-  stacked = false,
 }: {
   item: CatalogItemSummary;
   manage: CatalogManageHandlers;
-  stacked?: boolean;
 }) {
-  const active = item.active !== false;
   return (
-    <span className={`catalog-manage-actions${stacked ? ' catalog-manage-actions--stacked' : ''}`}>
-      <ToggleSwitch
-        id={`catalog-manage-active-${item.sys_id}`}
-        checked={active}
-        onChange={(checked) => manage.onToggleActive(item, checked)}
-        label="Active"
-      />
-      <span className="catalog-manage-actions-icons">
-        <Link
-          to={`/catalog/admin/${item.sys_id}`}
-          className="btn-icon catalog-manage-edit"
-          aria-label={`Edit ${item.name}`}
-        >
-          <EditIcon size={14} />
-        </Link>
-        <button
-          type="button"
-          className="btn-icon btn-icon-danger catalog-manage-delete"
-          aria-label={`Delete ${item.name}`}
-          onClick={() => manage.onRequestDelete(item)}
-        >
-          <DeleteIcon size={14} />
-        </button>
-      </span>
+    <span className="catalog-manage-actions">
+      <Link
+        to={`/catalog/admin/${item.sys_id}`}
+        className="btn-icon catalog-manage-edit"
+        aria-label={`Edit ${item.name}`}
+      >
+        <EditIcon size={14} />
+      </Link>
+      <button
+        type="button"
+        className="btn-icon btn-icon-danger catalog-manage-delete"
+        aria-label={`Delete ${item.name}`}
+        onClick={() => manage.onRequestDelete(item)}
+      >
+        <DeleteIcon size={14} />
+      </button>
     </span>
   );
 }
@@ -197,7 +184,7 @@ function CatalogCompactItemList({
                 <span className="catalog-compact-item-desc">{item.short_description}</span>
               ) : null}
             </Link>
-            {manage ? <CatalogManageActions item={item} manage={manage} stacked /> : null}
+            {manage ? <CatalogManageActions item={item} manage={manage} /> : null}
           </li>
         );
       })}
@@ -459,32 +446,6 @@ export function CatalogBrowsePage() {
     },
   });
 
-  const toggleActiveMutation = useMutation({
-    mutationFn: ({ sys_id, active }: { sys_id: string; active: boolean }) =>
-      api.adminUpdateCatalogItem(sys_id, { active }),
-    onMutate: async ({ sys_id, active }) => {
-      await queryClient.cancelQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
-      const previous = queryClient.getQueryData<{ result: CatalogItemSummary[] }>(
-        ADMIN_ITEMS_QUERY_KEY,
-      );
-      if (previous) {
-        queryClient.setQueryData(ADMIN_ITEMS_QUERY_KEY, {
-          result: previous.result.map((entry) =>
-            entry.sys_id === sys_id ? { ...entry, active } : entry,
-          ),
-        });
-      }
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(ADMIN_ITEMS_QUERY_KEY, context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ADMIN_ITEMS_QUERY_KEY });
-      queryClient.invalidateQueries({ queryKey: PUBLIC_ITEMS_QUERY_KEY });
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (sys_id: string) => api.adminDeleteCatalogItem(sys_id),
     onSuccess: () => {
@@ -616,8 +577,6 @@ export function CatalogBrowsePage() {
 
   const manageHandlers: CatalogManageHandlers | undefined = managing
     ? {
-        onToggleActive: (item, active) =>
-          toggleActiveMutation.mutate({ sys_id: item.sys_id, active }),
         onRequestDelete: (item) => setPendingDelete(item),
       }
     : undefined;

@@ -6,6 +6,7 @@ import { AttachIntegrationPopover } from '../components/AttachIntegrationPopover
 import { CategorySelect } from '../components/CategorySelect';
 import { CatalogFilterConditionsPanel } from '../components/CatalogFilterConditionsPanel';
 import { CatalogVariablePopover } from '../components/CatalogVariablePopover';
+import { ToggleSwitch } from '../components/DetailFieldControls';
 import {
   DeleteIcon,
   EditIcon,
@@ -38,6 +39,7 @@ type ItemSnapshot = {
   price: string;
   category: string;
   subcategory: string;
+  active: boolean;
 };
 
 export function CatalogItemBuilderPage() {
@@ -50,6 +52,7 @@ export function CatalogItemBuilderPage() {
   const [price, setPrice] = useState('0');
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
+  const [active, setActive] = useState(true);
   const [savedItem, setSavedItem] = useState<ItemSnapshot | null>(null);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [variablePopover, setVariablePopover] = useState<{
@@ -104,6 +107,7 @@ export function CatalogItemBuilderPage() {
       price: item.price || '0',
       category: item.category || '',
       subcategory: item.subcategory || '',
+      active: item.active !== false,
     };
     setName(snapshot.name);
     setShortDescription(snapshot.shortDescription);
@@ -111,6 +115,7 @@ export function CatalogItemBuilderPage() {
     setPrice(snapshot.price);
     setCategory(snapshot.category);
     setSubcategory(snapshot.subcategory);
+    setActive(snapshot.active);
     setSavedItem(snapshot);
     setInitialized(true);
   }, [itemQuery.data, initialized]);
@@ -169,9 +174,10 @@ export function CatalogItemBuilderPage() {
       description !== savedItem.description ||
       price !== savedItem.price ||
       category !== savedItem.category ||
-      subcategory !== savedItem.subcategory
+      subcategory !== savedItem.subcategory ||
+      active !== savedItem.active
     );
-  }, [savedItem, name, shortDescription, description, price, category, subcategory]);
+  }, [savedItem, name, shortDescription, description, price, category, subcategory, active]);
 
   const deleteVariable = useMutation({
     mutationFn: (varId: string) => api.adminDeleteVariable(itemId, varId),
@@ -228,8 +234,9 @@ export function CatalogItemBuilderPage() {
         price,
         category,
         subcategory,
+        active,
       });
-      setSavedItem({ name, shortDescription, description, price, category, subcategory });
+      setSavedItem({ name, shortDescription, description, price, category, subcategory, active });
       queryClient.invalidateQueries({ queryKey: ['catalog-admin-item', itemId] });
       queryClient.invalidateQueries({ queryKey: ['catalog-admin-items'] });
       queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
@@ -309,6 +316,14 @@ export function CatalogItemBuilderPage() {
                       id="item-price"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <ToggleSwitch
+                      id="item-active"
+                      checked={active}
+                      onChange={setActive}
+                      label="Active"
                     />
                   </div>
                 </div>

@@ -92,6 +92,34 @@ def _model_to_dict(record: Any, table: str, exclude_links: bool = True) -> dict[
     return data
 
 
+async def _resolve_display_labels(
+    db: AsyncSession,
+    ids_by_target_table: dict[str, set[str]],
+) -> dict[str, dict[str, str]]:
+    """Batch-resolve `sys_id -> display label` per target table.
+
+    Shared by `attach_reference_display_values` and
+    `attach_activity_change_display_values`: both collect the sys_ids they need
+    resolved (from record fields or audit change values, respectively) into the
+    same `{target_table: {sys_id, ...}}` shape, then call this once to issue a
+    single batched query per referenced table instead of one per sys_id.
+    """
+    labels_by_target_table: dict[str, dict[str, str]] = {}
+    for target_table, ids in ids_by_target_table.items():
+        if not ids:
+            continue
+        model = TABLE_MODELS.get(target_table)
+        display_field = DISPLAY_FIELD_BY_TABLE.get(target_table)
+        if model is None or display_field is None:
+            continue
+        column = getattr(model, display_field, None)
+        if column is None:
+            continue
+        result = await db.execute(select(model.sys_id, column).where(model.sys_id.in_(ids)))
+        labels_by_target_table[target_table] = {row[0]: (row[1] or row[0]) for row in result.all()}
+    return labels_by_target_table
+
+
 async def attach_reference_display_values(
     db: AsyncSession,
     table: str,
@@ -126,19 +154,7 @@ async def attach_reference_display_values(
             if sys_id:
                 ids.add(sys_id)
 
-    labels_by_target_table: dict[str, dict[str, str]] = {}
-    for target_table, ids in ids_by_target_table.items():
-        if not ids:
-            continue
-        model = TABLE_MODELS.get(target_table)
-        display_field = DISPLAY_FIELD_BY_TABLE.get(target_table)
-        if model is None or display_field is None:
-            continue
-        column = getattr(model, display_field, None)
-        if column is None:
-            continue
-        result = await db.execute(select(model.sys_id, column).where(model.sys_id.in_(ids)))
-        labels_by_target_table[target_table] = {row[0]: (row[1] or row[0]) for row in result.all()}
+    labels_by_target_table = await _resolve_display_labels(db, ids_by_target_table)
 
     for field, target_table in field_target_table.items():
         labels = labels_by_target_table.get(target_table, {})
@@ -152,6 +168,65 @@ async def attach_reference_display_values(
             else:
                 record[f"{field}_display_value"] = "[Deleted]"
                 record[f"{field}_deleted"] = True
+
+
+async def attach_activity_change_display_values(
+    db: AsyncSession,
+    table: str,
+    activity: list[dict[str, Any]],
+) -> None:
+    """Populate `old_display_value`/`new_display_value` on audit changes.
+
+    Field-history entries in the activity feed store raw `old_value`/`new_value`
+    strings from `sys_audit`, which for a reference field is a sys_id -- not
+    something a user can recognize. This mirrors `attach_reference_display_values`
+    but resolves values embedded in audit change rows instead of top-level record
+    fields, batching lookups per referenced table across every change in the feed.
+    """
+    refs = REFERENCE_FIELDS.get(table, set())
+    if not refs:
+        return
+
+    field_target_table: dict[str, str] = {}
+    ids_by_target_table: dict[str, set[str]] = {}
+    changes: list[dict[str, Any]] = []
+    for entry in activity:
+        for change in entry.get("changes") or []:
+            field = change.get("field")
+            if field not in refs:
+                continue
+            changes.append(change)
+            target_table = field_target_table.get(field)
+            if target_table is None:
+                target_table = ref_table(field, table)
+                if target_table not in DISPLAY_FIELD_BY_TABLE:
+                    continue
+                field_target_table[field] = target_table
+            ids = ids_by_target_table.setdefault(target_table, set())
+            for key in ("old_value", "new_value"):
+                sys_id = change.get(key)
+                if sys_id:
+                    ids.add(sys_id)
+
+    if not field_target_table:
+        return
+
+    labels_by_target_table = await _resolve_display_labels(db, ids_by_target_table)
+
+    for change in changes:
+        field = change.get("field")
+        target_table = field_target_table.get(field) if isinstance(field, str) else None
+        if target_table is None:
+            continue
+        labels = labels_by_target_table.get(target_table, {})
+        for key, display_key in (
+            ("old_value", "old_display_value"),
+            ("new_value", "new_display_value"),
+        ):
+            sys_id = change.get(key)
+            if not sys_id:
+                continue
+            change[display_key] = labels.get(sys_id, "[Deleted]")
 
 
 def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:

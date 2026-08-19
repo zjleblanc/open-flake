@@ -197,6 +197,12 @@ export function CatalogItemPage() {
     orderMutation.mutate();
   }
 
+  function onOrderAgain() {
+    setSuccess(null);
+    setError('');
+    setValues({});
+  }
+
   if (isLoading) return <p className="empty-state">Loading item…</p>;
   if (loadError) return <p className="error">{(loadError as Error).message}</p>;
   if (!item) return <p className="error">Catalog item not found</p>;
@@ -210,162 +216,174 @@ export function CatalogItemPage() {
       </section>
 
       <section className="panel">
-        <form onSubmit={onSubmit} className="catalog-order-form">
-          {visibleVariables.map((variable) => (
-            <div className="form-group" key={variable.sys_id}>
-              {variable.help_text ? (
-                <span className="field-label-with-tooltip">
+        {success ? (
+          <div className="catalog-order-success">
+            <p className="order-hierarchy-title">Order submitted successfully.</p>
+            <ul className="order-hierarchy">
+              <li className="order-hierarchy-node">
+                <span className="order-hierarchy-type">Request</span>
+                {success.request.sys_id ? (
+                  <Link to={`/requests/${success.request.sys_id}`}>
+                    {success.request.number || success.request_number}
+                  </Link>
+                ) : (
+                  success.request.number || success.request_number
+                )}
+              </li>
+              <li className="order-hierarchy-node order-hierarchy-node--depth-1">
+                <span className="order-hierarchy-type">Requested Item</span>
+                {success.request_item.sys_id ? (
+                  <Link to={`/requested-items/${success.request_item.sys_id}`}>
+                    {success.request_item.number}
+                  </Link>
+                ) : (
+                  success.request_item.number
+                )}
+              </li>
+              {success.task ? (
+                <li className="order-hierarchy-node order-hierarchy-node--depth-2">
+                  <span className="order-hierarchy-type">Fulfillment Task</span>
+                  {success.task.sys_id ? (
+                    <Link to={`/catalog-tasks/${success.task.sys_id}`}>{success.task.number}</Link>
+                  ) : (
+                    success.task.number
+                  )}
+                </li>
+              ) : null}
+            </ul>
+            <div className="catalog-order-success-actions">
+              <Link to="/catalog" className="btn btn-primary">
+                Browse Catalog
+              </Link>
+              <button type="button" className="btn btn-secondary" onClick={onOrderAgain}>
+                Place Another Order
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="catalog-order-form">
+            {visibleVariables.map((variable) => (
+              <div className="form-group" key={variable.sys_id}>
+                {variable.help_text ? (
+                  <span className="field-label-with-tooltip">
+                    <label htmlFor={`var-${variable.name}`}>
+                      {variable.question_text || variable.name}
+                      {isMandatory(variable) ? ' *' : ''}
+                    </label>
+                    <FieldTooltip
+                      ariaLabel={`${variable.question_text || variable.name} help`}
+                      rich
+                    >
+                      {variable.help_text}
+                    </FieldTooltip>
+                  </span>
+                ) : (
                   <label htmlFor={`var-${variable.name}`}>
                     {variable.question_text || variable.name}
                     {isMandatory(variable) ? ' *' : ''}
                   </label>
-                  <FieldTooltip ariaLabel={`${variable.question_text || variable.name} help`} rich>
-                    {variable.help_text}
-                  </FieldTooltip>
-                </span>
-              ) : (
-                <label htmlFor={`var-${variable.name}`}>
-                  {variable.question_text || variable.name}
-                  {isMandatory(variable) ? ' *' : ''}
-                </label>
-              )}
-              {variable.type === 'text_area' ? (
-                <textarea
-                  id={`var-${variable.name}`}
-                  value={values[variable.name] ?? variable.default_value ?? ''}
-                  readOnly={variable.read_only}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [variable.name]: e.target.value }))
-                  }
-                  rows={4}
-                />
-              ) : variable.type === 'select_box' ? (
-                <OFSelect
-                  id={`var-${variable.name}`}
-                  value={values[variable.name] ?? variable.default_value ?? ''}
-                  disabled={variable.read_only}
-                  onChange={(val) =>
-                    setValues((prev) => ({ ...prev, [variable.name]: val as string }))
-                  }
-                  options={(variable.choice_list || []).map((choice) => ({
-                    value: choice.value,
-                    label: choice.label || choice.value,
-                  }))}
-                />
-              ) : variable.type === 'multi_select' ? (
-                <OFSelect
-                  id={`var-${variable.name}`}
-                  multiple
-                  disabled={variable.read_only}
-                  value={(values[variable.name] ?? variable.default_value ?? '')
-                    .split(',')
-                    .map((v) => v.trim())
-                    .filter(Boolean)}
-                  onChange={(val) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      [variable.name]: (val as string[]).join(','),
-                    }))
-                  }
-                  options={(variable.choice_list || []).map((choice) => ({
-                    value: choice.value,
-                    label: choice.label || choice.value,
-                  }))}
-                />
-              ) : variable.type === 'boolean' ? (
-                <input
-                  id={`var-${variable.name}`}
-                  type="checkbox"
-                  checked={(values[variable.name] ?? variable.default_value ?? '') === 'true'}
-                  disabled={variable.read_only}
-                  onChange={(e) =>
-                    setValues((prev) => ({
-                      ...prev,
-                      [variable.name]: e.target.checked ? 'true' : 'false',
-                    }))
-                  }
-                />
-              ) : variable.type === 'reference' ? (
-                <ReferenceSelect
-                  id={`var-${variable.name}`}
-                  value={values[variable.name] ?? variable.default_value ?? ''}
-                  options={batchOptionsByVar[variable.name]?.options ?? []}
-                  loading={batchOptionsQuery.isLoading}
-                  error={
-                    batchOptionsQuery.error ? (batchOptionsQuery.error as Error).message : undefined
-                  }
-                  disabled={variable.read_only}
-                  onChange={(val) => setValues((prev) => ({ ...prev, [variable.name]: val }))}
-                />
-              ) : (
-                <input
-                  id={`var-${variable.name}`}
-                  type={
-                    variable.type === 'email'
-                      ? 'email'
-                      : variable.type === 'url'
-                        ? 'url'
-                        : variable.type === 'date'
-                          ? 'date'
-                          : variable.type === 'integer'
-                            ? 'number'
-                            : 'text'
-                  }
-                  value={values[variable.name] ?? variable.default_value ?? ''}
-                  readOnly={variable.read_only}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [variable.name]: e.target.value }))
-                  }
-                />
-              )}
-            </div>
-          ))}
+                )}
+                {variable.type === 'text_area' ? (
+                  <textarea
+                    id={`var-${variable.name}`}
+                    value={values[variable.name] ?? variable.default_value ?? ''}
+                    readOnly={variable.read_only}
+                    onChange={(e) =>
+                      setValues((prev) => ({ ...prev, [variable.name]: e.target.value }))
+                    }
+                    rows={4}
+                  />
+                ) : variable.type === 'select_box' ? (
+                  <OFSelect
+                    id={`var-${variable.name}`}
+                    value={values[variable.name] ?? variable.default_value ?? ''}
+                    disabled={variable.read_only}
+                    onChange={(val) =>
+                      setValues((prev) => ({ ...prev, [variable.name]: val as string }))
+                    }
+                    options={(variable.choice_list || []).map((choice) => ({
+                      value: choice.value,
+                      label: choice.label || choice.value,
+                    }))}
+                  />
+                ) : variable.type === 'multi_select' ? (
+                  <OFSelect
+                    id={`var-${variable.name}`}
+                    multiple
+                    disabled={variable.read_only}
+                    value={(values[variable.name] ?? variable.default_value ?? '')
+                      .split(',')
+                      .map((v) => v.trim())
+                      .filter(Boolean)}
+                    onChange={(val) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        [variable.name]: (val as string[]).join(','),
+                      }))
+                    }
+                    options={(variable.choice_list || []).map((choice) => ({
+                      value: choice.value,
+                      label: choice.label || choice.value,
+                    }))}
+                  />
+                ) : variable.type === 'boolean' ? (
+                  <input
+                    id={`var-${variable.name}`}
+                    type="checkbox"
+                    checked={(values[variable.name] ?? variable.default_value ?? '') === 'true'}
+                    disabled={variable.read_only}
+                    onChange={(e) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        [variable.name]: e.target.checked ? 'true' : 'false',
+                      }))
+                    }
+                  />
+                ) : variable.type === 'reference' ? (
+                  <ReferenceSelect
+                    id={`var-${variable.name}`}
+                    value={values[variable.name] ?? variable.default_value ?? ''}
+                    options={batchOptionsByVar[variable.name]?.options ?? []}
+                    loading={batchOptionsQuery.isLoading}
+                    error={
+                      batchOptionsQuery.error
+                        ? (batchOptionsQuery.error as Error).message
+                        : undefined
+                    }
+                    disabled={variable.read_only}
+                    onChange={(val) => setValues((prev) => ({ ...prev, [variable.name]: val }))}
+                  />
+                ) : (
+                  <input
+                    id={`var-${variable.name}`}
+                    type={
+                      variable.type === 'email'
+                        ? 'email'
+                        : variable.type === 'url'
+                          ? 'url'
+                          : variable.type === 'date'
+                            ? 'date'
+                            : variable.type === 'integer'
+                              ? 'number'
+                              : 'text'
+                    }
+                    value={values[variable.name] ?? variable.default_value ?? ''}
+                    readOnly={variable.read_only}
+                    onChange={(e) =>
+                      setValues((prev) => ({ ...prev, [variable.name]: e.target.value }))
+                    }
+                  />
+                )}
+              </div>
+            ))}
 
-          {error ? <p className="error">{error}</p> : null}
-          {success ? (
-            <div className="alert alert-success-outline">
-              <p className="order-hierarchy-title">Order submitted successfully.</p>
-              <ul className="order-hierarchy">
-                <li className="order-hierarchy-node">
-                  <span className="order-hierarchy-type">Request</span>
-                  {success.request.sys_id ? (
-                    <Link to={`/requests/${success.request.sys_id}`}>
-                      {success.request.number || success.request_number}
-                    </Link>
-                  ) : (
-                    success.request.number || success.request_number
-                  )}
-                </li>
-                <li className="order-hierarchy-node order-hierarchy-node--depth-1">
-                  <span className="order-hierarchy-type">Requested Item</span>
-                  {success.request_item.sys_id ? (
-                    <Link to={`/requested-items/${success.request_item.sys_id}`}>
-                      {success.request_item.number}
-                    </Link>
-                  ) : (
-                    success.request_item.number
-                  )}
-                </li>
-                {success.task ? (
-                  <li className="order-hierarchy-node order-hierarchy-node--depth-2">
-                    <span className="order-hierarchy-type">Fulfillment Task</span>
-                    {success.task.sys_id ? (
-                      <Link to={`/catalog-tasks/${success.task.sys_id}`}>
-                        {success.task.number}
-                      </Link>
-                    ) : (
-                      success.task.number
-                    )}
-                  </li>
-                ) : null}
-              </ul>
-            </div>
-          ) : null}
+            {error ? <p className="error">{error}</p> : null}
 
-          <button type="submit" className="btn btn-primary" disabled={orderMutation.isPending}>
-            {orderMutation.isPending ? 'Submitting…' : 'Order Now'}
-          </button>
-        </form>
+            <button type="submit" className="btn btn-primary" disabled={orderMutation.isPending}>
+              {orderMutation.isPending ? 'Submitting…' : 'Order Now'}
+            </button>
+          </form>
+        )}
       </section>
     </div>
   );

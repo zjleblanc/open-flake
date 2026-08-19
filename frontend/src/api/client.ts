@@ -680,7 +680,13 @@ export type CascadePreview = {
   peripheral: Record<string, number>;
 };
 
-export type ActivityChange = { field: string; old_value: string; new_value: string };
+export type ActivityChange = {
+  field: string;
+  old_value: string;
+  new_value: string;
+  old_display_value?: string;
+  new_display_value?: string;
+};
 
 export type ActivityEntry = {
   id: string;

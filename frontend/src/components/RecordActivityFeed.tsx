@@ -80,9 +80,15 @@ function journalChangeDelta(oldValue: string, newValue: string): string {
   return newValue;
 }
 
-function changeValueLabel(field: string, value: string, resource: string): string {
+function changeValueLabel(
+  field: string,
+  value: string,
+  resource: string,
+  displayValue?: string,
+): string {
   if (!value) return '—';
   if (field === 'state') return stateLabel(value, resource);
+  if (displayValue) return displayValue;
   return value;
 }
 
@@ -295,7 +301,7 @@ function ActivityChangeRow({
         {hasOldValue && (
           <>
             <span className="activity-feed-change-old">
-              {changeValueLabel(change.field, change.old_value, resource)}
+              {changeValueLabel(change.field, change.old_value, resource, change.old_display_value)}
             </span>
             <span className="activity-feed-change-arrow" aria-hidden="true">
               →
@@ -303,7 +309,7 @@ function ActivityChangeRow({
           </>
         )}
         <span className="activity-feed-change-new">
-          {changeValueLabel(change.field, change.new_value, resource)}
+          {changeValueLabel(change.field, change.new_value, resource, change.new_display_value)}
         </span>
       </span>
     </li>

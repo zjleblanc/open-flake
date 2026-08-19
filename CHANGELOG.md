@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-19 — Improved catalog UX with order success panel and resolved sys_ids in activity feed
+
+### Added
+- Backend `attach_activity_change_display_values` helper to batch-resolve reference field sys_ids to display labels across an entire activity feed.
+
+### Changed
+- After submitting a service catalog order, the detail page now replaces the order form with a dedicated success panel showing the order hierarchy and links to the created records, preventing accidental re-submission while allowing a fresh order via "Place Another Order".
+- The "Active" toggle for service catalog items moved from the busy manage list view to the individual item's builder details panel.
+- The record activity feed now resolves technical `sys_id` values in field-history changes (e.g. `assigned_to`, `assignment_group`) to human-readable names or record numbers.
+
+### Fixed
+- Improved visual clarity in the catalog manage view by removing the inline active toggle.
+
 ## 2026-08-18 — Webhooks and Secrets now use list/detail views like other resources
 
 ### Changed

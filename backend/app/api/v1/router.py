@@ -32,6 +32,7 @@ from app.domain.registry import (
     TABLE_MODELS,
 )
 from app.domain.table_service import (
+    attach_activity_change_display_values,
     create_record,
     delete_record,
     get_record_by_sys_id,
@@ -778,6 +779,8 @@ async def list_record_activity(
                 "timestamp": created_on,
             }
         )
+
+    await attach_activity_change_display_values(db, table, activity)
 
     activity.sort(key=lambda entry: entry.get("timestamp") or "", reverse=True)
     return {"activity": activity}
