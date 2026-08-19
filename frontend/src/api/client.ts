@@ -436,6 +436,9 @@ export const api = {
   adminListWebhooks: () =>
     request<{ result: CatalogWebhook[] }>('/api/flake/catalog/admin/webhooks'),
 
+  adminGetWebhook: (webhookId: string) =>
+    request<{ result: CatalogWebhook }>(`/api/flake/catalog/admin/webhooks/${webhookId}`),
+
   adminCreateWebhook: (data: Record<string, unknown>) =>
     request<{ result: CatalogWebhook }>('/api/flake/catalog/admin/webhooks', {
       method: 'POST',
@@ -454,6 +457,9 @@ export const api = {
     }),
 
   listSecrets: () => request<{ result: IntegrationSecret[] }>('/api/flake/secrets'),
+
+  getSecret: (secretId: string) =>
+    request<{ result: IntegrationSecret }>(`/api/flake/secrets/${secretId}`),
 
   createSecret: (data: Record<string, unknown>) =>
     request<{ result: IntegrationSecret }>('/api/flake/secrets', {

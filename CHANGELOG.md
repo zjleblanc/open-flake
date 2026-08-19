@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Webhooks and Secrets now use list/detail views like other resources
+
+### Changed
+- `/integrations/webhooks` and `/integrations/secrets` are now plain list pages (table + a "Create" action that opens an inline form), matching the Users/Groups list pattern instead of embedding a combined create-or-edit form on the same page.
+- Editing an existing webhook or secret now navigates to its own detail page (`/integrations/webhooks/:sysId`, `/integrations/secrets/:sysId`) with a proper breadcrumb (`Integrations > Webhooks > <name>`) and a page-header Delete action, consistent with other detail pages (e.g. Groups, Users).
+
 ## 2026-08-18 — Simplified the reference-table picker to a flat select
 
 ### Changed

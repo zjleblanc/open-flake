@@ -7,7 +7,9 @@ import { CatalogItemBuilderPage } from './pages/CatalogItemBuilderPage';
 import { CatalogItemPage } from './pages/CatalogItemPage';
 import { CatalogTaskDetailPage } from './pages/CatalogTaskDetailPage';
 import { CatalogWebhooksPage } from './pages/CatalogWebhooksPage';
+import { WebhookDetailPage } from './pages/WebhookDetailPage';
 import { CatalogSecretsPage } from './pages/CatalogSecretsPage';
+import { SecretDetailPage } from './pages/SecretDetailPage';
 import { ChangeDetailPage } from './pages/ChangeDetailPage';
 import { ChangeTaskDetailPage } from './pages/ChangeTaskDetailPage';
 import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage';
@@ -192,7 +194,9 @@ export function App() {
         <Route path="catalog/webhooks" element={<Navigate to="/integrations/webhooks" replace />} />
         <Route path="catalog/:itemId" element={<CatalogItemPage />} />
         <Route path="integrations/webhooks" element={<CatalogWebhooksPage />} />
+        <Route path="integrations/webhooks/:sysId" element={<WebhookDetailPage />} />
         <Route path="integrations/secrets" element={<CatalogSecretsPage />} />
+        <Route path="integrations/secrets/:sysId" element={<SecretDetailPage />} />
         <Route path="access/users" element={<UsersPage />} />
         <Route path="access/users/:sysId" element={<UserDetailPage />} />
         <Route path="access/groups" element={<GroupsListPage />} />
