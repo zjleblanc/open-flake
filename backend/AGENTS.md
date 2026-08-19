@@ -84,6 +84,36 @@ model = TABLE_MODELS.get(physical_table)
 path that looks up a table by name, check whether it needs the same
 treatment.
 
+## Updating the shipped CMDB base hierarchy
+
+The default CMDB class catalog (`cmdb_ci_server`, `cmdb_ci_router`, etc. --
+see `docs/cmdb-class-hierarchy.md`) ships with every image as ordinary,
+committed Python data, not loose files read at runtime:
+
+- Source of truth: `backend/tools/cmdb_base_hierarchy.yaml` -- a compact
+  nested tree (name, label, optional fields, optional children).
+- Generator: `backend/tools/generate_base_hierarchy.py` walks the YAML and
+  writes `backend/app/domain/cmdb/base_hierarchy_data.py`, a generated
+  module exporting `BASE_HIERARCHY: list[dict]` in the same shape as a
+  `docs/class-hierarchy/*.json` export.
+- Both `backend/tools/*` files are dev-only tooling -- outside
+  `pyproject.toml`'s package discovery and never copied by
+  `deploy/Containerfile.backend` -- so only the generated module ships in
+  the image.
+
+To change the catalog: edit the YAML, then run `make generate-cmdb-hierarchy`
+from the repo root (regenerates and `ruff format`s the module), and commit
+both files together. `backend/tests/test_generate_base_hierarchy.py` fails
+CI if the YAML and the committed module drift apart.
+
+No Alembic migration is needed -- `ensure_table_registry()` seeds
+`BASE_HIERARCHY` into `sys_db_object` / `sys_dictionary` idempotently on
+every startup (see `app/domain/cmdb/importer.py`), the same path used for
+the optional `CMDB_HIERARCHY_EXTRA_DIR` operator extension directory.
+Existing classes/fields an admin already customized via the Tables UI
+(`user_defined=True`) are never overwritten by this reseed -- see
+`registry.ensure_class`/`upsert_field`'s `skip_if_user_defined` parameter.
+
 ## Database migrations (Alembic)
 
 Schema changes are managed exclusively through Alembic (`backend/alembic/`).

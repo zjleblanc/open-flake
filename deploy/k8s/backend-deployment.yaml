@@ -20,6 +20,14 @@ spec:
           envFrom:
             - secretRef:
                 name: openflake-secrets
+          env:
+            # Optional: extra CMDB hierarchy JSON exports scanned in addition
+            # to the built-in base catalog on every startup (see
+            # docs/cmdb-class-hierarchy.md). Harmless to leave set even with
+            # no matching volume mounted below -- the importer just logs a
+            # warning and continues if the directory doesn't exist.
+            - name: CMDB_HIERARCHY_EXTRA_DIR
+              value: /etc/openflake/class-hierarchy
           livenessProbe:
             httpGet:
               path: /health/live
@@ -31,7 +39,16 @@ spec:
           volumeMounts:
             - name: attachments
               mountPath: /data/attachments
+            # Uncomment to provide extra CMDB hierarchy JSON files, e.g. from
+            # a ConfigMap holding *.json exports, or a PVC an admin writes to
+            # directly. Matches CMDB_HIERARCHY_EXTRA_DIR above.
+            # - name: class-hierarchy
+            #   mountPath: /etc/openflake/class-hierarchy
+            #   readOnly: true
       volumes:
         - name: attachments
           persistentVolumeClaim:
             claimName: openflake-attachments
+        # - name: class-hierarchy
+        #   configMap:
+        #     name: openflake-class-hierarchy

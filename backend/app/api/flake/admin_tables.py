@@ -26,6 +26,7 @@ from app.domain.cmdb.registry import (
     _require_snapshot,
     ensure_class,
     get_descendants,
+    get_import_warnings,
     is_registered,
     refresh_cache,
     upsert_field,
@@ -65,14 +66,21 @@ async def list_tables(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return every registered table/class as a flat, hierarchy-annotated list."""
+    """Return every registered table/class as a flat, hierarchy-annotated list.
+
+    Also includes any warnings from the last startup's hierarchy import
+    (base catalog + extra dir) where a definition was skipped because a
+    same-named class/field was already created via this admin API -- see
+    `registry.get_import_warnings()`.
+    """
     await _require_table_admin(db, auth)
     snap = _require_snapshot()
     return {
         "result": [
             _db_object_dict(obj, len(snap.children.get(name, ())))
             for name, obj in sorted(snap.classes.items())
-        ]
+        ],
+        "import_warnings": get_import_warnings(),
     }
 
 
@@ -105,7 +113,14 @@ async def create_table(
             "name must be lowercase snake_case (letters, numbers, underscores)",
         )
     if is_registered(name):
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"'{name}' is already registered")
+        snap = _require_snapshot()
+        existing = snap.classes.get(name)
+        origin = (
+            "already created as a custom table"
+            if existing and existing.user_defined
+            else "already defined by the built-in class hierarchy"
+        )
+        raise HTTPException(status.HTTP_409_CONFLICT, f"'{name}' is {origin}")
 
     super_class = (payload.get("super_class") or CMDB_ROOT).strip()
     snap = _require_snapshot()

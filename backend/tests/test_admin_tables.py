@@ -107,6 +107,26 @@ async def test_list_tables_returns_full_registry():
     server_row = next(row for row in result["result"] if row["name"] == "cmdb_ci_server")
     assert server_row["is_extendable"] is True
     assert server_row["children_count"] == 1
+    assert result["import_warnings"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_tables_surfaces_import_warnings():
+    from app.api.flake import admin_tables as admin_api
+    from app.domain.cmdb import registry
+
+    registry.clear_import_warnings()
+    registry.record_import_warning(
+        "Skipped hierarchy definition for 'cmdb_ci_router': a table with this name "
+        "already exists and was created via the admin UI.",
+        class_name="cmdb_ci_router",
+    )
+
+    result = await admin_api.list_tables(auth=_auth(), db=AsyncMock())
+    assert len(result["import_warnings"]) == 1
+    assert result["import_warnings"][0]["class_name"] == "cmdb_ci_router"
+
+    registry.clear_import_warnings()
 
 
 @pytest.mark.asyncio
@@ -161,14 +181,32 @@ async def test_create_table_extends_extendable_class():
 
 
 @pytest.mark.asyncio
-async def test_create_table_rejects_duplicate_name():
+async def test_create_table_rejects_duplicate_name_of_builtin_class():
     from app.api.flake import admin_tables as admin_api
 
     with pytest.raises(HTTPException) as exc:
         await admin_api.create_table(
             {"name": "cmdb_ci_server", "super_class": CMDB_ROOT}, auth=_auth(), db=AsyncMock()
         )
-    assert exc.value.status_code == 400
+    assert exc.value.status_code == 409
+    assert "built-in class hierarchy" in exc.value.detail
+
+
+@pytest.mark.asyncio
+async def test_create_table_rejects_duplicate_name_of_custom_table():
+    from app.api.flake import admin_tables as admin_api
+    from app.domain.cmdb import registry
+
+    registry._snapshot.classes["cmdb_ci_linux_server"].user_defined = True
+
+    with pytest.raises(HTTPException) as exc:
+        await admin_api.create_table(
+            {"name": "cmdb_ci_linux_server", "super_class": CMDB_ROOT},
+            auth=_auth(),
+            db=AsyncMock(),
+        )
+    assert exc.value.status_code == 409
+    assert "custom table" in exc.value.detail
 
 
 @pytest.mark.asyncio

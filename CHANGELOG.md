@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Shipped base CMDB hierarchy and HA-safe startup seeding
+
+### Added
+- Built-in base CMDB class catalog (~26 classes covering hardware, virtualization, database, and cloud service classes) shipped in every backend image as a generated Python module (`backend/app/domain/cmdb/base_hierarchy_data.py`), maintained from a compact YAML spec (`backend/tools/cmdb_base_hierarchy.yaml`) and regenerated with `make generate-cmdb-hierarchy`; a drift-check test fails CI if the two are out of sync.
+- `CMDB_HIERARCHY_EXTRA_DIR` environment variable: an optional directory of extra CMDB hierarchy JSON exports scanned in addition to the base catalog on every startup, wired into `podman-compose.yaml`, `podman-compose.registry.yaml`, `deploy/.env.example`, and `deploy/k8s/backend-deployment.yaml`.
+- Two-way collision guardrails: the admin Tables UI checks for table-name collisions client-side before submitting, the backend's create-table conflict error now names the conflict's origin (built-in hierarchy vs. custom table), and base/extra-hierarchy imports skip (and warn about) any class or field an admin already customized via the admin UI instead of silently overwriting it. `/admin/tables` surfaces those warnings as a dismissible banner.
+- A Postgres session-level advisory lock around the whole startup seed sequence (migrations, table registry, reference data) so concurrent backend replicas booting against a shared database serialize instead of racing.
+
+### Changed
+- `cmdb_ci_ip_firewall` moved from the ad hoc `LAB_CLASS_PARENTS` bootstrap into its correct place in the shipped base hierarchy (under `cmdb_ci_netgear`).
+- `upsert_field` now persists the `user_defined` flag when the admin API edits an existing field, so a later hierarchy reseed no longer reverts that customization.
+
+### Fixed
+- `cmdb_ci_server` and the rest of the CMDB class tree are now always registered on a fresh deployment. Previously `docs/class-hierarchy/` was gitignored and excluded from the production image, leaving new databases with only the bare `cmdb`/`cmdb_ci` roots.
+
 ## 2026-08-18 — CMDB class hierarchy redesign and table extension admin UI
 
 ### Added

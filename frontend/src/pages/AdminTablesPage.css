@@ -85,3 +85,33 @@
   flex-direction: column;
   gap: 0.85rem;
 }
+
+.alert-warning {
+  background: color-mix(in srgb, var(--of-accent) 12%, var(--of-surface));
+  color: var(--of-text);
+  border: 1px solid var(--of-accent);
+}
+
+.admin-tables-import-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.admin-tables-import-warnings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.admin-tables-import-warnings-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+}
+
+.admin-tables-name-collision {
+  color: var(--of-danger);
+  margin-top: 0.25rem;
+}

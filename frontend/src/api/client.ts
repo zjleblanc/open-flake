@@ -380,7 +380,10 @@ export const api = {
       `/api/flake/catalog/admin/tables/${encodeURIComponent(table)}/fields`,
     ),
 
-  listTableRegistry: () => request<{ result: TableRegistryEntry[] }>('/api/flake/admin/tables'),
+  listTableRegistry: () =>
+    request<{ result: TableRegistryEntry[]; import_warnings: TableImportWarning[] }>(
+      '/api/flake/admin/tables',
+    ),
 
   getTableSchema: (name: string) =>
     request<{ result: CmdbClassSchema }>(
@@ -533,6 +536,15 @@ export type TableRegistryEntry = {
   user_defined: boolean;
   active: boolean;
   children_count: number;
+};
+
+// A hierarchy definition (base catalog or extra dir) skipped on the last
+// startup import because a same-named class/field was already created via
+// the admin UI -- see backend `registry.get_import_warnings()`.
+export type TableImportWarning = {
+  message: string;
+  class_name: string;
+  field_name: string | null;
 };
 
 export type CatalogVariable = {

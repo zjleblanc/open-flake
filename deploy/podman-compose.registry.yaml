@@ -35,10 +35,12 @@ services:
       ATTACHMENTS_PATH: /data/attachments
       CORS_ORIGINS: ${OPENFLAKE_CORS_ORIGINS:-http://localhost:8080,http://localhost:5173}
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-*}
+      CMDB_HIERARCHY_EXTRA_DIR: /etc/openflake/class-hierarchy
     ports:
       - "8000:8000"
     volumes:
       - ${OPENFLAKE_ATTACHMENTS_MOUNT:-openflake-attachments:/data/attachments}
+      - ${OPENFLAKE_CLASS_HIERARCHY_MOUNT:-openflake-class-hierarchy:/etc/openflake/class-hierarchy}
     depends_on:
       postgres:
         condition: service_healthy
@@ -74,3 +76,4 @@ networks:
 volumes:
   openflake-pg-data:
   openflake-attachments:
+  openflake-class-hierarchy:

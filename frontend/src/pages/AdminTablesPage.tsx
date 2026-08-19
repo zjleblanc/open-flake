@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, type TableRegistryEntry } from '../api/client';
+import { api, type TableImportWarning, type TableRegistryEntry } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -41,6 +41,19 @@ function buildTree(rows: TableRegistryEntry[]): TreeNode[] {
 type NewClassForm = { name: string; label: string };
 const EMPTY_NEW_CLASS: NewClassForm = { name: '', label: '' };
 
+/** Client-side pre-check mirroring the backend's `create_table` 409: look up
+ * whether `name` is already registered, and if so, name the conflict's
+ * origin so the admin knows immediately whether to pick a different name. */
+function findNameCollision(name: string, rows: TableRegistryEntry[]): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const existing = rows.find((row) => row.name === trimmed);
+  if (!existing) return null;
+  return existing.user_defined
+    ? `"${trimmed}" already exists as a custom table.`
+    : `"${trimmed}" is already defined by the built-in class hierarchy.`;
+}
+
 type NewFieldForm = {
   name: string;
   label: string;
@@ -68,6 +81,7 @@ export function AdminTablesPage() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [pendingDelete, setPendingDelete] = useState<TableRegistryEntry | null>(null);
+  const [warningsDismissed, setWarningsDismissed] = useState(false);
 
   usePageHeader({ breadcrumbs: [{ label: 'Settings' }, { label: 'Tables' }] });
 
@@ -77,8 +91,13 @@ export function AdminTablesPage() {
   });
 
   const rows = useMemo(() => tablesQuery.data?.result || [], [tablesQuery.data]);
+  const importWarnings: TableImportWarning[] = tablesQuery.data?.import_warnings || [];
   const tree = useMemo(() => buildTree(rows), [rows]);
   const selectedEntry = rows.find((row) => row.name === selected) || null;
+  const nameCollision = useMemo(
+    () => findNameCollision(newClassForm.name, rows),
+    [newClassForm.name, rows],
+  );
 
   const schemaQuery = useQuery({
     queryKey: ['admin-table-schema', selected],
@@ -153,6 +172,10 @@ export function AdminTablesPage() {
     event.preventDefault();
     if (!newClassForm.name.trim()) {
       setError('Table name is required');
+      return;
+    }
+    if (nameCollision) {
+      setError(nameCollision);
       return;
     }
     createMutation.mutate();
@@ -235,6 +258,34 @@ export function AdminTablesPage() {
       {message ? <p className="alert alert-success">{message}</p> : null}
       {error ? <p className="error">{error}</p> : null}
 
+      {importWarnings.length && !warningsDismissed ? (
+        <div className="alert alert-warning admin-tables-import-warnings">
+          <div className="admin-tables-import-warnings-header">
+            <strong>
+              {importWarnings.length} hierarchy definition{importWarnings.length === 1 ? '' : 's'}{' '}
+              skipped on last startup
+            </strong>
+            <button
+              type="button"
+              className="btn-icon"
+              aria-label="Dismiss"
+              onClick={() => setWarningsDismissed(true)}
+            >
+              ×
+            </button>
+          </div>
+          <p className="catalog-help-text">
+            These conflict with tables or fields created via this admin UI, so your customizations
+            were kept and the built-in/extra-dir definitions were skipped instead:
+          </p>
+          <ul className="admin-tables-import-warnings-list">
+            {importWarnings.map((warning, index) => (
+              <li key={index}>{warning.message}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       <p className="catalog-browse-intro">
         Every table and CMDB class — physical tables and their subclasses alike — lives in one
         hierarchy. Extend an extendable table to create a new class, or add fields to any registered
@@ -273,7 +324,7 @@ export function AdminTablesPage() {
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={createMutation.isPending}
+                    disabled={createMutation.isPending || Boolean(nameCollision)}
                   >
                     {createMutation.isPending ? 'Creating…' : 'Create'}
                   </button>
@@ -293,7 +344,11 @@ export function AdminTablesPage() {
                     }
                     placeholder="cmdb_ci_gpu_server"
                     autoComplete="off"
+                    aria-invalid={Boolean(nameCollision)}
                   />
+                  {nameCollision ? (
+                    <p className="catalog-help-text admin-tables-name-collision">{nameCollision}</p>
+                  ) : null}
                 </div>
                 <div className="form-group">
                   <label htmlFor="new-class-label">Label</label>

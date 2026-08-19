@@ -1,0 +1,149 @@
+# Source of truth for the default CMDB class hierarchy shipped with every
+# backend image. This file is maintainer-only, dev-time tooling -- it is
+# never read at runtime and never ships in the container image.
+#
+# Structure: each key is a class name; `label` is its display name; `fields`
+# are attributes declared natively on that class (inherited automatically by
+# descendants); `children` nests subclasses. Top-level keys are direct
+# children of `cmdb_ci`.
+#
+# After editing this file, regenerate the committed runtime module:
+#   make generate-cmdb-hierarchy
+# (or: python backend/tools/generate_base_hierarchy.py)
+# then commit both this file and the regenerated
+# backend/app/domain/cmdb/base_hierarchy_data.py together.
+
+cmdb_ci_hardware:
+  label: Hardware
+  children:
+    cmdb_ci_computer:
+      label: Computer
+      children:
+        cmdb_ci_server:
+          label: Server
+          fields:
+            - name: host_name
+              label: Host Name
+              type: string
+          children:
+            cmdb_ci_linux_server:
+              label: Linux Server
+              fields:
+                - name: kernel_release
+                  label: Kernel Release
+                  type: string
+            cmdb_ci_unix_server:
+              label: UNIX Server
+              fields:
+                - name: kernel_release
+                  label: Kernel Release
+                  type: string
+            cmdb_ci_win_server:
+              label: Windows Server
+              fields:
+                - name: domain
+                  label: Domain
+                  type: string
+    cmdb_ci_storage_device:
+      label: Storage Device
+      children:
+        cmdb_ci_storage_server:
+          label: Storage Server
+          fields:
+            - name: raid_type
+              label: RAID Type
+              type: string
+    cmdb_ci_peripheral:
+      label: Peripheral
+      children:
+        cmdb_ci_printer:
+          label: Printer
+          fields:
+            - name: page_count
+              label: Page Count
+              type: integer
+    cmdb_ci_netgear:
+      label: Networking Gear
+      children:
+        cmdb_ci_router:
+          label: Router
+          fields:
+            - name: port_count
+              label: Port Count
+              type: integer
+        cmdb_ci_switch:
+          label: Switch
+          fields:
+            - name: port_count
+              label: Port Count
+              type: integer
+        cmdb_ci_ip_firewall:
+          label: Firewall
+          fields:
+            - name: throughput_mbps
+              label: Throughput (Mbps)
+              type: integer
+        cmdb_ci_lb:
+          label: Load Balancer
+          fields:
+            - name: algorithm
+              label: Algorithm
+              type: string
+
+cmdb_ci_vm_object:
+  label: Virtualization Object
+  children:
+    cmdb_ci_vm_instance:
+      label: Virtual Machine Instance
+      fields:
+        - name: hypervisor
+          label: Hypervisor
+          type: string
+
+cmdb_ci_database:
+  label: Database
+  children:
+    cmdb_ci_db_mysql_instance:
+      label: MySQL Instance
+      fields:
+        - name: version
+          label: Version
+          type: string
+    cmdb_ci_db_ora_instance:
+      label: Oracle Instance
+      fields:
+        - name: sid
+          label: SID
+          type: string
+    cmdb_ci_db_postgresql_instance:
+      label: PostgreSQL Instance
+      fields:
+        - name: version
+          label: Version
+          type: string
+
+cmdb_ci_appl:
+  label: Application
+  fields:
+    - name: version
+      label: Version
+      type: string
+
+cmdb_ci_service:
+  label: Business Service
+
+cmdb_ci_cloud_service:
+  label: Cloud Service
+  children:
+    cmdb_ci_cloud_service_account:
+      label: Cloud Service Account
+      fields:
+        - name: provider
+          label: Provider
+          type: string
+    cmdb_ci_cloud_resource:
+      label: Cloud Resource
+      fields:
+        - name: resource_type
+          label: Resource Type
+          type: string

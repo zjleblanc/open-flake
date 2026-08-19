@@ -1,9 +1,11 @@
 import asyncio
+import hashlib
 import logging
+import struct
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app import db
 from app.api.flake.attachment import (
@@ -32,6 +34,15 @@ from app.utils.ids import new_sys_id
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+# Fixed, deterministic Postgres advisory-lock key (signed 64-bit) used to
+# serialize the startup seed sequence (see `lifespan()`) across concurrent
+# backend replicas booting against a shared database. Derived from a fixed
+# string so it's stable across processes/releases without hand-picking a
+# magic number.
+STARTUP_SEED_LOCK_KEY = struct.unpack(
+    ">q", hashlib.sha256(b"openflake:startup-seed-lock").digest()[:8]
+)[0]
 
 
 async def run_migrations():
@@ -367,10 +378,13 @@ async def _ensure_physical_table_registry(session) -> None:
 async def ensure_table_registry():
     """Populate `sys_db_object` / `sys_dictionary` for every table.
 
-    Loads the CMDB class hierarchy (JSON exports under
-    `docs/class-hierarchy/`) and registers every other `TABLE_MODELS` entry
-    as a plain physical table, then refreshes the in-memory registry cache
-    used for reference-field resolution and class-hierarchy APIs.
+    Loads the CMDB class hierarchy -- the built-in base catalog embedded in
+    the image (`app.domain.cmdb.base_hierarchy_data.BASE_HIERARCHY`) plus an
+    optional extra directory of JSON exports (`settings.cmdb_hierarchy_extra_dir`,
+    see `docs/cmdb-class-hierarchy.md`) -- and registers every other
+    `TABLE_MODELS` entry as a plain physical table, then refreshes the
+    in-memory registry cache used for reference-field resolution and
+    class-hierarchy APIs.
     """
     from app.domain.cmdb.importer import ensure_cmdb_hierarchy
     from app.domain.cmdb.registry import refresh_cache
@@ -385,9 +399,27 @@ async def ensure_table_registry():
 @asynccontextmanager
 async def lifespan(app):
     resolve_attachments_path().mkdir(parents=True, exist_ok=True)
-    await run_migrations()
-    await ensure_table_registry()
-    await seed_data()
+
+    # Serialize the whole seed sequence (migrations + table registry +
+    # reference data) across concurrent replicas booting against the same
+    # database. This is a session-scoped Postgres advisory lock: purely
+    # cooperative, it never blocks normal table/row access from other
+    # already-running replicas serving traffic, and auto-releases if this
+    # process crashes or is killed mid-seed. Only a replica that is itself
+    # simultaneously starting up would ever wait on it.
+    async with db.engine.connect() as lock_conn:
+        await lock_conn.execute(
+            text("SELECT pg_advisory_lock(:key)"), {"key": STARTUP_SEED_LOCK_KEY}
+        )
+        try:
+            await run_migrations()
+            await ensure_table_registry()
+            await seed_data()
+        finally:
+            await lock_conn.execute(
+                text("SELECT pg_advisory_unlock(:key)"), {"key": STARTUP_SEED_LOCK_KEY}
+            )
+
     from app.domain.catalog.webhooks import register_webhook_subscriber
 
     register_webhook_subscriber()

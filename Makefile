@@ -1,7 +1,7 @@
 # OpenFlake developer task runner
 # Run `make setup` once after cloning to install deps and pre-commit hooks.
 
-.PHONY: setup dev db db-seed db-reseed migrate migrate-gen migrate-history lint format test check
+.PHONY: setup dev db db-seed db-reseed migrate migrate-gen migrate-history lint format test check generate-cmdb-hierarchy
 
 PYTHON ?= .venv/bin/python
 PIP ?= .venv/bin/pip
@@ -53,3 +53,8 @@ test:
 
 check:
 	$(PRE_COMMIT) run --all-files
+
+generate-cmdb-hierarchy:
+	$(PYTHON) backend/tools/generate_base_hierarchy.py
+	$(PYTHON) -m ruff format --config backend/pyproject.toml backend/app/domain/cmdb/base_hierarchy_data.py
+	@echo "Regenerated backend/app/domain/cmdb/base_hierarchy_data.py -- review and commit it with the YAML spec."

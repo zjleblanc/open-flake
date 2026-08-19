@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     oauth_token_expire_seconds: int = 3600
     log_level: str = "INFO"
+    # Optional directory of extra CMDB hierarchy JSON exports (see
+    # docs/cmdb-class-hierarchy.md), scanned in addition to the built-in
+    # base catalog on every startup. A relative path is resolved against
+    # the repo root (see importer.resolve_extra_hierarchy_dir). Unset by
+    # default; local dev sets this to "docs/class-hierarchy".
+    cmdb_hierarchy_extra_dir: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:

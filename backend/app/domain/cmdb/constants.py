@@ -43,7 +43,8 @@ SYSTEM_FIELDS = frozenset(
     }
 )
 
-# Lab seed classes not covered by JSON exports — registered under cmdb_ci.
-LAB_CLASS_PARENTS: dict[str, str] = {
-    "cmdb_ci_ip_firewall": CMDB_ROOT,
-}
+# Lab seed classes not covered by the shipped base hierarchy or an extra-dir
+# export — registered directly under cmdb_ci. Currently empty: the one
+# former entry, cmdb_ci_ip_firewall, is now defined properly in the base
+# hierarchy (backend/tools/cmdb_base_hierarchy.yaml, under cmdb_ci_netgear).
+LAB_CLASS_PARENTS: dict[str, str] = {}

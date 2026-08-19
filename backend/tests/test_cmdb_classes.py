@@ -300,3 +300,128 @@ async def test_ensure_class_updates_super_class_when_requested():
     assert result is existing
     assert existing.super_class == "cmdb_ci_server"
     db.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_ensure_class_skips_user_defined_class_and_records_warning():
+    from unittest.mock import AsyncMock
+
+    from app.domain.cmdb import registry
+    from app.domain.cmdb.registry import ensure_class
+
+    registry.clear_import_warnings()
+    existing = SysDbObject(
+        sys_id="cmdb_ci_router",
+        name="cmdb_ci_router",
+        super_class="cmdb_ci",
+        label="My Custom Router",
+        is_logical=False,
+        user_defined=True,
+    )
+    db = AsyncMock()
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = lambda: existing
+    db.execute = AsyncMock(return_value=execute_result)
+    db.flush = AsyncMock()
+
+    result = await ensure_class(
+        db,
+        "cmdb_ci_router",
+        super_class="cmdb_ci_netgear",
+        label="Router",
+        update=True,
+        skip_if_user_defined=True,
+    )
+
+    assert result is existing
+    assert existing.super_class == "cmdb_ci"  # untouched
+    assert existing.label == "My Custom Router"  # untouched
+    db.flush.assert_not_awaited()
+    warnings = registry.get_import_warnings()
+    assert len(warnings) == 1
+    assert warnings[0]["class_name"] == "cmdb_ci_router"
+    registry.clear_import_warnings()
+
+
+@pytest.mark.asyncio
+async def test_upsert_field_skips_user_defined_field_and_records_warning():
+    from unittest.mock import AsyncMock
+
+    from app.domain.cmdb import registry
+    from app.domain.cmdb.registry import upsert_field
+    from app.models import SysDictionary
+
+    registry.clear_import_warnings()
+    existing = SysDictionary(
+        sys_id="f1",
+        name="cmdb_ci_server",
+        element="host_name",
+        column_label="My Custom Label",
+        internal_type="string",
+        storage="column",
+        mandatory=False,
+        user_defined=True,
+    )
+    db = AsyncMock()
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = lambda: existing
+    db.execute = AsyncMock(return_value=execute_result)
+
+    result = await upsert_field(
+        db,
+        "cmdb_ci_server",
+        "host_name",
+        label="Host Name",
+        sn_type="string",
+        skip_if_user_defined=True,
+    )
+
+    assert result is existing
+    assert existing.column_label == "My Custom Label"  # untouched
+    warnings = registry.get_import_warnings()
+    assert len(warnings) == 1
+    assert warnings[0] == {
+        "message": (
+            "Skipped field definition for 'host_name' on 'cmdb_ci_server': an admin "
+            "already customized this field via the admin UI."
+        ),
+        "class_name": "cmdb_ci_server",
+        "field_name": "host_name",
+    }
+    registry.clear_import_warnings()
+
+
+@pytest.mark.asyncio
+async def test_upsert_field_marks_user_defined_when_admin_edits_existing_field():
+    from unittest.mock import AsyncMock
+
+    from app.domain.cmdb.registry import upsert_field
+    from app.models import SysDictionary
+
+    existing = SysDictionary(
+        sys_id="f1",
+        name="cmdb_ci_server",
+        element="host_name",
+        column_label="Host Name",
+        internal_type="string",
+        storage="column",
+        mandatory=False,
+        user_defined=False,
+    )
+    db = AsyncMock()
+    execute_result = AsyncMock()
+    execute_result.scalar_one_or_none = lambda: existing
+    db.execute = AsyncMock(return_value=execute_result)
+
+    result = await upsert_field(
+        db,
+        "cmdb_ci_server",
+        "host_name",
+        label="My Custom Label",
+        sn_type="string",
+        user_defined=True,
+    )
+
+    assert result is existing
+    assert existing.column_label == "My Custom Label"
+    assert existing.user_defined is True

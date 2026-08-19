@@ -8,8 +8,9 @@ subtree rooted at `cmdb_ci`.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.cmdb.constants import CMDB_ROOT, LOGICAL_ROOT, PROMOTED_COLUMNS
 from app.models import SysDbObject, SysDictionary
 from app.utils.ids import new_sys_id
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -37,12 +40,32 @@ class _RegistrySnapshot:
 
 _snapshot: _RegistrySnapshot | None = None
 _EXPORT_INHERITANCE_PATHS: dict[str, list[str]] = {}
+_IMPORT_WARNINGS: list[dict[str, Any]] = []
 
 
 def clear_cache() -> None:
     global _snapshot
     _snapshot = None
     _EXPORT_INHERITANCE_PATHS.clear()
+
+
+def clear_import_warnings() -> None:
+    """Reset the collision-warning list at the start of a fresh import pass."""
+    _IMPORT_WARNINGS.clear()
+
+
+def record_import_warning(message: str, *, class_name: str, field_name: str | None = None) -> None:
+    logger.warning("%s", message)
+    _IMPORT_WARNINGS.append(
+        {"message": message, "class_name": class_name, "field_name": field_name}
+    )
+
+
+def get_import_warnings() -> list[dict[str, Any]]:
+    """Collisions skipped during the last hierarchy import (base or extra dir)
+    because a `user_defined` class/field already existed with that name --
+    surfaced by `GET /admin/tables` so admins see what was skipped and why."""
+    return list(_IMPORT_WARNINGS)
 
 
 def register_export_inheritance_path(class_name: str, path: list[str]) -> None:
@@ -223,6 +246,7 @@ async def ensure_class(
     update: bool = False,
     storage_type: str | None = None,
     base_table: str | None = None,
+    skip_if_user_defined: bool = False,
 ) -> SysDbObject:
     """Create (or optionally update) a `sys_db_object` row.
 
@@ -232,6 +256,12 @@ async def ensure_class(
     `cmdb_ci`. Callers registering a plain physical table (see
     `startup._ensure_physical_table_registry`) pass `storage_type="physical"`
     explicitly to opt out of that inference.
+
+    `skip_if_user_defined` is set only by the base/extra hierarchy import
+    path (`app.domain.cmdb.importer`): if a class with this name already
+    exists and was created via the admin API (`user_defined=True`), the
+    import leaves it untouched and records a warning via
+    `record_import_warning()` instead of overwriting an admin's own table.
     """
     if storage_type is None:
         if class_name in (LOGICAL_ROOT, CMDB_ROOT):
@@ -243,7 +273,26 @@ async def ensure_class(
         await db.execute(select(SysDbObject).where(SysDbObject.name == class_name))
     ).scalar_one_or_none()
     if existing:
+        if skip_if_user_defined and existing.user_defined:
+            record_import_warning(
+                f"Skipped hierarchy definition for '{class_name}': a table with this "
+                "name already exists and was created via the admin UI.",
+                class_name=class_name,
+            )
+            return cast(SysDbObject, existing)
         if update:
+            changed = existing.super_class != super_class or (
+                label is not None and existing.label != label
+            )
+            if changed:
+                logger.info(
+                    "CMDB hierarchy import updated '%s': super_class %r -> %r, label %r -> %r",
+                    class_name,
+                    existing.super_class,
+                    super_class,
+                    existing.label,
+                    label,
+                )
             if existing.super_class != super_class:
                 existing.super_class = super_class
             if label is not None:
@@ -304,8 +353,15 @@ async def upsert_field(
     mandatory: bool = False,
     storage: str | None = None,
     user_defined: bool = False,
+    skip_if_user_defined: bool = False,
 ) -> SysDictionary:
-    """Create or update a `sys_dictionary` row for a field on a registered class."""
+    """Create or update a `sys_dictionary` row for a field on a registered class.
+
+    `skip_if_user_defined` is set only by the base/extra hierarchy import
+    path: if this exact (class, field) already exists and was created via
+    the admin API (`user_defined=True`), the import leaves it untouched and
+    records a warning instead of reverting an admin's customization.
+    """
     resolved_storage = storage or field_storage(field_name)
     resolved_type = sn_type or "string"
     result = await db.execute(
@@ -316,11 +372,26 @@ async def upsert_field(
     )
     row = result.scalar_one_or_none()
     if row:
+        if skip_if_user_defined and row.user_defined:
+            record_import_warning(
+                f"Skipped field definition for '{field_name}' on '{class_name}': an "
+                "admin already customized this field via the admin UI.",
+                class_name=class_name,
+                field_name=field_name,
+            )
+            return row
         row.column_label = label
         row.internal_type = resolved_type
         row.storage = resolved_storage
         row.reference = reference
         row.mandatory = mandatory
+        # Only ever set True here (by the admin API, whose calls never pass
+        # skip_if_user_defined and always pass user_defined=True) -- import
+        # paths that reach this line always had user_defined=False already
+        # (a True row would have hit the skip branch above), so this can't
+        # revert an admin's own flag back to False.
+        if user_defined:
+            row.user_defined = True
         return row
     row = SysDictionary(
         sys_id=new_sys_id(),
