@@ -162,6 +162,10 @@ function CatalogManageActions({
   );
 }
 
+function catalogItemHref(item: CatalogItemSummary, manage?: CatalogManageHandlers): string {
+  return manage ? `/catalog/admin/${item.sys_id}` : `/catalog/${item.sys_id}`;
+}
+
 function CatalogCompactItemList({
   items,
   manage,
@@ -178,7 +182,7 @@ function CatalogCompactItemList({
             key={item.sys_id}
             className={`catalog-compact-item${inactive ? ' catalog-item--inactive' : ''}`}
           >
-            <Link to={`/catalog/${item.sys_id}`} className="catalog-compact-item-link">
+            <Link to={catalogItemHref(item, manage)} className="catalog-compact-item-link">
               <span className="catalog-compact-item-title">{item.name}</span>
               {item.short_description ? (
                 <span className="catalog-compact-item-desc">{item.short_description}</span>
@@ -213,10 +217,16 @@ function CatalogCategoryCard({
   );
 }
 
-function CatalogItemCell({ item }: { item: CatalogItemSummary }) {
+function CatalogItemCell({
+  item,
+  manage,
+}: {
+  item: CatalogItemSummary;
+  manage?: CatalogManageHandlers;
+}) {
   return (
     <td className="catalog-item-table-item-cell">
-      <Link to={`/catalog/${item.sys_id}`} className="catalog-item-table-item-link">
+      <Link to={catalogItemHref(item, manage)} className="catalog-item-table-item-link">
         <span className="catalog-item-title catalog-item-title--compact">{item.name}</span>
         {item.short_description ? (
           <span className="catalog-item-table-item-desc">{item.short_description}</span>
@@ -240,7 +250,7 @@ function CatalogItemTableRows({
           const inactive = Boolean(manage) && item.active === false;
           return (
             <tr key={item.sys_id} className={inactive ? 'catalog-item--inactive' : undefined}>
-              <CatalogItemCell item={item} />
+              <CatalogItemCell item={item} manage={manage} />
               {manage ? (
                 <td className="catalog-item-table-manage-cell">
                   <CatalogManageActions item={item} manage={manage} />
@@ -338,7 +348,7 @@ function CatalogCategoryGroupedTable({
                     )}
                   </td>
                 ) : null}
-                <CatalogItemCell item={item} />
+                <CatalogItemCell item={item} manage={manage} />
                 {manage ? (
                   <td className="catalog-item-table-manage-cell">
                     <CatalogManageActions item={item} manage={manage} />

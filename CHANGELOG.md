@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-19 — Manage-mode catalog item clicks open the editor
+
+### Changed
+- In Service Catalog manage view, clicking an item name (card or list) now navigates to the builder/edit page, matching the edit icon, instead of the shopper order view.
+
 ## 2026-08-19 — Improved catalog UX with order success panel and resolved sys_ids in activity feed
 
 ### Added
