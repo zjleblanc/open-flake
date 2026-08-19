@@ -310,23 +310,21 @@ export function CatalogItemBuilderPage() {
                       disabledPlaceholder="Select a category first"
                     />
                   </div>
-                  <div className="form-group catalog-form-group-pair">
+                  <div className="form-group">
                     <label htmlFor="item-price">Price</label>
-                    <div className="catalog-price-active-row">
-                      <input
-                        id="item-price"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                      />
-                      <div className="catalog-active-field">
-                        <ToggleSwitch
-                          id="item-active"
-                          checked={active}
-                          onChange={setActive}
-                          label="Active"
-                        />
-                      </div>
-                    </div>
+                    <input
+                      id="item-price"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group catalog-active-field">
+                    <ToggleSwitch
+                      id="item-active"
+                      checked={active}
+                      onChange={setActive}
+                      label="Active"
+                    />
                   </div>
                 </div>
 

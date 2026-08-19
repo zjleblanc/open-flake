@@ -423,42 +423,24 @@
   grid-column: 1 / -1;
 }
 
-/* Active lives inside the Price field's own grid cell (rather than as its
-   own grid item) so it always travels with Price and can never end up
-   wrapping alone onto its own row. The cell spans two tracks so there's
-   always room for the input and the switch without either overflowing. */
-.catalog-form-group-pair {
-  grid-column: span 2;
-}
-
-.catalog-price-active-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.catalog-price-active-row input {
-  flex: 1 1 140px;
-  min-width: 0;
-  max-width: 200px;
-}
-
-.catalog-active-field {
-  flex: 0 0 auto;
-}
-
 /* `.form-group label { display: block; }` outranks the base `.toggle-switch`
    rule here (it has an extra element-selector point), which was collapsing
    the switch's own <label> to a block box and breaking its internal
    inline-flex layout — the track then rendered at ~0 width since it's just
-   plain inline content with nothing to size against. Restore it explicitly. */
+   plain inline content with nothing to size against. Restore it explicitly,
+   and stack the "Active" label above the switch (like every other field's
+   label sits above its control) instead of inline beside it. */
 .catalog-active-field .toggle-switch {
   display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
 }
 
 .catalog-active-field .toggle-switch-label {
   white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .catalog-active-field .toggle-switch-input:checked + .toggle-switch-track {
