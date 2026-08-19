@@ -12,8 +12,9 @@ from app.auth.deps import AuthContext, authenticate_request
 from app.auth.rbac import can_read_table, get_user_permissions
 from app.db import get_db
 from app.domain.catalog.webhooks import TEMPLATE_VARIABLES, preview_payload
+from app.domain.cmdb.ci_service import schema_for_class
 from app.domain.cmdb.registry import _require_snapshot
-from app.domain.registry import TABLE_MODELS
+from app.domain.registry import TABLE_MODELS, resolve_table_name
 from app.domain.table_service import create_record, delete_record, update_record
 from app.models import (
     ItemOptionNew,
@@ -170,13 +171,33 @@ async def list_table_fields(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return column metadata for a table the user can read."""
+    """Return column metadata for a table the user can read.
+
+    `table` may be a plain physical table or a CMDB subclass (e.g.
+    `cmdb_ci_server`) -- resolve it first via `resolve_table_name()` (see
+    "Resolving table names that may be CMDB subclasses" in
+    `backend/AGENTS.md`) so subclass names return their own merged field
+    schema instead of 404ing against `TABLE_MODELS`.
+    """
     await _require_catalog_admin(db, auth)
-    model = TABLE_MODELS.get(table)
-    if not model:
+    resolved = resolve_table_name(table)
+    if not resolved:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found")
     if not await can_read_table(db, auth, table):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "No read access to this table")
+
+    physical_table, class_filter = resolved
+    if class_filter:
+        schema = schema_for_class(class_filter)
+        fields = [
+            {"name": field["name"], "type": field["type"] or "string"}
+            for field in schema["fields"]
+        ]
+        return {"result": fields}
+
+    model = TABLE_MODELS.get(physical_table)
+    if not model:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found")
     fields = []
     for col in model.__table__.columns:
         if col.name in _HIDDEN_TABLE_FIELDS:

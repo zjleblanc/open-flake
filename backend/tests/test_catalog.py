@@ -939,6 +939,39 @@ async def test_list_table_fields():
 
 
 @pytest.mark.asyncio
+async def test_list_table_fields_resolves_cmdb_subclass():
+    """A CMDB subclass name (e.g. cmdb_ci_server) is not a key in
+    TABLE_MODELS -- it must resolve through the registry instead of 404ing,
+    since reference_table now allows subclass selection."""
+    from app.api.flake import catalog_admin as admin_api
+    from app.domain.cmdb import registry
+
+    db = AsyncMock()
+    auth = _auth()
+    registry._snapshot = _table_registry_snapshot(
+        ["cmdb_ci", "incident"], cmdb_subclasses=["cmdb_ci_server"]
+    )
+
+    try:
+        with (
+            patch(
+                "app.api.flake.catalog_admin._require_catalog_admin",
+                new=AsyncMock(),
+            ),
+            patch(
+                "app.api.flake.catalog_admin.can_read_table",
+                new=AsyncMock(return_value=True),
+            ),
+        ):
+            result = await admin_api.list_table_fields("cmdb_ci_server", auth=auth, db=db)
+    finally:
+        registry.clear_cache()
+
+    assert "result" in result
+    assert isinstance(result["result"], list)
+
+
+@pytest.mark.asyncio
 async def test_list_table_fields_unknown_table():
     from app.api.flake import catalog_admin as admin_api
 

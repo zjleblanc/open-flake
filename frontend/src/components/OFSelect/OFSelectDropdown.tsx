@@ -89,7 +89,12 @@ export const OFSelectDropdown = forwardRef<HTMLDivElement, OFSelectDropdownProps
                     {isSelected ? <CheckIcon /> : null}
                   </span>
                 ) : null}
-                <span className="of-select-option-label">{option.label}</span>
+                <span className="of-select-option-text">
+                  <span className="of-select-option-label">{option.label}</span>
+                  {option.subLabel ? (
+                    <span className="of-select-option-sublabel">{option.subLabel}</span>
+                  ) : null}
+                </span>
                 {!multiple && isSelected ? (
                   <span className="of-select-option-check" aria-hidden="true">
                     <CheckIcon />

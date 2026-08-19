@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type CatalogVariable } from '../api/client';
 import { Portal } from './Portal';
 import { OFSelect } from './OFSelect';
-import { TableTreeSelect } from './TableTreeSelect';
+import { TableSelect } from './TableSelect';
 import { FieldTooltip } from './FieldTooltip';
 import { ReferenceFilterBuilder } from './ReferenceFilterBuilder';
 import { parseFilterRows, serializeFilterRows, type FilterRow } from './filterBuilderUtils';
@@ -289,7 +289,7 @@ export function CatalogVariablePopover({
                 <>
                   <div className="form-group catalog-form-span">
                     <label htmlFor="popover-var-ref-table">Reference Table</label>
-                    <TableTreeSelect
+                    <TableSelect
                       id="popover-var-ref-table"
                       tables={tables}
                       value={form.reference_table}

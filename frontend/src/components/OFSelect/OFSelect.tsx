@@ -16,6 +16,9 @@ export interface OFSelectOption {
   value: string;
   label: string;
   disabled?: boolean;
+  /** Optional secondary line rendered under the label in the dropdown (not
+   * shown in the closed trigger), e.g. a technical class name. */
+  subLabel?: string;
 }
 
 export type OFSelectSize = 'sm' | 'md' | 'lg';

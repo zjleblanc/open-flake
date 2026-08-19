@@ -4,7 +4,7 @@ import { api, type TableImportWarning, type TableRegistryEntry } from '../api/cl
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { TableTreeSelect } from '../components/TableTreeSelect';
+import { TableSelect } from '../components/TableSelect';
 import { DeleteIcon, PlusCircleIcon } from '../components/DetailIcons';
 import './AdminTablesPage.css';
 import '../pages/CatalogPages.css';
@@ -473,7 +473,7 @@ export function AdminTablesPage() {
                     {newFieldForm.type === 'reference' ? (
                       <div className="form-group">
                         <label htmlFor="new-field-reference">Reference Table</label>
-                        <TableTreeSelect
+                        <TableSelect
                           id="new-field-reference"
                           tables={rows}
                           value={newFieldForm.reference}

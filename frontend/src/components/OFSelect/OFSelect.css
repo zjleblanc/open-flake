@@ -290,10 +290,24 @@
   background: transparent;
 }
 
-.of-select-option-label {
+.of-select-option-text {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
+  gap: 0.05rem;
+}
+
+.of-select-option-label {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.of-select-option-sublabel {
+  overflow: hidden;
+  color: var(--of-text-muted);
+  font-size: 0.75em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

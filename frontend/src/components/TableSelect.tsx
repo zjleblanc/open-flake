@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { OFSelect } from './OFSelect';
 import type { TableInfo } from '../api/client';
-import { buildTableTreeOptions } from '../utils/tableTree';
+import { buildTableSelectOptions } from '../utils/tableOptions';
 
-interface TableTreeSelectProps {
+interface TableSelectProps {
   id?: string;
   tables: TableInfo[];
   value: string;
@@ -12,19 +12,19 @@ interface TableTreeSelectProps {
   disabled?: boolean;
 }
 
-/** Tree-aware table picker: shows physical tables and the full CMDB class
- * hierarchy (subclasses indented under their parent) in one searchable
- * dropdown, so users can reference `cmdb_ci_server` directly instead of
- * only the top-level `cmdb_ci` table. */
-export function TableTreeSelect({
+/** Plain, searchable table picker covering physical tables and CMDB
+ * subclasses alike. Each option shows the technical class name (e.g.
+ * `cmdb_ci_server`) as subtext under its label, so a subclass is still
+ * identifiable without grouping options into a hierarchy. */
+export function TableSelect({
   id,
   tables,
   value,
   onChange,
   placeholder = 'Select a table…',
   disabled = false,
-}: TableTreeSelectProps) {
-  const options = useMemo(() => buildTableTreeOptions(tables), [tables]);
+}: TableSelectProps) {
+  const options = useMemo(() => buildTableSelectOptions(tables), [tables]);
   return (
     <OFSelect
       id={id}

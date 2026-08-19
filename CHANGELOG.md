@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-08-18 — Simplified the reference-table picker to a flat select
+
+### Changed
+- Replaced the indented, hierarchy-grouped table picker (`TableTreeSelect`) used for "Reference Table" fields (catalog variables and admin table field definitions) with a plain, alphabetically-sorted `TableSelect`. Each option now shows its technical class name (e.g. `cmdb_ci_server`) as subtext under the label instead of relying on tree indentation to convey the CMDB hierarchy.
+- `OFSelect` options gained an optional `subLabel`, rendered as a smaller secondary line under the option label in the dropdown.
+
+## 2026-08-18 — Fixed reference-table field lookup for CMDB subclasses
+
+### Fixed
+- `GET /api/flake/catalog/admin/tables/{table}/fields` 404'd for any CMDB subclass (e.g. `cmdb_ci_server`) because it looked the name up directly in the static physical-table map instead of resolving it through the registry first. Catalog variables whose reference table is a subclass can now load their field list for the reference-filter and display-field pickers.
+
 ## 2026-08-18 — Shipped base CMDB hierarchy and HA-safe startup seeding
 
 ### Added
