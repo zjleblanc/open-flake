@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -70,7 +71,8 @@ async def get_user_permissions(db: AsyncSession, user_sys_id: str) -> set[str]:
         .where(SysUserGrMember.user_sys_id == user_sys_id)
     )
     perms: set[str] = set()
-    for perm_list in result.scalars().all():
+    permission_lists: Sequence[Any] = result.scalars().all()
+    for perm_list in permission_lists:
         if isinstance(perm_list, list):
             perms.update(perm_list)
     return perms

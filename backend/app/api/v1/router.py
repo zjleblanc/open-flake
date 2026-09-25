@@ -235,7 +235,9 @@ async def _cascade_children_preview(
         ).scalar() or 0
         if not count:
             continue
-        rows = (await db.execute(select(model).where(condition).limit(5))).scalars().all()
+        rows: Sequence[Any] = (
+            (await db.execute(select(model).where(condition).limit(5))).scalars().all()
+        )
         previews.append(
             {
                 "table": child_table,
@@ -323,7 +325,9 @@ async def _loose_references_preview(
         column = getattr(model, ref_field, None)
         if column is None:
             continue
-        rows = (await db.execute(select(model).where(column == sys_id).limit(50))).scalars().all()
+        rows: Sequence[Any] = (
+            (await db.execute(select(model).where(column == sys_id).limit(50))).scalars().all()
+        )
         if not rows:
             continue
         display_field = DISPLAY_FIELD_BY_TABLE.get(ref_table_name)

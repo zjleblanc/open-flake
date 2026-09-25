@@ -26,6 +26,7 @@ from app.models import (
     SysAttachment,
     SysComment,
     SysGroupRole,
+    SysOAuthTokenCache,
     SysRole,
     SysSecret,
     SysUser,
@@ -54,6 +55,7 @@ TABLE_MODELS: dict[str, type[Any]] = {
     "sc_cat_item_webhook": ScCatItemWebhook,
     "sc_webhook_log": ScWebhookLog,
     "sys_secret": SysSecret,
+    "sys_oauth_token_cache": SysOAuthTokenCache,
     "cmdb_rel_type": CmdbRelType,
     "cmdb_rel_ci": CmdbRelCi,
     "std_change_producer_version": StdChangeProducerVersion,
@@ -288,6 +290,7 @@ REFERENCE_FIELDS: dict[str, set[str]] = {
         "sc_req_item",
     },
     "sys_secret": set(),
+    "sys_oauth_token_cache": {"webhook_id"},
     "sys_user": {"manager"},
     "sys_user_group": {"owner", "manager", "parent"},
     "sys_user_grmember": {"user_sys_id", "group_sys_id"},
@@ -363,6 +366,7 @@ PARENT_CHILD_RELATIONS: dict[str, list[tuple[str, str]]] = {
     "sc_webhook": [
         ("sc_cat_item_webhook", "webhook"),
         ("sc_webhook_log", "webhook_id"),
+        ("sys_oauth_token_cache", "webhook_id"),
     ],
     "cmdb_ci": [("cmdb_rel_ci", "parent"), ("cmdb_rel_ci", "child")],
 }

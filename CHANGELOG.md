@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-25 — Webhooks can authenticate via OAuth 2.0 client credentials
+
+### Added
+- Outbound webhooks (`sc_webhook`) support OAuth 2.0 client_credentials authentication: configure a token URL, client ID, and a reference to a stored secret holding the client secret (plus an optional scope), and OpenFlake automatically fetches a bearer token and injects it as `Authorization: Bearer <token>` on delivery.
+- New `sys_oauth_token_cache` table caches the acquired token per webhook and only re-fetches once it's expired (with a 30-second buffer), instead of requesting a new token on every delivery.
+- Webhook create and detail admin pages gained an "Authentication" selector with the OAuth 2.0 fields (Token URL, Client ID, a Client Secret picker sourced from the Secrets store, and Scope), plus an "Auth" column on the webhooks list.
+
 ## 2026-08-19 — Manage-mode catalog item clicks open the editor
 
 ### Changed

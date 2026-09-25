@@ -626,6 +626,11 @@ export type CatalogWebhook = {
   description?: string;
   active: boolean;
   has_secret?: boolean;
+  auth_type?: string;
+  oauth_token_url?: string;
+  oauth_client_id?: string;
+  oauth_client_secret?: string;
+  oauth_scope?: string;
 };
 
 export type IntegrationSecret = {

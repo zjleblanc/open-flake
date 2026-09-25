@@ -4,11 +4,30 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
+import { FieldTooltip } from '../components/FieldTooltip';
 import { OFSelect } from '../components/OFSelect';
 import './CatalogPages.css';
 
-type CreateFormState = { name: string; url: string; method: string };
-const EMPTY_FORM: CreateFormState = { name: '', url: '', method: 'POST' };
+type CreateFormState = {
+  name: string;
+  url: string;
+  method: string;
+  auth_type: string;
+  oauth_token_url: string;
+  oauth_client_id: string;
+  oauth_client_secret: string;
+  oauth_scope: string;
+};
+const EMPTY_FORM: CreateFormState = {
+  name: '',
+  url: '',
+  method: 'POST',
+  auth_type: 'none',
+  oauth_token_url: '',
+  oauth_client_id: '',
+  oauth_client_secret: '',
+  oauth_scope: '',
+};
 
 export function CatalogWebhooksPage() {
   const queryClient = useQueryClient();
@@ -27,14 +46,29 @@ export function CatalogWebhooksPage() {
     queryFn: () => api.adminListWebhooks(),
   });
 
+  const secretsQuery = useQuery({
+    queryKey: ['integration-secrets'],
+    queryFn: () => api.listSecrets(),
+    enabled: canReadSecrets && showCreate && form.auth_type === 'oauth2_client_credentials',
+  });
+
   const createMutation = useMutation({
-    mutationFn: () =>
-      api.adminCreateWebhook({
+    mutationFn: () => {
+      const payload: Record<string, unknown> = {
         name: form.name,
         url: form.url,
         method: form.method,
         active: true,
-      }),
+        auth_type: form.auth_type,
+      };
+      if (form.auth_type === 'oauth2_client_credentials') {
+        payload.oauth_token_url = form.oauth_token_url || undefined;
+        payload.oauth_client_id = form.oauth_client_id || undefined;
+        payload.oauth_client_secret = form.oauth_client_secret || undefined;
+        payload.oauth_scope = form.oauth_scope || undefined;
+      }
+      return api.adminCreateWebhook(payload);
+    },
     onSuccess: () => {
       setForm(EMPTY_FORM);
       setShowCreate(false);
@@ -139,6 +173,90 @@ export function CatalogWebhooksPage() {
                 />
               </div>
             </div>
+            <div className="catalog-form-grid">
+              <div className="form-group">
+                <OFSelect
+                  id="wh-auth-type"
+                  floatingLabel="Authentication"
+                  value={form.auth_type}
+                  onChange={(value) => setForm({ ...form, auth_type: value as string })}
+                  options={[
+                    { value: 'none', label: 'None' },
+                    { value: 'oauth2_client_credentials', label: 'OAuth 2.0 Client Credentials' },
+                  ]}
+                />
+              </div>
+            </div>
+            {form.auth_type === 'oauth2_client_credentials' && (
+              <div className="catalog-form-grid">
+                <div className="form-group catalog-form-span">
+                  <span className="field-label-with-tooltip">
+                    <label htmlFor="wh-c-oauth-token-url">Token URL</label>
+                    <FieldTooltip ariaLabel="OAuth token URL info">
+                      The external OAuth token endpoint (e.g. https://aap.example.com/api/o/token/).
+                    </FieldTooltip>
+                  </span>
+                  <input
+                    id="wh-c-oauth-token-url"
+                    value={form.oauth_token_url}
+                    onChange={(e) => setForm({ ...form, oauth_token_url: e.target.value })}
+                    placeholder="https://example.com/oauth/token"
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="wh-c-oauth-client-id">Client ID</label>
+                  <input
+                    id="wh-c-oauth-client-id"
+                    value={form.oauth_client_id}
+                    onChange={(e) => setForm({ ...form, oauth_client_id: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <span className="field-label-with-tooltip">
+                    <label htmlFor="wh-c-oauth-client-secret">Client Secret</label>
+                    <FieldTooltip ariaLabel="OAuth client secret info">
+                      Select the secret that holds the OAuth client secret value.
+                    </FieldTooltip>
+                  </span>
+                  {canReadSecrets && (secretsQuery.data?.result || []).length ? (
+                    <OFSelect
+                      id="wh-c-oauth-client-secret"
+                      value={form.oauth_client_secret}
+                      onChange={(value) =>
+                        setForm({ ...form, oauth_client_secret: value as string })
+                      }
+                      options={[
+                        { value: '', label: '(select a secret)' },
+                        ...(secretsQuery.data?.result || []).map((s) => ({
+                          value: s.name,
+                          label: s.name,
+                        })),
+                      ]}
+                    />
+                  ) : (
+                    <input
+                      id="wh-c-oauth-client-secret"
+                      value={form.oauth_client_secret}
+                      onChange={(e) => setForm({ ...form, oauth_client_secret: e.target.value })}
+                      placeholder="Secret name"
+                    />
+                  )}
+                </div>
+                <div className="form-group">
+                  <span className="field-label-with-tooltip">
+                    <label htmlFor="wh-c-oauth-scope">Scope</label>
+                    <FieldTooltip ariaLabel="OAuth scope info">
+                      Optional OAuth scope string. Leave blank if not required.
+                    </FieldTooltip>
+                  </span>
+                  <input
+                    id="wh-c-oauth-scope"
+                    value={form.oauth_scope}
+                    onChange={(e) => setForm({ ...form, oauth_scope: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
           </form>
         </div>
       ) : null}
@@ -150,6 +268,7 @@ export function CatalogWebhooksPage() {
               <th>Name</th>
               <th>URL</th>
               <th>Method</th>
+              <th>Auth</th>
               <th>Headers</th>
               <th>Active</th>
             </tr>
@@ -157,7 +276,7 @@ export function CatalogWebhooksPage() {
           <tbody>
             {webhooks.length === 0 ? (
               <tr>
-                <td colSpan={5} className="empty-state">
+                <td colSpan={6} className="empty-state">
                   No webhooks yet
                 </td>
               </tr>
@@ -178,6 +297,7 @@ export function CatalogWebhooksPage() {
                       <code className="code-inline">{webhook.url}</code>
                     </td>
                     <td>{webhook.method}</td>
+                    <td>{webhook.auth_type === 'oauth2_client_credentials' ? 'OAuth 2.0' : '—'}</td>
                     <td>{headerCount ? `${headerCount}` : '—'}</td>
                     <td>{webhook.active ? 'Yes' : 'No'}</td>
                   </tr>

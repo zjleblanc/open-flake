@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 from collections import defaultdict
+from datetime import UTC, datetime, timedelta
 from string import Template
 from typing import Any
 
@@ -16,9 +17,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import db as db_module
 from app.domain.registry import TABLE_MODELS, resolve_table_name
-from app.domain.secrets import SecretResolutionError, resolve_headers
+from app.domain.secrets import SecretResolutionError, load_secret_values, resolve_headers
 from app.events.bus import RecordEvent, subscribe
-from app.models import ItemOptionNew, ScCatItemWebhook, ScItemOption, ScWebhook, ScWebhookLog
+from app.models import (
+    ItemOptionNew,
+    ScCatItemWebhook,
+    ScItemOption,
+    ScWebhook,
+    ScWebhookLog,
+    SysOAuthTokenCache,
+)
 from app.utils.ids import new_sys_id
 
 logger = logging.getLogger("openflake.catalog.webhooks")
@@ -289,6 +297,77 @@ async def _load_variables_for_ritm(session: AsyncSession, ritm_sys_id: str) -> d
     return resolved
 
 
+async def _resolve_oauth_token(
+    session: AsyncSession,
+    webhook: ScWebhook,
+    client: httpx.AsyncClient,
+) -> str | None:
+    """Acquire a bearer token via OAuth client_credentials, using cache when valid.
+
+    Returns the access token string, or ``None`` if the webhook does not use
+    OAuth.  Raises ``SecretResolutionError`` on config issues (missing secret
+    name, inactive secret) and ``httpx.HTTPStatusError`` on token endpoint
+    failures.
+    """
+    if webhook.auth_type != "oauth2_client_credentials":
+        return None
+
+    if not webhook.oauth_token_url:
+        raise SecretResolutionError("oauth_token_url is not configured on this webhook")
+
+    # 1. Check cache
+    cached = await session.execute(
+        select(SysOAuthTokenCache).where(SysOAuthTokenCache.webhook_id == webhook.sys_id)
+    )
+    token_row: SysOAuthTokenCache | None = cached.scalar_one_or_none()
+    if token_row and token_row.expires_at > datetime.now(UTC):
+        return token_row.access_token
+
+    # 2. Resolve client_secret from sys_secret by name
+    secret_name = webhook.oauth_client_secret
+    if not secret_name:
+        raise SecretResolutionError("oauth_client_secret name not configured on webhook")
+    values = await load_secret_values(session, [secret_name])
+    if secret_name not in values:
+        raise SecretResolutionError(f"Secret '{secret_name}' not found or inactive")
+
+    # 3. Request new token from external endpoint
+    form_data: dict[str, str] = {
+        "grant_type": "client_credentials",
+        "client_id": webhook.oauth_client_id or "",
+        "client_secret": values[secret_name],
+    }
+    if webhook.oauth_scope:
+        form_data["scope"] = webhook.oauth_scope
+
+    resp = await client.post(webhook.oauth_token_url, data=form_data)
+    resp.raise_for_status()
+    token_data: dict[str, Any] = resp.json()
+
+    access_token: str = token_data["access_token"]
+    expires_in = int(token_data.get("expires_in", 3600))
+    token_type = str(token_data.get("token_type", "Bearer"))
+
+    # 4. Upsert cache (subtract 30s buffer to avoid edge-case expiry races)
+    expires_at = datetime.now(UTC) + timedelta(seconds=max(expires_in - 30, 0))
+    if token_row:
+        token_row.access_token = access_token
+        token_row.token_type = token_type
+        token_row.expires_at = expires_at
+    else:
+        session.add(
+            SysOAuthTokenCache(
+                sys_id=new_sys_id(),
+                webhook_id=webhook.sys_id,
+                access_token=access_token,
+                token_type=token_type,
+                expires_at=expires_at,
+            )
+        )
+    await session.flush()
+    return access_token
+
+
 async def deliver_webhooks_for_ritm(
     session: AsyncSession,
     ritm: dict[str, Any],
@@ -342,6 +421,10 @@ async def deliver_webhooks_for_ritm(
                 if signature:
                     headers["X-OpenFlake-Signature"] = signature
 
+                bearer = await _resolve_oauth_token(session, webhook, client)
+                if bearer:
+                    headers["Authorization"] = f"Bearer {bearer}"
+
                 response = await client.request(
                     webhook.method.upper(),
                     webhook.url,
@@ -357,6 +440,13 @@ async def deliver_webhooks_for_ritm(
                 error_message = str(exc)
                 logger.warning(
                     "Webhook %s skipped: secret resolution failed: %s",
+                    webhook.sys_id,
+                    exc,
+                )
+            except httpx.HTTPStatusError as exc:
+                error_message = f"OAuth token request failed: {exc.response.status_code}"
+                logger.warning(
+                    "Webhook %s skipped: OAuth token fetch failed: %s",
                     webhook.sys_id,
                     exc,
                 )

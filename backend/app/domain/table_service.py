@@ -374,7 +374,7 @@ async def list_records(
 
     query = query.limit(limit).offset(offset)
     result = await db.execute(query)
-    records = result.scalars().all()
+    records: Sequence[Any] = result.scalars().all()
 
     if auth and table in PLATFORM_TABLES:
         records = await _filter_platform_list(db, auth, table, records)
@@ -709,7 +709,9 @@ async def clear_loose_references(
         column = getattr(model, ref_col, None)
         if column is None:
             continue
-        rows = (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        rows: Sequence[Any] = (
+            (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        )
         if not rows:
             continue
         col_def = model.__table__.columns.get(ref_col)
@@ -740,7 +742,9 @@ async def cascade_loose_references(
         column = getattr(model, ref_col, None)
         if column is None:
             continue
-        rows = (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        rows: Sequence[Any] = (
+            (await db.execute(select(model).where(column == sys_id))).scalars().all()
+        )
         for row in rows:
             await delete_record(db, ref_table_name, row.sys_id, auth=auth)
 

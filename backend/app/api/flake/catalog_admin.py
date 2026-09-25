@@ -91,7 +91,7 @@ def _condition_dict(condition: ItemOptionNewCondition) -> dict[str, Any]:
 
 
 def _webhook_dict(webhook: ScWebhook, *, include_secret: bool = False) -> dict[str, Any]:
-    data = {
+    data: dict[str, Any] = {
         "sys_id": webhook.sys_id,
         "name": webhook.name,
         "url": webhook.url,
@@ -100,6 +100,14 @@ def _webhook_dict(webhook: ScWebhook, *, include_secret: bool = False) -> dict[s
         "description": webhook.description or "",
         "active": bool(webhook.active),
         "has_secret": bool(webhook.secret),
+        "auth_type": webhook.auth_type or "none",
+        "oauth_token_url": webhook.oauth_token_url or "",
+        "oauth_client_id": webhook.oauth_client_id or "",
+        # oauth_client_secret stores the *name* of a sys_secret entry, not the
+        # raw credential value -- same visibility as {{secret:name}} refs in
+        # `headers`, so it's safe (and necessary for the UI) to round-trip.
+        "oauth_client_secret": webhook.oauth_client_secret or "",
+        "oauth_scope": webhook.oauth_scope or "",
     }
     if include_secret:
         data["secret"] = webhook.secret or ""
@@ -539,6 +547,11 @@ async def create_global_webhook(
             "secret": payload.get("secret") or None,
             "description": payload.get("description") or None,
             "active": bool(payload.get("active", True)),
+            "auth_type": payload.get("auth_type") or "none",
+            "oauth_token_url": payload.get("oauth_token_url") or None,
+            "oauth_client_id": payload.get("oauth_client_id") or None,
+            "oauth_client_secret": payload.get("oauth_client_secret") or None,
+            "oauth_scope": payload.get("oauth_scope") or None,
         },
         auth.user_sys_id,
     )

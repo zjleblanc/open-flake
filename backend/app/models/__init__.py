@@ -694,6 +694,11 @@ class ScWebhook(Base, LifecycleMixin):
     secret: Mapped[str | None] = mapped_column(String(256), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auth_type: Mapped[str] = mapped_column(String(32), default="none", server_default="none")
+    oauth_token_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    oauth_client_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    oauth_client_secret: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    oauth_scope: Mapped[str | None] = mapped_column(String(512), nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
 
 
@@ -731,3 +736,20 @@ class ScWebhookLog(Base, LifecycleMixin):
     success: Mapped[bool] = mapped_column(Boolean, default=False)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     other: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class SysOAuthTokenCache(Base):
+    """Cached OAuth tokens acquired via client_credentials for outbound webhooks."""
+
+    __tablename__ = "sys_oauth_token_cache"
+
+    sys_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    webhook_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey("sc_webhook.sys_id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+    )
+    access_token: Mapped[str] = mapped_column(Text)
+    token_type: Mapped[str] = mapped_column(String(32), default="Bearer")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

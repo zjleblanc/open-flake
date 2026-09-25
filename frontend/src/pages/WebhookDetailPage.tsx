@@ -38,6 +38,11 @@ type WebhookFormState = {
   secret: string;
   description: string;
   headerRows: HeaderRow[];
+  auth_type: string;
+  oauth_token_url: string;
+  oauth_client_id: string;
+  oauth_client_secret: string;
+  oauth_scope: string;
 };
 
 function formFromWebhook(webhook: CatalogWebhook): WebhookFormState {
@@ -48,6 +53,11 @@ function formFromWebhook(webhook: CatalogWebhook): WebhookFormState {
     secret: '',
     description: webhook.description || '',
     headerRows: rowsFromHeaders(webhook.headers || {}),
+    auth_type: webhook.auth_type || 'none',
+    oauth_token_url: webhook.oauth_token_url || '',
+    oauth_client_id: webhook.oauth_client_id || '',
+    oauth_client_secret: webhook.oauth_client_secret || '',
+    oauth_scope: webhook.oauth_scope || '',
   };
 }
 
@@ -105,6 +115,15 @@ export function WebhookDetailPage() {
       if (!headersEqual(form.headerRows, baseline.headerRows)) {
         patch.headers = headersFromRows(form.headerRows);
       }
+      if (form.auth_type !== baseline.auth_type) patch.auth_type = form.auth_type;
+      if (form.oauth_token_url !== baseline.oauth_token_url)
+        patch.oauth_token_url = form.oauth_token_url || undefined;
+      if (form.oauth_client_id !== baseline.oauth_client_id)
+        patch.oauth_client_id = form.oauth_client_id || undefined;
+      if (form.oauth_client_secret !== baseline.oauth_client_secret)
+        patch.oauth_client_secret = form.oauth_client_secret || null;
+      if (form.oauth_scope !== baseline.oauth_scope)
+        patch.oauth_scope = form.oauth_scope || undefined;
       return api.adminUpdateWebhook(sysId!, patch);
     },
     onSuccess: () => {
@@ -169,7 +188,12 @@ export function WebhookDetailPage() {
     form.method !== baseline!.method ||
     form.description !== baseline!.description ||
     form.secret.length > 0 ||
-    !headersEqual(form.headerRows, baseline!.headerRows);
+    !headersEqual(form.headerRows, baseline!.headerRows) ||
+    form.auth_type !== baseline!.auth_type ||
+    form.oauth_token_url !== baseline!.oauth_token_url ||
+    form.oauth_client_id !== baseline!.oauth_client_id ||
+    form.oauth_client_secret !== baseline!.oauth_client_secret ||
+    form.oauth_scope !== baseline!.oauth_scope;
 
   function updateHeaderRow(index: number, field: keyof HeaderRow, value: string) {
     setForm((prev) =>
@@ -284,6 +308,89 @@ export function WebhookDetailPage() {
               />
             </div>
           </div>
+
+          <div className="catalog-form-grid">
+            <div className="form-group">
+              <OFSelect
+                id="wh-auth-type"
+                floatingLabel="Authentication"
+                value={form.auth_type}
+                onChange={(value) => setForm({ ...form, auth_type: value as string })}
+                options={[
+                  { value: 'none', label: 'None' },
+                  { value: 'oauth2_client_credentials', label: 'OAuth 2.0 Client Credentials' },
+                ]}
+              />
+            </div>
+          </div>
+
+          {form.auth_type === 'oauth2_client_credentials' && (
+            <div className="catalog-form-grid">
+              <div className="form-group catalog-form-span">
+                <span className="field-label-with-tooltip">
+                  <label htmlFor="wh-oauth-token-url">Token URL</label>
+                  <FieldTooltip ariaLabel="OAuth token URL info">
+                    The external OAuth token endpoint (e.g. https://aap.example.com/api/o/token/).
+                  </FieldTooltip>
+                </span>
+                <input
+                  id="wh-oauth-token-url"
+                  value={form.oauth_token_url}
+                  onChange={(e) => setForm({ ...form, oauth_token_url: e.target.value })}
+                  placeholder="https://example.com/oauth/token"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="wh-oauth-client-id">Client ID</label>
+                <input
+                  id="wh-oauth-client-id"
+                  value={form.oauth_client_id}
+                  onChange={(e) => setForm({ ...form, oauth_client_id: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <span className="field-label-with-tooltip">
+                  <label htmlFor="wh-oauth-client-secret">Client Secret</label>
+                  <FieldTooltip ariaLabel="OAuth client secret info">
+                    Select the secret that holds the OAuth client secret value. The credential is
+                    stored securely in the Secrets store and resolved at delivery time.
+                  </FieldTooltip>
+                </span>
+                {canReadSecrets && availableSecrets.length ? (
+                  <OFSelect
+                    id="wh-oauth-client-secret"
+                    value={form.oauth_client_secret}
+                    onChange={(value) => setForm({ ...form, oauth_client_secret: value as string })}
+                    options={[
+                      { value: '', label: '(none)' },
+                      ...availableSecrets.map((s) => ({ value: s.name, label: s.name })),
+                    ]}
+                  />
+                ) : (
+                  <input
+                    id="wh-oauth-client-secret"
+                    value={form.oauth_client_secret}
+                    onChange={(e) => setForm({ ...form, oauth_client_secret: e.target.value })}
+                    placeholder="Secret name"
+                  />
+                )}
+              </div>
+              <div className="form-group">
+                <span className="field-label-with-tooltip">
+                  <label htmlFor="wh-oauth-scope">Scope</label>
+                  <FieldTooltip ariaLabel="OAuth scope info">
+                    Optional OAuth scope string (e.g. &quot;read write&quot;). Leave blank if the
+                    token endpoint does not require a scope.
+                  </FieldTooltip>
+                </span>
+                <input
+                  id="wh-oauth-scope"
+                  value={form.oauth_scope}
+                  onChange={(e) => setForm({ ...form, oauth_scope: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="form-group">
             <span className="field-label-with-tooltip">

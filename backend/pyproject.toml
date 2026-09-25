@@ -78,6 +78,7 @@ select = [
 "**/app/startup.py" = ["S106"] # client_secret kwarg name false-positives as hardcoded password
 "**/tests/**" = [
     "S101",   # assert is fine in tests
+    "S105",   # test assertions compare against hardcoded token/secret literals
     "B023",   # closures over loop vars are intentional in test mocks
     "S106",   # hardcoded password args are test fixtures, not real secrets
     "S108",   # /tmp paths are fine in isolated test fixtures
