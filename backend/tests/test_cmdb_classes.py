@@ -200,6 +200,18 @@ def test_split_payload_registered_class():
     assert attributes["kernel_release"] == "6.1"
 
 
+def test_split_payload_coerces_integer_promoted_column_to_string():
+    """Regression test: ServiceNow-compatible clients commonly send choice-list
+    fields like `install_status` as a JSON integer even though it's a string
+    column on cmdb_ci."""
+    columns, attributes = split_payload(
+        "cmdb_ci_linux_server",
+        {"name": "host1", "install_status": 1},
+    )
+    assert columns["install_status"] == "1"
+    assert attributes == {}
+
+
 def test_split_payload_accepts_unknown_snake_case_field_for_registered_class():
     columns, attributes = split_payload("cmdb_ci_linux_server", {"cpus": "4"})
     assert columns == {}

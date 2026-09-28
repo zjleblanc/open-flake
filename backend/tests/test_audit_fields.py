@@ -8,7 +8,7 @@ from app.domain.table_service import (
     create_record,
     update_record,
 )
-from app.models import CmdbCi, Incident, LifecycleMixin, SysAudit, SysComment, SysUser
+from app.models import CmdbCi, Incident, LifecycleMixin, ScTask, SysAudit, SysComment, SysUser
 
 
 @pytest.mark.asyncio
@@ -91,6 +91,38 @@ async def test_create_record_sets_username_audit_fields():
     assert added[0].owner == "abc123"
     assert result["sys_created_by"] == "admin"
     assert result["sys_updated_by"] == "admin"
+
+
+@pytest.mark.asyncio
+async def test_create_record_coerces_integer_state_for_sc_task():
+    """Regression test: ServiceNow-compatible clients (e.g. Ansible's
+    servicenow.itsm modules) commonly send choice-list fields like `state`
+    as a JSON integer even though the column is a string. This must be
+    accepted rather than surfacing an opaque 500 from the DB driver."""
+    db = AsyncMock()
+    db.get = AsyncMock(return_value=None)
+    db.flush = AsyncMock()
+
+    added = []
+    db.add = lambda obj: added.append(obj)
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr("app.domain.table_service.TABLE_MODELS", {"sc_task": ScTask})
+        mp.setattr(
+            "app.domain.table_service.next_number",
+            AsyncMock(return_value="SCTASK0000001"),
+        )
+        mp.setattr("app.domain.table_service.emit", AsyncMock())
+
+        result = await create_record(
+            db,
+            "sc_task",
+            {"short_description": "Disk resize for ao-demo-1", "state": 2},
+        )
+
+    assert len(added) == 1
+    assert added[0].state == "2"
+    assert result["state"] == "2"
 
 
 @pytest.mark.asyncio

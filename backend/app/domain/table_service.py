@@ -2,8 +2,8 @@ import json
 from collections.abc import Sequence
 from typing import Any
 
-from sqlalchemy import Boolean, func, select
 from sqlalchemy import delete as sa_delete
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.flake.attachment import (
@@ -21,6 +21,7 @@ from app.auth.rbac import (
 )
 from app.config import get_settings
 from app.domain.errors import validate_other_field_keys
+from app.domain.field_coercion import coerce_scalar_for_column
 from app.domain.registry import (
     DISPLAY_FIELD_BY_TABLE,
     NUMBER_PREFIXES,
@@ -243,11 +244,8 @@ def _flatten_payload(payload: dict[str, Any], table: str) -> dict[str, Any]:
             continue
         if key in known_cols and key != "other":
             col = TABLE_MODELS[table].__table__.columns.get(key)
-            if col is not None and isinstance(col.type, Boolean):
-                if isinstance(value, str):
-                    value = value.strip().lower() in {"true", "1", "yes"}
-                else:
-                    value = bool(value)
+            if col is not None:
+                value = coerce_scalar_for_column(value, col)
             result[key] = value
         elif key not in known_cols:
             other[key] = value

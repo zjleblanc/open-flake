@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-28 — Accept integer/boolean values for string choice-list fields
+
+### Fixed
+- Table API and CMDB CI create/update requests now coerce JSON integers and booleans to strings for `String`/`Text` columns (e.g. `state`, `active`, `install_status`), matching how ServiceNow-compatible clients like Ansible's `servicenow.itsm` modules commonly send choice-list fields. Previously, sending `"state": 2` instead of `"state": "2"` caused an opaque `500 Internal Server Error` from the database driver instead of being accepted.
+
 ## 2026-09-25 — Webhooks can authenticate via OAuth 2.0 client credentials
 
 ### Added

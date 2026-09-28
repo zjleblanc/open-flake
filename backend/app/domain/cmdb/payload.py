@@ -7,6 +7,7 @@ from typing import Any
 from app.domain.cmdb.constants import PROMOTED_COLUMNS, SYSTEM_FIELDS
 from app.domain.cmdb.registry import get_merged_fields, is_registered
 from app.domain.errors import validate_other_field_keys
+from app.domain.field_coercion import coerce_scalar_for_column
 from app.models import CmdbCi
 
 
@@ -34,6 +35,9 @@ def split_payload(
         if key in {"attributes", "other"}:
             continue
         value = _unwrap(raw_value)
+        col = CmdbCi.__table__.columns.get(key)
+        if col is not None:
+            value = coerce_scalar_for_column(value, col)
         if key in SYSTEM_FIELDS:
             if key not in {"sys_class_path", "attributes"}:
                 columns[key] = value
