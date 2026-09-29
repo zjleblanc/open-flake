@@ -16,7 +16,9 @@ export type RefTarget =
   | 'cmdb_ci'
   | 'incident'
   | 'problem'
+  | 'problem_task'
   | 'change_request'
+  | 'std_change_producer_version'
   | 'sc_request'
   | 'sc_req_item'
   | 'sc_cat_item'
@@ -28,7 +30,9 @@ const REF_TARGET_BASE_PATH: Record<RefTarget, string> = {
   cmdb_ci: '/configuration-items',
   incident: '/incidents',
   problem: '/problems',
+  problem_task: '/problem-tasks',
   change_request: '/changes',
+  std_change_producer_version: '/change-templates',
   sc_request: '/requests',
   sc_req_item: '/requested-items',
   sc_cat_item: '/catalog',

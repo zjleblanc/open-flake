@@ -757,6 +757,13 @@ export const TABLE_STATE_LABELS: Record<string, Record<string, string>> = {
     '4': 'Closed Incomplete',
     '7': 'Closed Skipped',
   },
+  'problem-tasks': {
+    '1': 'Open',
+    '2': 'In Progress',
+    '3': 'Closed Complete',
+    '4': 'Closed Incomplete',
+    '7': 'Closed Skipped',
+  },
 };
 
 /** The full set of state options valid for a given resource's state field. */
@@ -786,7 +793,7 @@ export function stateBadge(state: string, resource?: string): string {
     if (state === '3' || state === '4') return 'badge-closed';
     return 'badge-new';
   }
-  if (resource === 'change-tasks') {
+  if (resource === 'change-tasks' || resource === 'problem-tasks') {
     if (state === '1') return 'badge-new';
     if (state === '2') return 'badge-progress';
     if (state === '3' || state === '4' || state === '7') return 'badge-closed';

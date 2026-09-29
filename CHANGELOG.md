@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-29 — Problem Task and Change Template views, expanded column catalogs
+
+### Added
+- Problem Tasks (`/problem-tasks`) and Change Templates (`/change-templates`, backed by `std_change_producer_version`) are now real resources with their own list and detail views, closing the last two reference fields that previously pointed at a sys_id with no page (`Problem.first_reported_by_task`, `ChangeRequest.std_change_producer_version`).
+- Every list view's column catalog now offers every typed (non-JSONB) field on the underlying record, not just a curated subset — e.g. Incidents gained Opened/Resolved/Closed By, Parent Incident, Hold Reason, Close Code, Contact Type, Notify, Due Date, Business Service, Escalation, Owner, Owner Group, and the `sys_*` audit fields; Change Requests, Change Tasks, Configuration Items, Requests, Requested Items, and Catalog Tasks gained their equivalent full field sets. Long-form text fields (notes, plans, descriptions) are intentionally excluded to keep the table layout usable.
+- Additional reference-type columns (Duplicate Of, Parent Incident, Business Service, Change Request, Problem, Request, Catalog Item, Requested Item, Change Template, First Reported By Task) now resolve to a name + link instead of a raw sys_id when added to a list view.
+
 ## 2026-09-29 — User-configurable table columns
 
 ### Added

@@ -164,6 +164,7 @@ TABLE_ENDPOINTS = {
     "catalog-request-items": "sc_req_item",
     "catalog-tasks": "sc_task",
     "catalog-items": "sc_cat_item",
+    "change-templates": "std_change_producer_version",
 }
 
 
@@ -198,6 +199,7 @@ TABLE_LABELS: dict[str, str] = {
     "sc_webhook_log": "Webhook Delivery Logs",
     "record_access_grant": "Access Grants",
     "sys_comment": "Comments",
+    "std_change_producer_version": "Change Templates",
 }
 
 # (peripheral response key, model, table-name column, record-id column). The

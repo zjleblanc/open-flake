@@ -58,6 +58,9 @@ See `backend/app/domain/table_service.py` (`clear_loose_references`,
 `cascade_loose_references`, `delete_record`) and
 `backend/app/api/v1/router.py` (`cascade_preview`) for the implementation.
 
+If the referenced table has no frontend list/detail page yet, give it one too —
+see `frontend/AGENTS.md`'s "Adding a new resource type".
+
 ## Resolving table names that may be CMDB subclasses
 
 Any table name that can come from user input or config (e.g. a catalog

@@ -21,6 +21,7 @@ import { ReferenceLink } from '../components/ReferenceLink';
 import { SortableColumnHeader } from '../components/SortableColumnHeader';
 import { useServerPagination } from '../hooks/useServerPagination';
 import { useUserPreferences } from '../settings/UserPreferencesContext';
+import { formatDateValue, isDateFieldKey } from '../utils/formatDisplayValue';
 import type { RefTarget } from '../utils/referenceFields';
 import '../components/Layout.css';
 
@@ -41,6 +42,16 @@ const REFERENCE_COLUMN_TARGETS: Record<string, RefTarget> = {
   assignment_group: 'group',
   owner_group: 'group',
   cmdb_ci: 'cmdb_ci',
+  business_service: 'cmdb_ci',
+  duplicate_of: 'problem',
+  parent_incident: 'incident',
+  problem: 'problem',
+  first_reported_by_task: 'problem_task',
+  change_request: 'change_request',
+  std_change_producer_version: 'std_change_producer_version',
+  request: 'sc_request',
+  cat_item: 'sc_cat_item',
+  request_item: 'sc_req_item',
 };
 
 interface RecordListProps {
@@ -112,7 +123,8 @@ export function RecordListPage({
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
   const pagination = useServerPagination();
-  const { tableColumns, setTableColumns, resetTableColumns } = useUserPreferences();
+  const { tableColumns, setTableColumns, resetTableColumns, dateDisplayFormat } =
+    useUserPreferences();
 
   const columnCatalog = allColumns ?? columns;
   const savedColumnKeys = tableColumns[resource];
@@ -368,6 +380,10 @@ export function RecordListPage({
           target={refTarget}
         />
       );
+    }
+    if (isDateFieldKey(column.key)) {
+      if (isEmptyDisplayValue(record[column.key])) return <EmptyValue />;
+      return formatDateValue(record[column.key], dateDisplayFormat);
     }
     return displayValue(record[column.key]);
   }

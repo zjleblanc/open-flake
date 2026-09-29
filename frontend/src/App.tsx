@@ -47,6 +47,22 @@ const PROBLEM_DETAIL_FIELDS = [
   { key: 'priority', label: 'Priority', readOnly: true },
 ];
 
+const PROBLEM_TASK_DETAIL_FIELDS = [
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'state', label: 'State', type: 'select-state' },
+  { key: 'priority', label: 'Priority', readOnly: true },
+];
+
+const CHANGE_TEMPLATE_DETAIL_FIELDS = [
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'description', label: 'Description', type: 'textarea' },
+  { key: 'category', label: 'Category' },
+  { key: 'template', label: 'Template', type: 'textarea' },
+  { key: 'instructions', label: 'Instructions', type: 'textarea' },
+  { key: 'active', label: 'Active', readOnly: true },
+];
+
 // Every column a user may choose to display for a resource's list view, offered through the
 // column-config popover (see `ColumnConfigPopover` / `RecordListPage`'s `allColumns` prop). The
 // first entry is the pinned link column and must match the resource's default `columns` (or
@@ -67,10 +83,28 @@ const ALL_INCIDENT_COLUMNS: ListColumn[] = [
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
   { key: 'caller_id', label: 'Caller', sortable: false },
   { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'opened_by', label: 'Opened By', sortable: false },
+  { key: 'resolved_by', label: 'Resolved By', sortable: false },
+  { key: 'closed_by', label: 'Closed By', sortable: false },
+  { key: 'parent_incident', label: 'Parent Incident', sortable: false },
+  { key: 'hold_reason', label: 'Hold Reason' },
+  { key: 'close_code', label: 'Close Code' },
+  { key: 'contact_type', label: 'Contact Type' },
+  { key: 'notify', label: 'Notify' },
   { key: 'opened_at', label: 'Opened' },
   { key: 'resolved_at', label: 'Resolved' },
   { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
   { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_PROBLEM_COLUMNS: ListColumn[] = [
@@ -85,11 +119,52 @@ const ALL_PROBLEM_COLUMNS: ListColumn[] = [
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
   { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'duplicate_of', label: 'Duplicate Of', sortable: false },
+  { key: 'first_reported_by_task', label: 'First Reported By Task', sortable: false },
   { key: 'resolution_code', label: 'Resolution Code' },
   { key: 'opened_at', label: 'Opened' },
   { key: 'resolved_at', label: 'Resolved' },
   { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
   { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
+];
+
+const ALL_PROBLEM_TASK_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'problem', label: 'Problem', sortable: false },
+  { key: 'problem_task_type', label: 'Type' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'close_code', label: 'Close Code' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
+  { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_CHANGE_COLUMNS: ListColumn[] = [
@@ -98,18 +173,39 @@ const ALL_CHANGE_COLUMNS: ListColumn[] = [
   { key: 'state', label: 'State' },
   { key: 'priority', label: 'Priority' },
   { key: 'type', label: 'Type' },
+  { key: 'chg_model', label: 'Change Model' },
   { key: 'risk', label: 'Risk' },
   { key: 'impact', label: 'Impact' },
   { key: 'urgency', label: 'Urgency' },
   { key: 'category', label: 'Category' },
+  { key: 'requested_by', label: 'Requested By', sortable: false },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
-  { key: 'requested_by', label: 'Requested By', sortable: false },
   { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'std_change_producer_version', label: 'Change Template', sortable: false },
+  { key: 'on_hold', label: 'On Hold' },
+  { key: 'on_hold_reason', label: 'On Hold Reason' },
+  { key: 'close_code', label: 'Close Code' },
   { key: 'start_date', label: 'Start Date' },
   { key: 'end_date', label: 'End Date' },
+  { key: 'work_start', label: 'Work Start' },
+  { key: 'work_end', label: 'Work End' },
+  { key: 'review_date', label: 'Review Date' },
   { key: 'approval', label: 'Approval' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
   { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_CHANGE_TASK_COLUMNS: ListColumn[] = [
@@ -117,14 +213,38 @@ const ALL_CHANGE_TASK_COLUMNS: ListColumn[] = [
   { key: 'short_description', label: 'Short Description' },
   { key: 'state', label: 'State' },
   { key: 'priority', label: 'Priority' },
+  { key: 'change_request', label: 'Change Request', sortable: false },
   { key: 'change_task_type', label: 'Type' },
   { key: 'impact', label: 'Impact' },
   { key: 'urgency', label: 'Urgency' },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
   { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'on_hold', label: 'On Hold' },
+  { key: 'hold_reason', label: 'Hold Reason' },
+  { key: 'close_code', label: 'Close Code' },
   { key: 'planned_start_date', label: 'Planned Start' },
   { key: 'planned_end_date', label: 'Planned End' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
+  { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
+];
+
+const ALL_CHANGE_TEMPLATE_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Name', filterKeys: ['number', 'name'], sortField: 'name' },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'category', label: 'Category' },
   { key: 'active', label: 'Active' },
 ];
 
@@ -132,6 +252,9 @@ const ALL_CI_COLUMNS: ListColumn[] = [
   { key: 'number', label: 'Name', filterKeys: ['number', 'name'], sortField: 'name' },
   { key: 'short_description', label: 'Short Description' },
   { key: 'sys_class_name', label: 'Class' },
+  { key: 'sys_class_path', label: 'Class Path' },
+  { key: 'host_name', label: 'Host Name' },
+  { key: 'fqdn', label: 'FQDN' },
   { key: 'install_status', label: 'Install Status' },
   { key: 'operational_status', label: 'Operational Status' },
   { key: 'category', label: 'Category' },
@@ -141,9 +264,17 @@ const ALL_CI_COLUMNS: ListColumn[] = [
   { key: 'os', label: 'Operating System' },
   { key: 'os_version', label: 'OS Version' },
   { key: 'ip_address', label: 'IP Address' },
+  { key: 'mac_address', label: 'MAC Address' },
   { key: 'asset_tag', label: 'Asset Tag' },
   { key: 'serial_number', label: 'Serial Number' },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_CATALOG_REQUEST_COLUMNS: ListColumn[] = [
@@ -151,6 +282,7 @@ const ALL_CATALOG_REQUEST_COLUMNS: ListColumn[] = [
   { key: 'short_description', label: 'Short Description' },
   { key: 'state', label: 'State' },
   { key: 'priority', label: 'Priority' },
+  { key: 'request_state', label: 'Request State' },
   { key: 'stage', label: 'Stage' },
   { key: 'urgency', label: 'Urgency' },
   { key: 'impact', label: 'Impact' },
@@ -158,13 +290,32 @@ const ALL_CATALOG_REQUEST_COLUMNS: ListColumn[] = [
   { key: 'requested_by', label: 'Requested By', sortable: false },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'opened_by', label: 'Opened By', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
   { key: 'category', label: 'Category' },
+  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'delivery_task', label: 'Delivery Task' },
   { key: 'approval', label: 'Approval' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
   { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_CATALOG_REQUEST_ITEM_COLUMNS: ListColumn[] = [
   { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'request', label: 'Request', sortable: false },
+  { key: 'cat_item', label: 'Catalog Item', sortable: false },
   { key: 'short_description', label: 'Short Description' },
   { key: 'state', label: 'State' },
   { key: 'priority', label: 'Priority' },
@@ -172,10 +323,40 @@ const ALL_CATALOG_REQUEST_ITEM_COLUMNS: ListColumn[] = [
   { key: 'urgency', label: 'Urgency' },
   { key: 'impact', label: 'Impact' },
   { key: 'quantity', label: 'Quantity' },
+  { key: 'price', label: 'Price' },
   { key: 'requested_for', label: 'Requested For', sortable: false },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'opened_by', label: 'Opened By', sortable: false },
   { key: 'approval', label: 'Approval' },
+  { key: 'upon_approval', label: 'Upon Approval' },
+  { key: 'upon_reject', label: 'Upon Reject' },
+  { key: 'approval_set', label: 'Approval Set' },
+  { key: 'made_sla', label: 'Made SLA' },
+  { key: 'reassignment_count', label: 'Reassignment Count' },
+  { key: 'recurring_price', label: 'Recurring Price' },
+  { key: 'backordered', label: 'Backordered' },
+  { key: 'billable', label: 'Billable' },
+  { key: 'knowledge', label: 'Knowledge' },
+  { key: 'delivery_plan', label: 'Delivery Plan' },
+  { key: 'sys_domain', label: 'Domain' },
+  { key: 'sys_domain_path', label: 'Domain Path' },
+  { key: 'task_effective_number', label: 'Task Effective Number' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
+  { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 const ALL_CATALOG_TASK_COLUMNS: ListColumn[] = [
@@ -186,10 +367,27 @@ const ALL_CATALOG_TASK_COLUMNS: ListColumn[] = [
   { key: 'stage', label: 'Stage' },
   { key: 'urgency', label: 'Urgency' },
   { key: 'impact', label: 'Impact' },
+  { key: 'request', label: 'Request', sortable: false },
+  { key: 'request_item', label: 'Requested Item', sortable: false },
+  { key: 'cat_item', label: 'Catalog Item', sortable: false },
   { key: 'assigned_to', label: 'Assigned To', sortable: false },
   { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
   { key: 'approval', label: 'Approval' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'due_date', label: 'Due Date' },
+  { key: 'business_service', label: 'Business Service', sortable: false },
+  { key: 'escalation', label: 'Escalation' },
   { key: 'active', label: 'Active' },
+  { key: 'owner', label: 'Owner', sortable: false },
+  { key: 'owner_group', label: 'Owner Group', sortable: false },
+  { key: 'sys_created_on', label: 'Created' },
+  { key: 'sys_updated_on', label: 'Updated' },
+  { key: 'sys_created_by', label: 'Created By' },
+  { key: 'sys_updated_by', label: 'Updated By' },
+  { key: 'sys_mod_count', label: 'Update Count' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -266,6 +464,28 @@ export function App() {
           }
         />
         <Route
+          path="problem-tasks"
+          element={
+            <RecordListPage
+              resource="problem-tasks"
+              title="Problem Tasks"
+              basePath="/problem-tasks"
+              allColumns={ALL_PROBLEM_TASK_COLUMNS}
+            />
+          }
+        />
+        <Route
+          path="problem-tasks/:sysId"
+          element={
+            <RecordDetailPage
+              resource="problem-tasks"
+              title="Problem Tasks"
+              listPath="/problem-tasks"
+              fields={PROBLEM_TASK_DETAIL_FIELDS}
+            />
+          }
+        />
+        <Route
           path="changes"
           element={
             <RecordListPage
@@ -290,6 +510,33 @@ export function App() {
           }
         />
         <Route path="change-tasks/:sysId" element={<ChangeTaskDetailPage />} />
+        <Route
+          path="change-templates"
+          element={
+            <RecordListPage
+              resource="change-templates"
+              title="Change Templates"
+              basePath="/change-templates"
+              columns={ALL_CHANGE_TEMPLATE_COLUMNS}
+              createFields={[
+                { key: 'name', label: 'Name' },
+                { key: 'short_description', label: 'Short Description' },
+              ]}
+              allColumns={ALL_CHANGE_TEMPLATE_COLUMNS}
+            />
+          }
+        />
+        <Route
+          path="change-templates/:sysId"
+          element={
+            <RecordDetailPage
+              resource="change-templates"
+              title="Change Templates"
+              listPath="/change-templates"
+              fields={CHANGE_TEMPLATE_DETAIL_FIELDS}
+            />
+          }
+        />
         <Route
           path="configuration-items"
           element={
