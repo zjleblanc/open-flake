@@ -32,11 +32,16 @@ interface UserPreferencesContextValue {
   sidebarExpanded: boolean;
   colorScheme: ColorScheme;
   pinnedNavItems: string[];
+  tableColumns: Record<string, string[]>;
   setDateDisplayFormat: (format: DateDisplayFormat) => void;
   setLayoutDensity: (density: LayoutDensity) => void;
   setSidebarExpanded: (expanded: boolean) => void;
   setColorScheme: (scheme: ColorScheme) => void;
   setPinnedNavItems: (items: string[]) => void;
+  /** Persists the ordered visible-column keys for one resource's list view. */
+  setTableColumns: (resource: string, columns: string[]) => void;
+  /** Removes any saved column override for a resource, reverting it to the page's defaults. */
+  resetTableColumns: (resource: string) => void;
 }
 
 const UserPreferencesContext = createContext<UserPreferencesContextValue | null>(null);
@@ -166,6 +171,33 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
     [persistPreferences],
   );
 
+  const setTableColumns = useCallback(
+    (resource: string, columns: string[]) => {
+      setPreferences((current) => {
+        const next = {
+          ...current,
+          tableColumns: { ...current.tableColumns, [resource]: columns },
+        };
+        void persistPreferences(next);
+        return next;
+      });
+    },
+    [persistPreferences],
+  );
+
+  const resetTableColumns = useCallback(
+    (resource: string) => {
+      setPreferences((current) => {
+        const tableColumns = { ...current.tableColumns };
+        delete tableColumns[resource];
+        const next = { ...current, tableColumns };
+        void persistPreferences(next);
+        return next;
+      });
+    },
+    [persistPreferences],
+  );
+
   const value = useMemo(
     () => ({
       preferences,
@@ -175,11 +207,14 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       sidebarExpanded: preferences.sidebarExpanded,
       colorScheme: preferences.colorScheme,
       pinnedNavItems: preferences.pinnedNavItems,
+      tableColumns: preferences.tableColumns,
       setDateDisplayFormat,
       setLayoutDensity,
       setSidebarExpanded,
       setColorScheme,
       setPinnedNavItems,
+      setTableColumns,
+      resetTableColumns,
     }),
     [
       preferences,
@@ -189,6 +224,8 @@ export function UserPreferencesProvider({ children }: { children: ReactNode }) {
       setSidebarExpanded,
       setColorScheme,
       setPinnedNavItems,
+      setTableColumns,
+      resetTableColumns,
     ],
   );
 
@@ -208,11 +245,14 @@ export function useUserPreferences(): UserPreferencesContextValue {
       sidebarExpanded: DEFAULT_USER_PREFERENCES.sidebarExpanded,
       colorScheme: DEFAULT_USER_PREFERENCES.colorScheme,
       pinnedNavItems: DEFAULT_USER_PREFERENCES.pinnedNavItems,
+      tableColumns: DEFAULT_USER_PREFERENCES.tableColumns,
       setDateDisplayFormat: () => {},
       setLayoutDensity: () => {},
       setSidebarExpanded: () => {},
       setColorScheme: () => {},
       setPinnedNavItems: () => {},
+      setTableColumns: () => {},
+      resetTableColumns: () => {},
     };
   }
   return context;

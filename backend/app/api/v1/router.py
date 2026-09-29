@@ -80,6 +80,7 @@ class UserPreferencesResponse(BaseModel):
     sidebar_expanded: bool
     color_scheme: str
     pinned_nav_items: list[str]
+    table_columns: dict[str, list[str]]
 
 
 class UpdateUserPreferencesRequest(BaseModel):
@@ -88,6 +89,7 @@ class UpdateUserPreferencesRequest(BaseModel):
     sidebar_expanded: bool | None = None
     color_scheme: str | None = None
     pinned_nav_items: list[str] | None = None
+    table_columns: dict[str, list[str]] | None = None
 
 
 async def _load_user_preferences(

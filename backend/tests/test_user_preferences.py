@@ -35,6 +35,7 @@ def test_normalize_user_preferences_accepts_valid_values():
         "sidebar_expanded": False,
         "color_scheme": "dark",
         "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
+        "table_columns": {},
     }
 
 
@@ -51,6 +52,7 @@ def test_merge_user_preferences_update_partial_patch():
         "sidebar_expanded": True,
         "color_scheme": "dark",
         "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
+        "table_columns": {},
     }
 
 
@@ -66,6 +68,7 @@ def test_merge_user_preferences_update_ignores_invalid_patch_values():
         "sidebar_expanded": False,
         "color_scheme": "dark",
         "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
+        "table_columns": {},
     }
 
 
@@ -106,3 +109,38 @@ def test_merge_user_preferences_update_ignores_invalid_pinned_nav_items():
     current = DEFAULT_USER_PREFERENCES.copy()
     result = merge_user_preferences_update(current, {"pinned_nav_items": ["ok", 1]})
     assert result["pinned_nav_items"] == DEFAULT_PINNED_NAV_ITEMS
+
+
+def test_normalize_user_preferences_defaults_table_columns():
+    result = normalize_user_preferences(None)
+    assert result["table_columns"] == {}
+
+
+def test_normalize_user_preferences_coerces_invalid_table_columns():
+    result = normalize_user_preferences({"table_columns": "not-a-dict"})
+    assert result["table_columns"] == {}
+
+    result = normalize_user_preferences({"table_columns": {"incidents": "not-a-list"}})
+    assert result["table_columns"] == {}
+
+    result = normalize_user_preferences({"table_columns": {"incidents": ["number", 5]}})
+    assert result["table_columns"] == {}
+
+
+def test_normalize_user_preferences_accepts_valid_table_columns():
+    custom = {"incidents": ["number", "short_description", "assigned_to"]}
+    result = normalize_user_preferences({"table_columns": custom})
+    assert result["table_columns"] == custom
+
+
+def test_merge_user_preferences_update_replaces_table_columns():
+    current = DEFAULT_USER_PREFERENCES.copy()
+    custom = {"incidents": ["number", "priority"]}
+    result = merge_user_preferences_update(current, {"table_columns": custom})
+    assert result["table_columns"] == custom
+
+
+def test_merge_user_preferences_update_ignores_invalid_table_columns():
+    current = DEFAULT_USER_PREFERENCES.copy()
+    result = merge_user_preferences_update(current, {"table_columns": ["not", "a", "dict"]})
+    assert result["table_columns"] == {}

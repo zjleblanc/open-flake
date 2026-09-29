@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-29 — User-configurable table columns
+
+### Added
+- List views (Incidents, Problems, Changes, Change Tasks, Configuration Items, Requests, Requested Items, Catalog Tasks) gained a column-configuration popover, opened via a new gear icon in the filter bar: a dual-list picker lets you move fields between "Available Columns" and "Selected Columns", reorder the selected list with up/down buttons, and save or "Reset to Default". The pinned link column (e.g. Number) always stays first and can't be removed.
+- Per-resource column choices are now backed by a real field catalog (e.g. Incidents offers Impact, Urgency, Category, Assigned To, Assignment Group, Caller, Configuration Item, Opened/Resolved/Closed dates, Active) instead of the previous fixed four columns; reference-type columns like "Assigned To" resolve to a name + link rather than a raw sys_id.
+- The selected column layout persists per user via a new `table_columns` key on the existing user-preferences JSONB blob, exposed through `GET`/`PATCH /api/v1/settings/preferences`.
+
 ## 2026-09-29 — Activity feed shows newest entries first
 
 ### Changed

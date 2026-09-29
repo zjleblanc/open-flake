@@ -21,6 +21,7 @@ DEFAULT_USER_PREFERENCES: dict[str, Any] = {
     "sidebar_expanded": True,
     "color_scheme": "dark",
     "pinned_nav_items": DEFAULT_PINNED_NAV_ITEMS,
+    "table_columns": {},
 }
 
 _VALID_DATE_DISPLAY_FORMATS = {"raw", "local"}
@@ -30,6 +31,18 @@ _VALID_COLOR_SCHEMES = {"dark", "light", "system"}
 
 def _is_valid_pinned_nav_items(value: Any) -> bool:
     return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def _is_valid_table_columns(value: Any) -> bool:
+    """A resource-slug -> ordered column-key list mapping, e.g. {"incidents": ["number", ...]}."""
+    if not isinstance(value, dict):
+        return False
+    for key, columns in value.items():
+        if not isinstance(key, str):
+            return False
+        if not isinstance(columns, list) or not all(isinstance(item, str) for item in columns):
+            return False
+    return True
 
 
 def normalize_user_preferences(stored: dict[str, Any] | None) -> dict[str, Any]:
@@ -64,12 +77,17 @@ def normalize_user_preferences(stored: dict[str, Any] | None) -> dict[str, Any]:
     if not _is_valid_pinned_nav_items(pinned_nav_items):
         pinned_nav_items = list(DEFAULT_PINNED_NAV_ITEMS)
 
+    table_columns = merged.get("table_columns")
+    if not _is_valid_table_columns(table_columns):
+        table_columns = dict(DEFAULT_USER_PREFERENCES["table_columns"])
+
     return {
         "date_display_format": date_display_format,
         "layout_density": layout_density,
         "sidebar_expanded": sidebar_expanded,
         "color_scheme": color_scheme,
         "pinned_nav_items": pinned_nav_items,
+        "table_columns": table_columns,
     }
 
 
@@ -107,5 +125,10 @@ def merge_user_preferences_update(
         value = patch["pinned_nav_items"]
         if _is_valid_pinned_nav_items(value):
             update["pinned_nav_items"] = value
+
+    if "table_columns" in patch:
+        value = patch["table_columns"]
+        if _is_valid_table_columns(value):
+            update["table_columns"] = value
 
     return normalize_user_preferences({**base, **update})

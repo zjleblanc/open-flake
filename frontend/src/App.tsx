@@ -19,7 +19,7 @@ import { GroupsListPage } from './pages/GroupsListPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
-import { RecordListPage } from './pages/RecordListPage';
+import { RecordListPage, type ListColumn } from './pages/RecordListPage';
 import { RequestDetailPage } from './pages/RequestDetailPage';
 import { RequestedItemDetailPage } from './pages/RequestedItemDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -45,6 +45,151 @@ const PROBLEM_DETAIL_FIELDS = [
   { key: 'description', label: 'Description', type: 'textarea' },
   { key: 'state', label: 'State', type: 'select-state' },
   { key: 'priority', label: 'Priority', readOnly: true },
+];
+
+// Every column a user may choose to display for a resource's list view, offered through the
+// column-config popover (see `ColumnConfigPopover` / `RecordListPage`'s `allColumns` prop). The
+// first entry is the pinned link column and must match the resource's default `columns` (or
+// `RecordListPage`'s built-in `DEFAULT_COLUMNS`) so the saved column list lines up with what's
+// shown before any customization. Reference-field columns (assigned_to, cmdb_ci, etc.) are
+// resolved to a name + link by `RecordListPage`'s `REFERENCE_COLUMN_TARGETS` map rather than
+// showing a raw sys_id.
+const ALL_INCIDENT_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'category', label: 'Category' },
+  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'caller_id', label: 'Caller', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'active', label: 'Active' },
+];
+
+const ALL_PROBLEM_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'category', label: 'Category' },
+  { key: 'subcategory', label: 'Subcategory' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'resolution_code', label: 'Resolution Code' },
+  { key: 'opened_at', label: 'Opened' },
+  { key: 'resolved_at', label: 'Resolved' },
+  { key: 'closed_at', label: 'Closed' },
+  { key: 'active', label: 'Active' },
+];
+
+const ALL_CHANGE_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'type', label: 'Type' },
+  { key: 'risk', label: 'Risk' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'category', label: 'Category' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'requested_by', label: 'Requested By', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'start_date', label: 'Start Date' },
+  { key: 'end_date', label: 'End Date' },
+  { key: 'approval', label: 'Approval' },
+  { key: 'active', label: 'Active' },
+];
+
+const ALL_CHANGE_TASK_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'change_task_type', label: 'Type' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'cmdb_ci', label: 'Configuration Item', sortable: false },
+  { key: 'planned_start_date', label: 'Planned Start' },
+  { key: 'planned_end_date', label: 'Planned End' },
+  { key: 'active', label: 'Active' },
+];
+
+const ALL_CI_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Name', filterKeys: ['number', 'name'], sortField: 'name' },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'sys_class_name', label: 'Class' },
+  { key: 'install_status', label: 'Install Status' },
+  { key: 'operational_status', label: 'Operational Status' },
+  { key: 'category', label: 'Category' },
+  { key: 'environment', label: 'Environment' },
+  { key: 'classification', label: 'Classification' },
+  { key: 'vendor', label: 'Vendor' },
+  { key: 'os', label: 'Operating System' },
+  { key: 'os_version', label: 'OS Version' },
+  { key: 'ip_address', label: 'IP Address' },
+  { key: 'asset_tag', label: 'Asset Tag' },
+  { key: 'serial_number', label: 'Serial Number' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+];
+
+const ALL_CATALOG_REQUEST_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'requested_for', label: 'Requested For', sortable: false },
+  { key: 'requested_by', label: 'Requested By', sortable: false },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'category', label: 'Category' },
+  { key: 'approval', label: 'Approval' },
+  { key: 'active', label: 'Active' },
+];
+
+const ALL_CATALOG_REQUEST_ITEM_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'requested_for', label: 'Requested For', sortable: false },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'approval', label: 'Approval' },
+];
+
+const ALL_CATALOG_TASK_COLUMNS: ListColumn[] = [
+  { key: 'number', label: 'Number', filterKeys: ['number', 'name'] },
+  { key: 'short_description', label: 'Short Description' },
+  { key: 'state', label: 'State' },
+  { key: 'priority', label: 'Priority' },
+  { key: 'stage', label: 'Stage' },
+  { key: 'urgency', label: 'Urgency' },
+  { key: 'impact', label: 'Impact' },
+  { key: 'assigned_to', label: 'Assigned To', sortable: false },
+  { key: 'assignment_group', label: 'Assignment Group', sortable: false },
+  { key: 'approval', label: 'Approval' },
+  { key: 'active', label: 'Active' },
 ];
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -82,6 +227,7 @@ export function App() {
               title="Incidents"
               basePath="/incidents"
               createFields={INCIDENT_FIELDS}
+              allColumns={ALL_INCIDENT_COLUMNS}
             />
           }
         />
@@ -104,6 +250,7 @@ export function App() {
               title="Problems"
               basePath="/problems"
               createFields={[{ key: 'short_description', label: 'Short Description' }]}
+              allColumns={ALL_PROBLEM_COLUMNS}
             />
           }
         />
@@ -126,6 +273,7 @@ export function App() {
               title="Change Requests"
               basePath="/changes"
               createFields={[{ key: 'short_description', label: 'Short Description' }]}
+              allColumns={ALL_CHANGE_COLUMNS}
             />
           }
         />
@@ -133,7 +281,12 @@ export function App() {
         <Route
           path="change-tasks"
           element={
-            <RecordListPage resource="change-tasks" title="Change Tasks" basePath="/change-tasks" />
+            <RecordListPage
+              resource="change-tasks"
+              title="Change Tasks"
+              basePath="/change-tasks"
+              allColumns={ALL_CHANGE_TASK_COLUMNS}
+            />
           }
         />
         <Route path="change-tasks/:sysId" element={<ChangeTaskDetailPage />} />
@@ -160,6 +313,7 @@ export function App() {
                 { key: 'short_description', label: 'Short Description' },
                 { key: 'sys_class_name', label: 'Class (e.g. cmdb_ci_server)' },
               ]}
+              allColumns={ALL_CI_COLUMNS}
             />
           }
         />
@@ -167,7 +321,12 @@ export function App() {
         <Route
           path="requests"
           element={
-            <RecordListPage resource="catalog-requests" title="Requests" basePath="/requests" />
+            <RecordListPage
+              resource="catalog-requests"
+              title="Requests"
+              basePath="/requests"
+              allColumns={ALL_CATALOG_REQUEST_COLUMNS}
+            />
           }
         />
         <Route path="requests/:sysId" element={<RequestDetailPage />} />
@@ -178,6 +337,7 @@ export function App() {
               resource="catalog-request-items"
               title="Requested Items"
               basePath="/requested-items"
+              allColumns={ALL_CATALOG_REQUEST_ITEM_COLUMNS}
             />
           }
         />
@@ -189,6 +349,7 @@ export function App() {
               resource="catalog-tasks"
               title="Catalog Tasks"
               basePath="/catalog-tasks"
+              allColumns={ALL_CATALOG_TASK_COLUMNS}
             />
           }
         />

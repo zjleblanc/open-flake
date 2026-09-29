@@ -8,6 +8,7 @@ import {
   stateLabel,
   type CascadePreview,
 } from '../api/client';
+import { ColumnConfigPopover } from '../components/ColumnConfigPopover';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { aggregatePermanentItems, permanentTotal } from '../utils/cascadeSummary';
 import { EmptyValue } from '../components/EmptyValue';
@@ -16,19 +17,46 @@ import { usePageHeader } from '../components/PageHeaderContext';
 import { ToastBanner } from '../components/ToastBanner';
 import { OFSelect } from '../components/OFSelect';
 import { PaginationBar } from '../components/PaginationBar';
+import { ReferenceLink } from '../components/ReferenceLink';
 import { SortableColumnHeader } from '../components/SortableColumnHeader';
 import { useServerPagination } from '../hooks/useServerPagination';
+import { useUserPreferences } from '../settings/UserPreferencesContext';
+import type { RefTarget } from '../utils/referenceFields';
 import '../components/Layout.css';
+
+// Field-name -> reference target for the handful of reference columns a resource's column
+// catalog (see `App.tsx`) may offer beyond the plain-value defaults. Keyed by field name rather
+// than resource, since these ServiceNow-style field names carry the same meaning everywhere
+// they appear (e.g. `assigned_to` always points at `sys_user`). Never render one of these keys
+// via the plain `displayValue` fallback -- see the "Resolving references" frontend rule.
+const REFERENCE_COLUMN_TARGETS: Record<string, RefTarget> = {
+  assigned_to: 'user',
+  caller_id: 'user',
+  opened_by: 'user',
+  resolved_by: 'user',
+  closed_by: 'user',
+  requested_by: 'user',
+  requested_for: 'user',
+  owner: 'user',
+  assignment_group: 'group',
+  owner_group: 'group',
+  cmdb_ci: 'cmdb_ci',
+};
 
 interface RecordListProps {
   resource: string;
   title: string;
   basePath: string;
   createFields?: { key: string; label: string; type?: string }[];
+  /** Columns shown by default, before any user customization. */
   columns?: ListColumn[];
+  /** Every column a user may choose to display for this resource, in catalog order. The first
+   * entry is treated as the pinned link column and is always shown first. Defaults to `columns`
+   * when omitted, which still allows removing/reordering/restoring among the default set. */
+  allColumns?: ListColumn[];
 }
 
-interface ListColumn {
+export interface ListColumn {
   key: string;
   label: string;
   filterKeys?: string[];
@@ -73,6 +101,7 @@ export function RecordListPage({
   basePath,
   createFields,
   columns = DEFAULT_COLUMNS,
+  allColumns,
 }: RecordListProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -83,6 +112,36 @@ export function RecordListPage({
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
   const pagination = useServerPagination();
+  const { tableColumns, setTableColumns, resetTableColumns } = useUserPreferences();
+
+  const columnCatalog = allColumns ?? columns;
+  const savedColumnKeys = tableColumns[resource];
+
+  // The user's saved column selection (if any), reconciled against the resource's column
+  // catalog: unknown/stale keys are dropped and the pinned first catalog column (e.g. Number)
+  // is always forced to the front, so a corrupted or outdated saved list can't hide the link
+  // column or blow up rendering.
+  const effectiveColumns = useMemo(() => {
+    if (!savedColumnKeys || savedColumnKeys.length === 0) return columns;
+    const catalogMap = new Map(columnCatalog.map((column) => [column.key, column]));
+    const resolved = savedColumnKeys
+      .map((key) => catalogMap.get(key))
+      .filter((column): column is ListColumn => Boolean(column));
+    const pinned = columnCatalog[0];
+    if (resolved.length === 0) return columns;
+    if (pinned && resolved[0]?.key !== pinned.key) {
+      return [pinned, ...resolved.filter((column) => column.key !== pinned.key)];
+    }
+    return resolved;
+  }, [savedColumnKeys, columnCatalog, columns]);
+
+  // Keep the "Filter by" selection valid if a saved column config removed the column it was
+  // pointing at.
+  useEffect(() => {
+    if (!effectiveColumns.some((column) => column.key === filterField)) {
+      setFilterField(effectiveColumns[0]?.key ?? 'number');
+    }
+  }, [effectiveColumns, filterField]);
 
   const { data, isLoading } = useQuery({
     queryKey: [
@@ -116,7 +175,8 @@ export function RecordListPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to total/offset drift
   }, [total, pagination.offset]);
 
-  const activeFilterColumn = columns.find((column) => column.key === filterField) ?? columns[0];
+  const activeFilterColumn =
+    effectiveColumns.find((column) => column.key === filterField) ?? effectiveColumns[0];
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
     if (!query || !activeFilterColumn) return records;
@@ -282,7 +342,7 @@ export function RecordListPage({
 
   if (isLoading) return <p className="empty-state">Loading…</p>;
 
-  const columnCount = columns.length + (hasDeletable ? 1 : 0);
+  const columnCount = effectiveColumns.length + (hasDeletable ? 1 : 0);
 
   function renderCell(column: ListColumn, record: Record<string, string>) {
     if (column.key === 'number') {
@@ -296,6 +356,17 @@ export function RecordListPage({
         <span className={`badge ${stateBadge(record.state, resource)}`}>
           {stateLabel(record.state, resource)}
         </span>
+      );
+    }
+    const refTarget = REFERENCE_COLUMN_TARGETS[column.key];
+    if (refTarget) {
+      return (
+        <ReferenceLink
+          value={record[column.key]}
+          record={record}
+          field={column.key}
+          target={refTarget}
+        />
       );
     }
     return displayValue(record[column.key]);
@@ -352,7 +423,7 @@ export function RecordListPage({
             className="record-list-filter-select"
             value={filterField}
             onChange={(value) => setFilterField(value as string)}
-            options={columns.map((column) => ({ value: column.key, label: column.label }))}
+            options={effectiveColumns.map((column) => ({ value: column.key, label: column.label }))}
           />
           <input
             type="search"
@@ -375,6 +446,13 @@ export function RecordListPage({
               {filteredRecords.length} of {records.length} on this page
             </span>
           )}
+          <ColumnConfigPopover
+            title={title}
+            allColumns={columnCatalog}
+            currentColumns={effectiveColumns}
+            onSave={(keys) => setTableColumns(resource, keys)}
+            onReset={() => resetTableColumns(resource)}
+          />
         </div>
         <table>
           <thead>
@@ -390,7 +468,7 @@ export function RecordListPage({
                   />
                 </th>
               )}
-              {columns.map((column) => (
+              {effectiveColumns.map((column) => (
                 <SortableColumnHeader
                   key={column.key}
                   field={column.sortField ?? column.key}
@@ -420,7 +498,7 @@ export function RecordListPage({
                       ) : null}
                     </td>
                   )}
-                  {columns.map((column) => (
+                  {effectiveColumns.map((column) => (
                     <td key={column.key}>{renderCell(column, record)}</td>
                   ))}
                 </tr>

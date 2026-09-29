@@ -9,6 +9,8 @@ export interface UserPreferences {
   sidebarExpanded: boolean;
   colorScheme: ColorScheme;
   pinnedNavItems: string[];
+  /** Per-resource ordered list of visible column keys, e.g. `{ incidents: ["number", ...] }`. */
+  tableColumns: Record<string, string[]>;
 }
 
 export interface UserPreferencesApi {
@@ -17,6 +19,7 @@ export interface UserPreferencesApi {
   sidebar_expanded: boolean;
   color_scheme: ColorScheme;
   pinned_nav_items: string[];
+  table_columns: Record<string, string[]>;
 }
 
 // Kept in sync with `DEFAULT_PINNED_NAV_ITEMS` in
@@ -41,6 +44,7 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   sidebarExpanded: true,
   colorScheme: 'dark',
   pinnedNavItems: DEFAULT_PINNED_NAV_ITEMS,
+  tableColumns: {},
 };
 
 const LEGACY_PREFS_KEY = 'openflake.userPreferences';
@@ -77,11 +81,19 @@ export function fromApiPreferences(
     pinnedNavItems: isStringArray(api?.pinned_nav_items)
       ? api.pinned_nav_items
       : DEFAULT_USER_PREFERENCES.pinnedNavItems,
+    tableColumns: isTableColumnsMap(api?.table_columns)
+      ? api.table_columns
+      : DEFAULT_USER_PREFERENCES.tableColumns,
   };
 }
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isTableColumnsMap(value: unknown): value is Record<string, string[]> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  return Object.values(value).every((columns) => isStringArray(columns));
 }
 
 export function toApiPreferences(preferences: UserPreferences): UserPreferencesApi {
@@ -91,6 +103,7 @@ export function toApiPreferences(preferences: UserPreferences): UserPreferencesA
     sidebar_expanded: preferences.sidebarExpanded,
     color_scheme: preferences.colorScheme,
     pinned_nav_items: preferences.pinnedNavItems,
+    table_columns: preferences.tableColumns,
   };
 }
 
