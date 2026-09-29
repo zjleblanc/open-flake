@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   api,
@@ -15,6 +15,9 @@ import { displayValue, isEmptyDisplayValue } from '../utils/emptyDisplay';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { ToastBanner } from '../components/ToastBanner';
 import { OFSelect } from '../components/OFSelect';
+import { PaginationBar } from '../components/PaginationBar';
+import { SortableColumnHeader } from '../components/SortableColumnHeader';
+import { useServerPagination } from '../hooks/useServerPagination';
 import '../components/Layout.css';
 
 interface RecordListProps {
@@ -29,6 +32,11 @@ interface ListColumn {
   key: string;
   label: string;
   filterKeys?: string[];
+  /** Set false for columns that don't map to a sortable server field. Defaults to true. */
+  sortable?: boolean;
+  /** Field name to sort by when it differs from `key` (e.g. a display column backed by a
+   * different underlying field). Defaults to `key`. */
+  sortField?: string;
 }
 
 const DEFAULT_COLUMNS: ListColumn[] = [
@@ -74,13 +82,40 @@ export function RecordListPage({
   const [filterField, setFilterField] = useState(columns[0]?.key ?? 'number');
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
+  const pagination = useServerPagination();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['records', resource],
-    queryFn: () => api.listRecords(resource),
+    queryKey: [
+      'records',
+      resource,
+      pagination.offset,
+      pagination.limit,
+      pagination.sortField,
+      pagination.sortDirection,
+    ],
+    queryFn: () =>
+      api.listRecords(resource, {
+        limit: pagination.limit,
+        offset: pagination.offset,
+        ...(pagination.sortDirection === 'desc'
+          ? { orderbydesc: pagination.sortField }
+          : { orderby: pagination.sortField }),
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const records = useMemo(() => data?.records ?? [], [data?.records]);
+  const total = data?.total ?? 0;
+
+  // If a bulk delete (or the underlying data) leaves the current page past the end, step back
+  // a page rather than showing an empty table with pagination controls pointing nowhere.
+  useEffect(() => {
+    if (total > 0 && pagination.page > 0 && pagination.offset >= total) {
+      pagination.setPage(Math.max(0, Math.ceil(total / pagination.pageSize) - 1));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to total/offset drift
+  }, [total, pagination.offset]);
+
   const activeFilterColumn = columns.find((column) => column.key === filterField) ?? columns[0];
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
@@ -106,10 +141,13 @@ export function RecordListPage({
     }
   }, [someDeletableSelected]);
 
+  const invalidateRecords = () =>
+    queryClient.invalidateQueries({ queryKey: ['records', resource] });
+
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) => api.createRecord(resource, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      invalidateRecords();
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setShowCreate(false);
       setForm({});
@@ -141,7 +179,7 @@ export function RecordListPage({
       return { succeeded, failed };
     },
     onSuccess: ({ succeeded, failed }) => {
-      queryClient.invalidateQueries({ queryKey: ['records', resource] });
+      invalidateRecords();
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setSelected(new Set());
       setConfirmOpen(false);
@@ -334,7 +372,7 @@ export function RecordListPage({
           )}
           {isFiltered && (
             <span className="record-list-filter-count">
-              {filteredRecords.length} of {records.length}
+              {filteredRecords.length} of {records.length} on this page
             </span>
           )}
         </div>
@@ -353,7 +391,15 @@ export function RecordListPage({
                 </th>
               )}
               {columns.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <SortableColumnHeader
+                  key={column.key}
+                  field={column.sortField ?? column.key}
+                  label={column.label}
+                  sortField={pagination.sortField}
+                  sortDirection={pagination.sortDirection}
+                  onSort={pagination.toggleSort}
+                  sortable={column.sortable}
+                />
               ))}
             </tr>
           </thead>
@@ -389,6 +435,14 @@ export function RecordListPage({
             )}
           </tbody>
         </table>
+        <PaginationBar
+          idPrefix={`record-list-${resource}`}
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={total}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
       </div>
 
       <ConfirmDialog

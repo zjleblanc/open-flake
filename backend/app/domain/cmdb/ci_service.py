@@ -27,7 +27,7 @@ from app.domain.cmdb.registry import (
 )
 from app.events.bus import RecordEvent, emit
 from app.models import CmdbCi, SysUser
-from app.query.parser import QueryCondition, apply_condition_groups
+from app.query.parser import OrderByClause, QueryCondition, apply_condition_groups, apply_order_by
 from app.utils.ids import new_sys_id
 
 
@@ -85,6 +85,7 @@ async def list_cmdb_ci(
     auth: AuthContext | None = None,
     include_permissions: bool = False,
     query_class: str | None = None,
+    order_by: list[OrderByClause] | None = None,
 ) -> tuple[list[dict], int]:
     all_conditions = [*class_filter_conditions(query_class), *conditions]
 
@@ -92,6 +93,7 @@ async def list_cmdb_ci(
     count_q = _apply_conditions(count_q, all_conditions)
     query = select(CmdbCi)
     query = _apply_conditions(query, all_conditions)
+    query = apply_order_by(query, CmdbCi, order_by)
 
     if auth:
         count_q = await filter_record_list_query(db, auth, "cmdb_ci", count_q, CmdbCi)

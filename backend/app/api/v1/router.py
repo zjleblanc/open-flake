@@ -56,7 +56,7 @@ from app.models import (
     SysComment,
     SysUser,
 )
-from app.query.parser import QueryCondition, parse_sysparm_query
+from app.query.parser import OrderByClause, QueryCondition, parse_sysparm_query, resolve_order_by
 from app.utils.ids import new_api_key, new_sys_id
 
 router = APIRouter(prefix="/api/v1", tags=["ui-api"])
@@ -371,8 +371,10 @@ async def list_resource(
     resource: str,
     state: str | None = None,
     query: str | None = None,
-    limit: int = 50,
+    limit: int = 25,
     offset: int = 0,
+    sysparm_orderby: str | None = None,
+    sysparm_orderbydesc: str | None = None,
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
@@ -380,11 +382,23 @@ async def list_resource(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown resource")
     table = TABLE_ENDPOINTS[resource]
 
-    conditions = parse_sysparm_query(query)
+    parsed = parse_sysparm_query(query)
+    conditions = parsed.conditions
     if state:
         conditions.append(QueryCondition(field="state", operator="=", value=state))
+    order_by: list[OrderByClause] = resolve_order_by(
+        parsed.order_by, sysparm_orderby, sysparm_orderbydesc
+    )
     records, total = await list_records(
-        db, table, conditions, limit, offset, False, auth=auth, include_permissions=True
+        db,
+        table,
+        conditions,
+        limit,
+        offset,
+        False,
+        auth=auth,
+        include_permissions=True,
+        order_by=order_by,
     )
     return {"records": records, "total": total}
 

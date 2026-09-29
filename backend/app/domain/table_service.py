@@ -36,7 +36,7 @@ from app.domain.registry import (
 )
 from app.events.bus import RecordEvent, emit
 from app.models import NumberSequence, RecordAccessGrant, SysAudit, SysComment, SysUser
-from app.query.parser import QueryCondition, apply_condition_groups
+from app.query.parser import OrderByClause, QueryCondition, apply_condition_groups, apply_order_by
 from app.utils.ids import new_sys_id
 
 settings = get_settings()
@@ -334,6 +334,7 @@ async def list_records(
     auth: AuthContext | None = None,
     include_permissions: bool = False,
     query_class: str | None = None,
+    order_by: list[OrderByClause] | None = None,
 ) -> tuple[list[dict], int]:
     table, query_class = _resolve_subclass_table(table, query_class)
     if table == "cmdb_ci":
@@ -348,6 +349,7 @@ async def list_records(
             auth=auth,
             include_permissions=include_permissions,
             query_class=query_class,
+            order_by=order_by,
         )
         await attach_reference_display_values(db, table, cmdb_records)
         return cmdb_records, total
@@ -360,6 +362,7 @@ async def list_records(
     count_q = _apply_conditions(count_q, model, conditions)
     query = select(model)
     query = _apply_conditions(query, model, conditions)
+    query = apply_order_by(query, model, order_by)
 
     if auth:
         if table in RBAC_RECORD_TABLES:

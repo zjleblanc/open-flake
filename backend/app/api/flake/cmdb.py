@@ -32,7 +32,7 @@ async def cmdb_list(
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
-    conditions = parse_sysparm_query(sysparm_query)
+    conditions = parse_sysparm_query(sysparm_query).conditions
     conditions = [*class_filter_conditions(sys_class_name), *conditions]
     records, total = await list_cmdb_ci(
         db,

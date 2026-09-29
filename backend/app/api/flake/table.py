@@ -14,7 +14,7 @@ from app.domain.table_service import (
     list_records,
     update_record,
 )
-from app.query.parser import QueryCondition, parse_sysparm_query
+from app.query.parser import OrderByClause, QueryCondition, parse_sysparm_query, resolve_order_by
 
 router = APIRouter(prefix="/api/flake/table", tags=["table-api"])
 
@@ -31,21 +31,25 @@ def _exclude_links(request: Request) -> bool:
     return bool(val.lower() != "false")
 
 
+_RESERVED_QUERY_PARAMS = {
+    "sysparm_query",
+    "sysparm_limit",
+    "sysparm_offset",
+    "sysparm_exclude_reference_link",
+    "sysparm_fields",
+    "sysparm_display_value",
+    "sysparm_suppress_pagination_header",
+    "sysparm_orderby",
+    "sysparm_orderbydesc",
+}
+
+
 def _query_params_to_conditions(
-    request: Request, sysparm_query: str | None
+    request: Request, conditions: list[QueryCondition]
 ) -> list[QueryCondition]:
-    conditions = parse_sysparm_query(sysparm_query)
-    reserved = {
-        "sysparm_query",
-        "sysparm_limit",
-        "sysparm_offset",
-        "sysparm_exclude_reference_link",
-        "sysparm_fields",
-        "sysparm_display_value",
-        "sysparm_suppress_pagination_header",
-    }
+    conditions = list(conditions)
     for key, value in request.query_params.items():
-        if key not in reserved and value:
+        if key not in _RESERVED_QUERY_PARAMS and value:
             conditions.append(QueryCondition(field=key, operator="=", value=value))
     return conditions
 
@@ -66,12 +70,18 @@ async def table_list(
     sysparm_query: str | None = Query(default=None),
     sysparm_limit: int = Query(default=1000),
     sysparm_offset: int = Query(default=0),
+    sysparm_orderby: str | None = Query(default=None),
+    sysparm_orderbydesc: str | None = Query(default=None),
     auth: AuthContext = Depends(authenticate_request),
     db: AsyncSession = Depends(get_db),
 ):
     internal_table, query_class = _resolve_table(table)
+    parsed = parse_sysparm_query(sysparm_query)
     conditions = _merge_class_conditions(
-        _query_params_to_conditions(request, sysparm_query), query_class
+        _query_params_to_conditions(request, parsed.conditions), query_class
+    )
+    order_by: list[OrderByClause] = resolve_order_by(
+        parsed.order_by, sysparm_orderby, sysparm_orderbydesc
     )
     exclude = _exclude_links(request)
     records, total = await list_records(
@@ -83,6 +93,7 @@ async def table_list(
         exclude,
         auth=auth,
         query_class=query_class,
+        order_by=order_by,
     )
     response.headers["x-total-count"] = str(total)
     return {"result": records}

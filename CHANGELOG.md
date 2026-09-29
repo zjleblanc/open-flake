@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-28 — Server-side pagination and sorting for table API and list views
+
+### Added
+- `GET /api/v1/records/{resource}` and `GET /api/flake/table/{table}` now accept `sysparm_orderby`/`sysparm_orderbydesc` query params, and `sysparm_query` strings support `ORDERBY<field>`/`ORDERBYDESC<field>` clauses (e.g. `active=true^ORDERBYDESCpriority`), matching ServiceNow's Table API sort syntax. All list queries default to sorting by `sys_updated_on` descending when no sort is requested.
+- `RecordListPage`, `UsersPage`, and `GroupsListPage` now page results from the server instead of fetching every record at once: a shared `useServerPagination` hook plus new `PaginationBar` and `SortableColumnHeader` components add a rows-per-page selector (10/25/50/100, default 25) and clickable, sortable column headers to every list view. `RecordListPage`'s `columns` prop gained `sortable`/`sortField` so a display column can map to a different underlying sort field (e.g. Configuration Items' "Name" column sorts by `name`).
+
+### Changed
+- The `/api/v1/records/{resource}` list endpoint's default `limit` changed from 50 to 25 to match the new default page size.
+
+### Fixed
+- `sysparm_query` parsing no longer mishandles `ORDERBY`/`ORDERBYDESC` clauses combined with `^OR`-joined conditions in the same query string — both tokens start with `OR`, which previously caused the parser to truncate the clause when they appeared together (e.g. `active=true^ORDERBYDESCpriority`).
+
 ## 2026-09-28 — Accept integer/boolean values for string choice-list fields
 
 ### Fixed

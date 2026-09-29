@@ -218,7 +218,7 @@ async def _load_reference_options(
     auth: AuthContext,
 ) -> tuple[list[dict[str, Any]], int]:
     """Fetch options for a single (table, filter, display_field) combination."""
-    conditions = parse_sysparm_query(query_filter) if query_filter else []
+    conditions = parse_sysparm_query(query_filter).conditions if query_filter else []
     records, total = await list_records(
         db,
         table,

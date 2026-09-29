@@ -118,10 +118,24 @@ export const api = {
       cis_total: number;
     }>('/api/v1/dashboard'),
 
-  listRecords: (resource: string, params?: { state?: string; query?: string }) => {
+  listRecords: (
+    resource: string,
+    params?: {
+      state?: string;
+      query?: string;
+      limit?: number;
+      offset?: number;
+      orderby?: string;
+      orderbydesc?: string;
+    },
+  ) => {
     const qs = new URLSearchParams();
     if (params?.state) qs.set('state', params.state);
     if (params?.query) qs.set('query', params.query);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    if (params?.orderbydesc) qs.set('sysparm_orderbydesc', params.orderbydesc);
+    else if (params?.orderby) qs.set('sysparm_orderby', params.orderby);
     return request<{ records: Record<string, string>[]; total: number }>(
       `/api/v1/records/${resource}?${qs}`,
     );

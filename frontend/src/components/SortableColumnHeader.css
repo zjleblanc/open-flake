@@ -1,0 +1,29 @@
+.sortable-column-header {
+  padding: 0;
+}
+
+.sortable-column-header-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: var(--of-density-table-cell-y) var(--of-density-table-cell-x);
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.sortable-column-header-btn:hover {
+  color: var(--of-primary);
+}
+
+.sortable-column-header-spacer {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}

@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { OFSelect } from '../components/OFSelect';
+import { PaginationBar } from '../components/PaginationBar';
+import { SortableColumnHeader } from '../components/SortableColumnHeader';
+import { useServerPagination } from '../hooks/useServerPagination';
 import '../components/Layout.css';
 
 type UserFormState = {
@@ -26,11 +29,14 @@ const EMPTY_USER_FORM: UserFormState = {
 interface ListColumn {
   key: string;
   label: string;
+  /** Set false for columns that don't map to a single sortable server field. Defaults to true. */
+  sortable?: boolean;
 }
 
 const COLUMNS: ListColumn[] = [
   { key: 'user_name', label: 'Username' },
-  { key: 'name', label: 'Name' },
+  // "name" is a virtual first_name + last_name combination, not a real sortable column.
+  { key: 'name', label: 'Name', sortable: false },
   { key: 'email', label: 'Email' },
 ];
 
@@ -53,13 +59,30 @@ export function UsersPage() {
   const [filterField, setFilterField] = useState(COLUMNS[0].key);
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
+  const pagination = useServerPagination();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['records', 'users'],
-    queryFn: () => api.listRecords('users'),
+    queryKey: [
+      'records',
+      'users',
+      pagination.offset,
+      pagination.limit,
+      pagination.sortField,
+      pagination.sortDirection,
+    ],
+    queryFn: () =>
+      api.listRecords('users', {
+        limit: pagination.limit,
+        offset: pagination.offset,
+        ...(pagination.sortDirection === 'desc'
+          ? { orderbydesc: pagination.sortField }
+          : { orderby: pagination.sortField }),
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const records = useMemo(() => data?.records ?? [], [data?.records]);
+  const total = data?.total ?? 0;
 
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
@@ -157,7 +180,7 @@ export function UsersPage() {
           )}
           {isFiltered && (
             <span className="record-list-filter-count">
-              {filteredRecords.length} of {records.length}
+              {filteredRecords.length} of {records.length} on this page
             </span>
           )}
         </div>
@@ -165,7 +188,15 @@ export function UsersPage() {
           <thead>
             <tr>
               {COLUMNS.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <SortableColumnHeader
+                  key={column.key}
+                  field={column.key}
+                  label={column.label}
+                  sortField={pagination.sortField}
+                  sortDirection={pagination.sortDirection}
+                  onSort={pagination.toggleSort}
+                  sortable={column.sortable}
+                />
               ))}
             </tr>
           </thead>
@@ -192,6 +223,14 @@ export function UsersPage() {
             )}
           </tbody>
         </table>
+        <PaginationBar
+          idPrefix="users-list"
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={total}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
       </div>
     </div>
   );

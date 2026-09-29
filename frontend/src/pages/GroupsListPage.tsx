@@ -1,11 +1,14 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { OFSelect } from '../components/OFSelect';
+import { PaginationBar } from '../components/PaginationBar';
+import { SortableColumnHeader } from '../components/SortableColumnHeader';
 import { ReferenceLink } from '../components/ReferenceLink';
+import { useServerPagination } from '../hooks/useServerPagination';
 import '../components/Layout.css';
 
 type GroupFormState = { name: string; description: string };
@@ -33,13 +36,30 @@ export function GroupsListPage() {
   const [filterField, setFilterField] = useState(COLUMNS[0].key);
   const [filterText, setFilterText] = useState('');
   const queryClient = useQueryClient();
+  const pagination = useServerPagination();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['records', 'groups'],
-    queryFn: () => api.listRecords('groups'),
+    queryKey: [
+      'records',
+      'groups',
+      pagination.offset,
+      pagination.limit,
+      pagination.sortField,
+      pagination.sortDirection,
+    ],
+    queryFn: () =>
+      api.listRecords('groups', {
+        limit: pagination.limit,
+        offset: pagination.offset,
+        ...(pagination.sortDirection === 'desc'
+          ? { orderbydesc: pagination.sortField }
+          : { orderby: pagination.sortField }),
+      }),
+    placeholderData: keepPreviousData,
   });
 
   const records = useMemo(() => data?.records ?? [], [data?.records]);
+  const total = data?.total ?? 0;
 
   const filteredRecords = useMemo(() => {
     const query = filterText.trim().toLowerCase();
@@ -136,7 +156,7 @@ export function GroupsListPage() {
           )}
           {isFiltered && (
             <span className="record-list-filter-count">
-              {filteredRecords.length} of {records.length}
+              {filteredRecords.length} of {records.length} on this page
             </span>
           )}
         </div>
@@ -144,7 +164,14 @@ export function GroupsListPage() {
           <thead>
             <tr>
               {COLUMNS.map((column) => (
-                <th key={column.key}>{column.label}</th>
+                <SortableColumnHeader
+                  key={column.key}
+                  field={column.key}
+                  label={column.label}
+                  sortField={pagination.sortField}
+                  sortDirection={pagination.sortDirection}
+                  onSort={pagination.toggleSort}
+                />
               ))}
               <th>Owner</th>
             </tr>
@@ -172,6 +199,14 @@ export function GroupsListPage() {
             )}
           </tbody>
         </table>
+        <PaginationBar
+          idPrefix="groups-list"
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={total}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+        />
       </div>
     </div>
   );

@@ -145,7 +145,12 @@ export function App() {
               title="Configuration Items"
               basePath="/configuration-items"
               columns={[
-                { key: 'number', label: 'Name', filterKeys: ['number', 'name'] },
+                {
+                  key: 'number',
+                  label: 'Name',
+                  filterKeys: ['number', 'name'],
+                  sortField: 'name',
+                },
                 { key: 'short_description', label: 'Short Description' },
                 { key: 'state', label: 'State' },
                 { key: 'priority', label: 'Priority' },
