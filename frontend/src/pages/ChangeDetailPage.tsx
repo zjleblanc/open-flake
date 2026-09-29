@@ -10,7 +10,7 @@ import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
-import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
+import { RelatedRecordsSection, type ReferenceTab } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
 import {
   isReferenceDeleted,
@@ -111,6 +111,22 @@ export function ChangeDetailPage() {
   });
   const changeTasks = useMemo(() => changeTasksData?.records ?? [], [changeTasksData]);
 
+  const referenceTabs = useMemo(
+    (): ReferenceTab[] => [
+      {
+        key: 'change-tasks',
+        label: 'Change Tasks',
+        basePath: CHANGE_TASKS_LIST_PATH,
+        resource: CHANGE_TASKS_RESOURCE,
+        typeLabel: 'Change Task',
+        records: changeTasks,
+        isLoading: changeTasksLoading,
+        emptyMessage: 'No change tasks linked to this change yet',
+      },
+    ],
+    [changeTasks, changeTasksLoading],
+  );
+
   useEffect(() => {
     if (!data) return;
     setForm(buildEditableForm(data));
@@ -158,16 +174,18 @@ export function ChangeDetailPage() {
       });
     }
 
+    const referencesLoading = referenceTabs.some((tab) => tab.isLoading);
+    const referencesCount = referenceTabs.reduce((sum, tab) => sum + tab.records.length, 0);
     items.push({
       id: SECTION.references,
       title: 'References',
       icon: <HierarchyIcon size={14} />,
       accent: 'info',
-      count: changeTasksLoading ? '…' : changeTasks.length,
+      count: referencesLoading ? '…' : referencesCount,
     });
 
     return items;
-  }, [changeTasks.length, changeTasksLoading, permissions?.read, sysId]);
+  }, [permissions?.read, referenceTabs, sysId]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -334,12 +352,7 @@ export function ChangeDetailPage() {
             id={SECTION.references}
             icon={<HierarchyIcon size={14} />}
             accent="info"
-            basePath={CHANGE_TASKS_LIST_PATH}
-            resource={CHANGE_TASKS_RESOURCE}
-            typeLabel="Change Task"
-            records={changeTasks}
-            isLoading={changeTasksLoading}
-            emptyMessage="No referenced records linked to this change yet"
+            tabs={referenceTabs}
           />
         </div>
       </div>

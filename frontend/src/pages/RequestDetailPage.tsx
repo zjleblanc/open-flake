@@ -10,7 +10,7 @@ import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
-import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
+import { RelatedRecordsSection, type ReferenceTab } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
 import {
   isReferenceDeleted,
@@ -110,6 +110,39 @@ export function RequestDetailPage() {
   });
   const childItems = useMemo(() => childItemsData?.records ?? [], [childItemsData]);
 
+  const { data: catalogTasksData, isLoading: catalogTasksLoading } = useQuery({
+    queryKey: ['records', 'catalog-tasks', 'request', sysId],
+    queryFn: () => api.listRecords('catalog-tasks', { query: `request=${sysId}` }),
+    enabled: !!sysId,
+  });
+  const catalogTasks = useMemo(() => catalogTasksData?.records ?? [], [catalogTasksData]);
+
+  const referenceTabs = useMemo(
+    (): ReferenceTab[] => [
+      {
+        key: 'requested-items',
+        label: 'Requested Items',
+        basePath: '/requested-items',
+        resource: 'catalog-request-items',
+        typeLabel: 'Requested Item',
+        records: childItems,
+        isLoading: childItemsLoading,
+        emptyMessage: 'No requested items linked to this request yet',
+      },
+      {
+        key: 'catalog-tasks',
+        label: 'Catalog Tasks',
+        basePath: '/catalog-tasks',
+        resource: 'catalog-tasks',
+        typeLabel: 'Catalog Task',
+        records: catalogTasks,
+        isLoading: catalogTasksLoading,
+        emptyMessage: 'No catalog tasks linked to this request yet',
+      },
+    ],
+    [childItems, childItemsLoading, catalogTasks, catalogTasksLoading],
+  );
+
   useEffect(() => {
     if (!data) return;
     setForm(buildEditableForm(data));
@@ -157,16 +190,18 @@ export function RequestDetailPage() {
       });
     }
 
+    const referencesLoading = referenceTabs.some((tab) => tab.isLoading);
+    const referencesCount = referenceTabs.reduce((sum, tab) => sum + tab.records.length, 0);
     items.push({
       id: SECTION.references,
       title: 'References',
       icon: <HierarchyIcon size={14} />,
       accent: 'info',
-      count: childItemsLoading ? '…' : childItems.length,
+      count: referencesLoading ? '…' : referencesCount,
     });
 
     return items;
-  }, [childItems.length, childItemsLoading, permissions?.read, sysId]);
+  }, [permissions?.read, referenceTabs, sysId]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -333,12 +368,7 @@ export function RequestDetailPage() {
             id={SECTION.references}
             icon={<HierarchyIcon size={14} />}
             accent="info"
-            basePath="/requested-items"
-            resource="catalog-request-items"
-            typeLabel="Requested Item"
-            records={childItems}
-            isLoading={childItemsLoading}
-            emptyMessage="No referenced records linked to this request yet"
+            tabs={referenceTabs}
           />
         </div>
       </div>

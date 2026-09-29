@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-28 — Tabbed References section on detail pages
+
+### Added
+- The References accordion on Request, Change, and Requested Item detail pages now groups linked records into a tab per reference type instead of a single flat list — Requests show "Requested Items" and "Catalog Tasks" tabs, and Requested Items show "Sibling Items" and "Catalog Tasks" tabs. Each tab displays a count badge only when it has records, and the active tab shows a brief empty-state message in place of the table when it has none.
+- When every reference tab is empty, the References accordion now renders in a disabled state (dimmed, non-expandable) with an inline "No references" note instead of an openable-but-empty panel.
+
 ## 2026-09-28 — Server-side pagination and sorting for table API and list views
 
 ### Added

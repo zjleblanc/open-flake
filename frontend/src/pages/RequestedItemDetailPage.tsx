@@ -17,7 +17,7 @@ import { ExpandableDetailSection } from '../components/ExpandableDetailSection';
 import { usePageHeader } from '../components/PageHeaderContext';
 import { RecordActivityFeed } from '../components/RecordActivityFeed';
 import { RecordDetailHeaderActions } from '../components/RecordDetailHeaderActions';
-import { RelatedRecordsSection } from '../components/RelatedRecordsSection';
+import { RelatedRecordsSection, type ReferenceTab } from '../components/RelatedRecordsSection';
 import { OFSelect } from '../components/OFSelect';
 import {
   isReferenceDeleted,
@@ -161,6 +161,39 @@ export function RequestedItemDetailPage() {
     [siblingsData, sysId],
   );
 
+  const { data: catalogTasksData, isLoading: catalogTasksLoading } = useQuery({
+    queryKey: ['records', 'catalog-tasks', 'request_item', sysId],
+    queryFn: () => api.listRecords('catalog-tasks', { query: `request_item=${sysId}` }),
+    enabled: !!sysId,
+  });
+  const catalogTasks = useMemo(() => catalogTasksData?.records ?? [], [catalogTasksData]);
+
+  const referenceTabs = useMemo(
+    (): ReferenceTab[] => [
+      {
+        key: 'sibling-items',
+        label: 'Sibling Items',
+        basePath: LIST_PATH,
+        resource: RESOURCE,
+        typeLabel: 'Requested Item',
+        records: siblingItems,
+        isLoading: siblingsLoading,
+        emptyMessage: 'No other requested items linked to this request',
+      },
+      {
+        key: 'catalog-tasks',
+        label: 'Catalog Tasks',
+        basePath: '/catalog-tasks',
+        resource: 'catalog-tasks',
+        typeLabel: 'Catalog Task',
+        records: catalogTasks,
+        isLoading: catalogTasksLoading,
+        emptyMessage: 'No catalog tasks linked to this requested item yet',
+      },
+    ],
+    [siblingItems, siblingsLoading, catalogTasks, catalogTasksLoading],
+  );
+
   const { data: variables = [], isLoading: variablesLoading } = useQuery({
     queryKey: ['record-variables', RESOURCE, sysId],
     queryFn: () => api.listRecordVariables(RESOURCE, sysId!),
@@ -222,26 +255,18 @@ export function RequestedItemDetailPage() {
       });
     }
 
-    if (parentReqSysId) {
-      items.push({
-        id: SECTION.references,
-        title: 'References',
-        icon: <HierarchyIcon size={14} />,
-        accent: 'info',
-        count: siblingsLoading ? '…' : siblingItems.length,
-      });
-    }
+    const referencesLoading = referenceTabs.some((tab) => tab.isLoading);
+    const referencesCount = referenceTabs.reduce((sum, tab) => sum + tab.records.length, 0);
+    items.push({
+      id: SECTION.references,
+      title: 'References',
+      icon: <HierarchyIcon size={14} />,
+      accent: 'info',
+      count: referencesLoading ? '…' : referencesCount,
+    });
 
     return items;
-  }, [
-    parentReqSysId,
-    permissions?.read,
-    siblingItems.length,
-    siblingsLoading,
-    sysId,
-    variables.length,
-    variablesLoading,
-  ]);
+  }, [permissions?.read, referenceTabs, sysId, variables.length, variablesLoading]);
 
   const headerBreadcrumbs = useMemo(
     () => [
@@ -430,19 +455,12 @@ export function RequestedItemDetailPage() {
             />
           )}
 
-          {parentReqSysId && (
-            <RelatedRecordsSection
-              id={SECTION.references}
-              icon={<HierarchyIcon size={14} />}
-              accent="info"
-              basePath={LIST_PATH}
-              resource={RESOURCE}
-              typeLabel="Sibling Item"
-              records={siblingItems}
-              isLoading={siblingsLoading}
-              emptyMessage="No other referenced records on this request"
-            />
-          )}
+          <RelatedRecordsSection
+            id={SECTION.references}
+            icon={<HierarchyIcon size={14} />}
+            accent="info"
+            tabs={referenceTabs}
+          />
         </div>
       </div>
 
