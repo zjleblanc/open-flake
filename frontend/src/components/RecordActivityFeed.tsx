@@ -348,7 +348,7 @@ export function RecordActivityFeed({
       ...toActivityEntries(activityData?.activity ?? []),
       ...toAttachmentEntries(attachments),
     ];
-    entries.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+    entries.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
     return entries;
   }, [activityData, attachments]);
 

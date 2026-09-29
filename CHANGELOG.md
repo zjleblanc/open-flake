@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-29 — Activity feed shows newest entries first
+
+### Changed
+- The record activity feed (comments, field-history changes, and attachments merged on record detail pages) now sorts newest-first instead of oldest-first, matching the activity API's existing descending order.
+
 ## 2026-09-28 — Tabbed References section on detail pages
 
 ### Added
