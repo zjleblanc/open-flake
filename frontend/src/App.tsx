@@ -16,6 +16,7 @@ import { ConfigurationItemDetailPage } from './pages/ConfigurationItemDetailPage
 import { DashboardPage } from './pages/DashboardPage';
 import { GroupDetailPage } from './pages/GroupDetailPage';
 import { GroupsListPage } from './pages/GroupsListPage';
+import { HelpPage } from './pages/HelpPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
@@ -619,6 +620,7 @@ export function App() {
         <Route path="groups" element={<Navigate to="/access/groups" replace />} />
         <Route path="groups/:sysId" element={<LegacyGroupRedirect />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="help" element={<HelpPage />} />
         <Route path="admin/tables" element={<AdminTablesPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

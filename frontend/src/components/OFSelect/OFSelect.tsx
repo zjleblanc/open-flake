@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -90,6 +91,11 @@ export function OFSelect({
   const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  /** Last-measured height of the portaled dropdown, used to decide whether it should
+   * flip to open upward. Starts at 0 (unknown) so the very first open of any given
+   * OFSelect always tries below first, then flips on the post-render measurement
+   * below if there isn't room. */
+  const dropdownHeightRef = useRef(0);
 
   const filteredOptions = useMemo(() => {
     if (!autocomplete || !query.trim()) return options;
@@ -106,7 +112,17 @@ export function OFSelect({
     const trigger = triggerRef.current;
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
-    setPosition({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    const margin = 4;
+    const dropdownHeight = dropdownHeightRef.current;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    // Flip upward only once we actually know the dropdown's rendered height (see the
+    // measurement effect below) and it wouldn't fit below, but would fit — or fit
+    // better — above. Unknown height (first-ever open) always tries below first.
+    const openUpward =
+      dropdownHeight > 0 && spaceBelow < dropdownHeight + margin && spaceAbove > spaceBelow;
+    const top = openUpward ? rect.top - dropdownHeight - margin : rect.bottom + margin;
+    setPosition({ top, left: rect.left, width: rect.width });
   }, []);
 
   const closeDropdown = useCallback(() => {
@@ -126,6 +142,21 @@ export function OFSelect({
     setHighlightedIndex(firstEnabledIndex === -1 ? 0 : firstEnabledIndex);
     // Only re-run when the dropdown opens or the filtered set changes length,
     // not on every highlightedIndex change (that would fight keyboard nav).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, filteredOptions.length]);
+
+  // Measure the portaled dropdown's real rendered height right after it (re)mounts, and
+  // reposition (flipping above the trigger if there's no room below) before the browser
+  // paints — this runs synchronously via useLayoutEffect so there's no visible flicker.
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const dropdown = dropdownRef.current;
+    if (!dropdown) return;
+    const measuredHeight = dropdown.getBoundingClientRect().height;
+    if (measuredHeight !== dropdownHeightRef.current) {
+      dropdownHeightRef.current = measuredHeight;
+      updatePosition();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, filteredOptions.length]);
 

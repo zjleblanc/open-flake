@@ -1,0 +1,31 @@
+---
+description: Keep the in-app Help page in sync with user/developer-facing feature changes
+globs: frontend/src/pages/**/*.tsx,frontend/src/App.tsx,frontend/src/components/navConfig.tsx,backend/app/api/**/*.py,backend/app/domain/**/*.py
+alwaysApply: false
+---
+
+## Update the Help page when you change what OpenFlake can do
+
+`/help` ([frontend/src/pages/HelpPage.tsx](../../frontend/src/pages/HelpPage.tsx), prose in
+[frontend/src/pages/helpContent.ts](../../frontend/src/pages/helpContent.ts)) is OpenFlake's
+in-app "interactive readme" — the only place both end users and integrators learn how to
+configure, integrate with, and build processes on OpenFlake without leaving the app. Treat it
+as a living doc that ships alongside the feature, not a one-time page.
+
+Whenever a change adds or meaningfully alters developer- or user-facing behavior, update the
+relevant Help section in the same change:
+
+- **New page/route or nav entry** (`App.tsx`, `navConfig.tsx`) — mention it under the right
+  section (Overview for a new core object, Building Processes for a new workflow step, etc.).
+- **New/changed environment variable, permission, or RBAC rule** (`backend/app/`) — update the
+  Configuring section's env var table / RBAC summary.
+- **New/changed public API surface** (Table API fields, a newly supported table, a new auth
+  method, webhook/secret capability) — update the Integrating section.
+- **New/changed `state` (or other integer-enum) field mapping** — do **not** hand-write the
+  mapping in `helpContent.ts`; the Field Reference section renders it live from
+  `STATE_LABELS`/`TABLE_STATE_LABELS` in `frontend/src/api/client.ts`, so just make sure your
+  change lands there and the table stays correct automatically. If you add a wholly new
+  enum-style field elsewhere, prefer adding a similar live-rendered table over static prose.
+
+Purely internal changes (refactors, bug fixes with no behavior change, test-only work) don't
+need a Help update.

@@ -284,6 +284,14 @@ button.nav-link {
   overflow-y: auto;
 }
 
+/* Always-visible Help link pinned below the scrollable/filterable nav list — not
+   part of `NAV`/pinned favorites, just a fixed entry at the bottom of the dropdown. */
+.nav-menu-footer {
+  flex-shrink: 0;
+  padding: 0.375rem;
+  border-top: 1px solid var(--of-border);
+}
+
 .nav-menu-group {
   display: flex;
   flex-direction: column;
@@ -2490,13 +2498,18 @@ button.nav-link {
   white-space: nowrap;
 }
 
-.record-list-filter-select {
-  width: auto;
-  min-width: 10rem;
+/* Compound selector (`.of-select` + this class) so `width: fit-content` reliably beats
+   OFSelect's own `.of-select { width: 100% }` base rule regardless of CSS load order —
+   both selectors otherwise have equal specificity. */
+.of-select.record-list-filter-select {
+  width: fit-content;
+  min-width: 7rem;
+  max-width: 16rem;
+  flex-shrink: 0;
 }
 
 .record-list-filter input[type='search'] {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 8rem;
 }
 

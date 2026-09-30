@@ -22,9 +22,13 @@
   white-space: nowrap;
 }
 
-.pagination-bar-size-select {
-  width: auto;
-  min-width: 4.5rem;
+/* Compound selector so `width: fit-content` reliably beats OFSelect's own
+   `.of-select { width: 100% }` base rule regardless of CSS load order — see the
+   matching comment on `.record-list-filter-select` in Layout.css. */
+.of-select.pagination-bar-size-select {
+  width: fit-content;
+  min-width: 3.5rem;
+  flex-shrink: 0;
 }
 
 .pagination-bar-info {

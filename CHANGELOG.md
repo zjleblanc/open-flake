@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-29 — Help page and filter/pagination dropdown polish
+
+### Added
+- New in-app Help page (`/help`, linked as a sticky entry at the bottom of the "Browse all pages" nav menu) covering configuring, integrating with, and building processes on OpenFlake, using the same detail-page layout (collapsible sections plus a right-rail section nav) as record detail pages. Its Field Reference section renders the `state` field's integer-to-label mappings live from `STATE_LABELS`/`TABLE_STATE_LABELS` so the reference table can't drift from the values used elsewhere in the app.
+
+### Changed
+- The "Filter by" column dropdown on list views now sizes itself to fit the selected column's label instead of a fixed 10rem width, so the adjacent search input gets the freed space; the "Rows per page" dropdown got the same treatment.
+- `OFSelect`'s dropdown now opens upward when there isn't enough room below the trigger (e.g. the "Rows per page" control near the bottom of a list), instead of always opening below and risking being clipped by the viewport.
+
 ## 2026-09-29 — Problem Task and Change Template views, expanded column catalogs
 
 ### Added

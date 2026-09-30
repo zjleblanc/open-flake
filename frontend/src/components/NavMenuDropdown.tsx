@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FilterIcon, FlakeIcon } from './NavIcons';
+import { FilterIcon, FlakeIcon, HelpIcon } from './NavIcons';
 import { isNavGroup, type NavEntry } from './navConfig';
 
 interface NavMenuDropdownProps {
@@ -118,6 +118,20 @@ export function NavMenuDropdown({
             </div>
           );
         })}
+      </div>
+      <div className="nav-menu-footer">
+        <div className="nav-menu-item">
+          <button
+            type="button"
+            className="nav-menu-item-link"
+            onClick={() => handleNavigate('/help')}
+          >
+            <span className="nav-menu-item-icon">
+              <HelpIcon size={16} />
+            </span>
+            <span className="nav-menu-item-label">Help</span>
+          </button>
+        </div>
       </div>
     </div>
   );
