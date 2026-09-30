@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-30 — Fix journal field HTML rendering; document journal field formatting
+
+### Fixed
+- Rich HTML rendered inside journal fields (`comments`, `work_notes`, `close_notes`, wrapped in ServiceNow's `[code]...[/code]` convention) no longer overflows the bubble — the global `* { margin: 0; padding: 0; }` reset had stripped the browser's default list indentation, so `<ul>`/`<ol>` markers rendered outside the container's bounds. `.journal-field-html` now carries scoped typography (headings, lists, paragraphs, `pre`/`code`, links) so injected HTML renders legibly and stays contained.
+
+### Added
+- The Help page's Integrating section now documents how to structure `comments`/`work_notes`/`close_notes` content for the API: plain text (where `\n` renders as a real line break) versus `[code]...[/code]`-wrapped HTML (sanitized and rendered as real markup, where `\n` is ordinary whitespace and `<br>`/block elements are needed for breaks), with example payloads for each style and for mixing both in one field value.
+
 ## 2026-09-30 — Dashboard activity heatmap and Ansible playbook example
 
 ### Added

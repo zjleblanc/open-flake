@@ -88,6 +88,39 @@ Supported tables include \`incident\`, \`problem\`, \`problem_task\`, \`change_r
 \`change_task\`, \`cmdb_ci\` (and its subclasses), \`sys_user\`, \`sys_user_group\`,
 \`sc_request\`, \`sc_task\`, \`sys_attachment\`, and more.
 
+### Journal fields (\`comments\`, \`work_notes\`, \`close_notes\`)
+
+These fields are stored and returned byte-for-byte — the API applies no formatting or
+sanitization of its own. How you structure the text determines how it renders in the UI:
+
+**Plain text** (the default) — newlines render as real line breaks:
+
+\`\`\`json
+{
+  "comments": "Investigated the alert.\\nRoot cause: disk usage on /dev/xvda3 at 76%.\\nNo action needed yet."
+}
+\`\`\`
+
+**Rich HTML** — wrap it in \`[code]...[/code]\` (ServiceNow's journal-formatting convention).
+The wrapped content is sanitized and rendered as real HTML, so headings, lists, links, and
+\`<pre>\` blocks all work — but ordinary HTML whitespace rules apply once you're inside
+\`[code]\`, so a bare \`\\n\` will *not* create a line break; use \`<br>\` or block elements like
+\`<p>\`/\`<li>\` instead:
+
+\`\`\`json
+{
+  "work_notes": "[code]<h3>Remediation</h3><ul><li>Cleared old logs</li><li>Extended volume to 60G</li></ul><p>Verified with <code>df -h</code>:<br><pre>/dev/xvda3  60G  31G  29G  35%  /</pre></p>[/code]"
+}
+\`\`\`
+
+You can mix both styles in a single value — plain text outside \`[code]\` blocks, HTML inside:
+
+\`\`\`json
+{
+  "comments": "Automated diagnosis attached below.\\n[code]<h3>Findings</h3><p>Disk at 76% utilization on /dev/xvda3.</p>[/code]\\nFollow-up scheduled for tomorrow."
+}
+\`\`\`
+
 ### Webhooks & Secrets
 
 Outbound integrations live under **Integrations**: **Webhooks** fire on record events,

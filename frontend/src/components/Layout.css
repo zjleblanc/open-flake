@@ -2202,6 +2202,88 @@ button.nav-link {
   border: 1px solid var(--of-border);
   border-radius: var(--of-radius);
   background: color-mix(in srgb, var(--of-bg) 65%, transparent);
+  overflow: hidden;
+  word-break: break-word;
+  line-height: 1.55;
+  font-size: 0.875rem;
+}
+
+.journal-field-html h1,
+.journal-field-html h2,
+.journal-field-html h3,
+.journal-field-html h4 {
+  font-family: var(--of-font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0.75rem 0 0.35rem;
+}
+
+.journal-field-html h1 {
+  font-size: 1.2rem;
+}
+
+.journal-field-html h2 {
+  font-size: 1.05rem;
+}
+
+.journal-field-html h3 {
+  font-size: 0.95rem;
+}
+
+.journal-field-html h4 {
+  font-size: 0.875rem;
+}
+
+.journal-field-html > :first-child {
+  margin-top: 0;
+}
+
+.journal-field-html p,
+.journal-field-html ul,
+.journal-field-html ol {
+  margin: 0.5rem 0;
+}
+
+.journal-field-html ul,
+.journal-field-html ol {
+  padding-left: 1.5rem;
+}
+
+.journal-field-html li {
+  margin: 0.25rem 0;
+}
+
+.journal-field-html pre {
+  background: var(--of-bg);
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  padding: 0.625rem 0.75rem;
+  overflow-x: auto;
+  font-family: var(--of-font-mono);
+  font-size: 0.8125rem;
+}
+
+.journal-field-html code {
+  font-family: var(--of-font-mono);
+  font-size: 0.85em;
+  background: var(--of-surface);
+  border: 1px solid var(--of-border);
+  border-radius: 3px;
+  padding: 0.15em 0.35em;
+}
+
+.journal-field-html pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.journal-field-html a {
+  color: var(--of-accent);
+}
+
+.journal-field-html a:hover {
+  color: var(--of-accent-dark);
 }
 
 .journal-field-wrap .journal-field-readonly {
