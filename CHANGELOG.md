@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-09-30 — Dashboard activity heatmap and Ansible playbook example
+
+### Added
+- The Dashboard gained a GitHub-style "Recent Activity" heatmap card (pure SVG, generated demo data, no new dependencies) shown alongside the "Welcome to OpenFlake" card, plus a new "Designed for Ansible" card below with a syntax-highlighted example playbook that creates, updates, and closes an incident via the `servicenow.itsm` collection.
+- Added a lightweight, dependency-free YAML syntax highlighter (`YamlHighlight`) and wired it into `MarkdownRenderer` so every fenced `yaml` code block gets highlighting app-wide — this also applies retroactively to the existing Ansible example on the Help page's Integrating section, with no changes needed there.
+
+### Changed
+- The "Welcome to OpenFlake" card copy now leads with the platform's mission and capabilities (open-source, ServiceNow-compatible REST API across incidents, problems, changes, the service catalog, and CMDB) instead of Ansible-specific setup instructions, since those are now covered by the new "Designed for Ansible" card.
+- The "Browse all pages" nav menu dropdown's filter bar and pinned Help footer now use a subtle primary-tinted gradient background to visually distinguish them from the scrollable menu list, and the filter input's focus ring was softened from the app-wide 2px outline to a subtler inset box-shadow.
+
 ## 2026-09-29 — Help page and filter/pagination dropdown polish
 
 ### Added

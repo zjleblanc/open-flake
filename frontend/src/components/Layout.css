@@ -258,18 +258,30 @@ button.nav-link {
   padding: 0.625rem 0.75rem;
   flex-shrink: 0;
   border-bottom: 1px solid var(--of-border);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--of-primary) 28%, var(--of-surface)) 0%,
+    var(--of-surface) 100%
+  );
   color: var(--of-text-muted);
 }
 
 .nav-menu-filter input {
   flex: 1;
   min-width: 0;
-  border: none;
   background: transparent;
   color: var(--of-text);
   font-family: var(--of-font-ui);
   font-size: 0.8125rem;
   outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--of-surface) 35%, transparent);
+  border-radius: 4px;
+}
+
+.nav-menu-filter input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--of-primary) 35%, transparent);
+  border-radius: 4px;
 }
 
 .nav-menu-filter input::placeholder {
@@ -290,6 +302,11 @@ button.nav-link {
   flex-shrink: 0;
   padding: 0.375rem;
   border-top: 1px solid var(--of-border);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--of-primary) 28%, var(--of-surface)) 0%,
+    var(--of-surface) 100%
+  );
 }
 
 .nav-menu-group {
@@ -1024,7 +1041,20 @@ button.nav-link {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+}
+
+.dashboard-welcome-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 900px) {
+  .dashboard-welcome-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {

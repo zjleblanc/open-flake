@@ -1,0 +1,51 @@
+.yaml-highlight {
+  background: var(--of-bg);
+  border: 1px solid var(--of-border);
+  border-radius: var(--of-radius);
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: var(--of-font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.yaml-highlight code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--of-text);
+}
+
+.yaml-highlight-line {
+  white-space: pre;
+}
+
+.yaml-token-comment {
+  color: var(--of-text-muted);
+  font-style: italic;
+}
+
+.yaml-token-key {
+  color: var(--of-primary-light);
+  font-weight: 600;
+}
+
+.yaml-token-module {
+  color: var(--of-accent);
+  font-weight: 600;
+}
+
+.yaml-token-string {
+  color: var(--of-success);
+}
+
+.yaml-token-number,
+.yaml-token-boolean {
+  color: var(--of-accent);
+  font-weight: 600;
+}
+
+.yaml-token-punctuation {
+  color: var(--of-text-muted);
+}

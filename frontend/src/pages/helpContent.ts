@@ -100,8 +100,9 @@ Point the [\`servicenow.itsm\`](https://github.com/ansible-collections/serviceno
 collection straight at OpenFlake:
 
 \`\`\`yaml
-- servicenow.itsm.incident:
-    instance:
+- name: Create incident
+  servicenow.itsm.incident:
+    instance: # can be securely sourced from a credential
       host: http://localhost:8000
       username: admin
       password: admin
